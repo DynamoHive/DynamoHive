@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from backend.users import router as user_router
 from backend.posts import router as post_router
+from backend.events import router as event_router
 
 app = FastAPI()
 
@@ -19,4 +20,4 @@ def get_feed():
 
 app.include_router(user_router)
 app.include_router(post_router)
-from backend.events import router as event_router
+app.include_router(event_router)
