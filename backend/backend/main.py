@@ -19,3 +19,4 @@ def get_feed():
 
 app.include_router(user_router)
 app.include_router(post_router)
+from backend.events import router as event_router
