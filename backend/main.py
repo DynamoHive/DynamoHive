@@ -1,16 +1,12 @@
-from fastapi import FastAPI
+from importlib import import_module
 
 app = FastAPI()
+
+ai_module = import_module("ai-engine.recommendation")
 
 @app.get("/")
 def home():
     return {"platform": "DynamoHive", "status": "running"}
 
 @app.get("/feed")
-def get_feed():
-    return {
-        "posts": [
-            {"id": 1, "content": "Welcome to DynamoHive"},
-            {"id": 2, "content": "AI powered creator platform"}
-        ]
-    }
+def get_feed(user_id: int = 1):
