@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from backend.knowledge_graph import add_knowledgefrom fastapi import APIRouter
 from backend.data_pipeline import event_queue
 
 router = APIRouter()
