@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from backend.feed_engine import rank_postsfrom fastapi import FastAPI
 from backend.data_pipeline import start_pipeline
 from backend.events import router as events_router
 from backend.posts import router as posts_router
