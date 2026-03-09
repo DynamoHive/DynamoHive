@@ -1,9 +1,12 @@
-rom fastapi import APIRouterrouter = APIRouter()
+from fastapi import APIRouter
+from backend.data_pipeline import add_event
+
+router = APIRouter()
 
 events = []
 
 @router.post("/events")
-def create_event(event_type: str, user_id: int, post_id: int = None):
+def create_event(event_type: str, user_id: int, post_id: int | None = None):
 
     event = {
         "type": event_type,
@@ -13,7 +16,6 @@ def create_event(event_type: str, user_id: int, post_id: int = None):
 
     events.append(event)
 
-    # pipeline'a gönder
     add_event(event)
 
     return {"status": "event recorded", "event": event}
