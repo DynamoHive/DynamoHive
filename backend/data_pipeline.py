@@ -1,34 +1,28 @@
-from collections import defaultdict
-import time
+import queue
+import threading
 
-trust_scores = defaultdict(lambda: 1.0)
-user_activity = defaultdict(list)
+from backend.analytics_engine import record_event
+from backend.trust_engine import update_trust
+from backend.growth_engine import record_engagement
 
-SPAM_WINDOW = 10
-SPAM_LIMIT = 20
+event_queue = queue.Queue()
 
-def update_trust(event):
+def add_event(event):
+    event_queue.put(event)
 
-    user_id = event.get("user_id")
-    event_type = event.get("type")
+def process_events():
+    while True:
+        event = event_queue.get()
 
-    if not user_id:
-        return
+        print("Processing event:", event)
 
-    now = time.time()
+        record_event(event)
+        update_trust(event)
+        record_engagement(event.get("user_id"))
 
-    user_activity[user_id].append(now)
+        event_queue.task_done()
 
-    # sadece son zaman aralığını tut
-    user_activity[user_id] = [
-        t for t in user_activity[user_id]
-        if now - t < SPAM_WINDOW
-    ]
-
-    # çok fazla event varsa trust düşür
-    if len(user_activity[user_id]) > SPAM_LIMIT:
-        trust_scores[user_id] *= 0.9
-
-def get_trust(user_id):
-
-    return trust_scores[user_id]   
+def start_pipeline():
+    worker = threading.Thread(target=process_events)
+    worker.daemon = True
+    worker.start()
