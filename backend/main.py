@@ -3,11 +3,15 @@ from backend.data_pipeline import start_pipeline
 from backend.events import router as events_router
 from backend.posts import router as posts_router
 from backend.users import router as users_router
+from backend.growth_engine import start_growth
 
 app = FastAPI()
 
 # pipeline başlat
 start_pipeline()
+
+# growth engine başlat
+start_growth()
 
 # router bağlantıları
 app.include_router(events_router)
@@ -26,9 +30,12 @@ def get_feed():
             {"id": 2, "content": "AI powered creator platform"}
         ]
     }
+
 @app.get("/metrics")
 def metrics():
 
     from backend.analytics_engine import get_metrics
 
     return get_metrics()
+
+
