@@ -26,3 +26,9 @@ def home():
 @app.get("/feed")
 def get_feed(user_id: int = 1):
     return ai_module.recommend_posts(user_id)
+@app.get("/metrics")
+def metrics():
+
+    from backend.analytics_engine import get_metrics
+
+    return get_metrics()
