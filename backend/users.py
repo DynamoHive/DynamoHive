@@ -26,3 +26,15 @@ def create_user(username: str):
 @router.get("/users")
 def list_users():
     return users
+from backend.viral_engine import register_invite
+
+@router.post("/invite")
+
+def invite_user(inviter_id: str):
+
+    count = register_invite(inviter_id)
+
+    return {
+        "inviter": inviter_id,
+        "total_invites": count
+    }
