@@ -1,4 +1,4 @@
-router = APIRouter()
+rom fastapi import APIRouterrouter = APIRouter()
 
 events = []
 
