@@ -26,4 +26,9 @@ def get_feed():
             {"id": 2, "content": "AI powered creator platform"}
         ]
     }
+@app.get("/metrics")
+def metrics():
 
+    from backend.analytics_engine import get_metrics
+
+    return get_metrics()
