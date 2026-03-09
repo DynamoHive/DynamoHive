@@ -1,30 +1,35 @@
 from fastapi import APIRouter
-from backend.data_pipeline import add_event
+from backend.database import cursor, conn
 
 router = APIRouter()
 
-posts = []
+@router.post("/posts/create")
+def create_post(user_id: str, content: str):
 
-@router.post("/posts")
-def create_post(user_id: int, content: str):
+    cursor.execute(
+        "INSERT INTO posts(user_id,content) VALUES (?,?)",
+        (user_id, content)
+    )
 
-    post = {
-        "id": len(posts) + 1,
-        "user_id": user_id,
-        "content": content
-    }
+    conn.commit()
 
-    posts.append(post)
-
-    add_event({
-        "type": "post_create",
-        "user_id": user_id,
-        "post_id": post["id"]
-    })
-
-    return post
+    return {"status": "post created"}
 
 
 @router.get("/posts")
 def list_posts():
-    return posts
+
+    rows = cursor.execute(
+        "SELECT id,user_id,content FROM posts"
+    ).fetchall()
+
+    posts = []
+
+    for r in rows:
+        posts.append({
+            "id": r[0],
+            "user_id": r[1],
+            "content": r[2]
+        })
+
+    return {"posts": posts}
