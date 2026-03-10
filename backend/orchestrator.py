@@ -4,12 +4,23 @@ from backend.data_pipeline import start_pipeline
 from backend.growth_engine import start_growth
 from backend.viral_engine import start_viral_engine
 
-import backend.topic_radar
-import backend.analytics_engine
-import backend.auto_content_loop
-import backend.feed_engine
-import backend.knowledge_ai
-import backend.knowledge_graph
+import backend.topic_radar as topic_radar
+import backend.analytics_engine as analytics_engine
+import backend.auto_content_loop as auto_content_loop
+import backend.feed_engine as feed_engine
+import backend.knowledge_ai as knowledge_ai
+import backend.knowledge_graph as knowledge_graph
+import backend.knowledge_map as knowledge_map
+
+
+def safe_run(module):
+    try:
+        if hasattr(module, "run"):
+            module.run()
+        elif hasattr(module, "start"):
+            module.start()
+    except Exception as e:
+        print("Module error:", module.__name__, e)
 
 
 class DynamoHiveCore:
@@ -22,34 +33,14 @@ class DynamoHiveCore:
 
         while True:
 
-            try:
-                backend.topic_radar.run()
-            except:
-                pass
+            safe_run(topic_radar)
+            safe_run(analytics_engine)
 
-            try:
-                backend.analytics_engine.run()
-            except:
-                pass
+            safe_run(knowledge_ai)
+            safe_run(knowledge_graph)
+            safe_run(knowledge_map)
 
-            try:
-                backend.knowledge_ai.run()
-            except:
-                pass
-
-            try:
-                backend.knowledge_graph.run()
-            except:
-                pass
-
-            try:
-                backend.auto_content_loop.run()
-            except:
-                pass
-
-            try:
-                backend.feed_engine.run()
-            except:
-                pass
+            safe_run(auto_content_loop)
+            safe_run(feed_engine)
 
             time.sleep(30)
