@@ -33,7 +33,8 @@ class DynamoHiveCore:
         start_viral_engine()
 
         while True:
-
+safe_run(trend_engine)
+safe_run(signal_detector)
             safe_run(topic_radar)
             safe_run(analytics_engine)
 
