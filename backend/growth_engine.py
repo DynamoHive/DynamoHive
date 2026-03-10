@@ -23,7 +23,11 @@ def get_creator_score(user_id):
 
 def growth_loop():
     while True:
-        print("Growth engine running")
+        try:
+            print("Growth engine running")
+        except Exception as e:
+            print("Growth engine error:", e)
+
         time.sleep(60)
 
 
@@ -31,4 +35,4 @@ def start_growth():
     worker = threading.Thread(target=growth_loop)
     worker.daemon = True
     worker.start()
-    print("Growth engine started") 
+    print("Growth engine started")
