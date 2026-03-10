@@ -1,56 +1,38 @@
-import threading
-import time
-import random
-from backend.cache import get_cache
-from backend.knowledge_graph import add_knowledge
+import requests
 
-
-GLOBAL_TOPICS = [
-    "artificial intelligence",
-    "climate change",
-    "renewable energy",
-    "space exploration",
-    "robotics",
-    "biotechnology",
-    "quantum computing",
-    "global economy",
-    "cyber security",
-    "digital democracy"
+NEWS_SOURCES = [
+    "https://newsapi.org/v2/top-headlines?language=en&category=technology",
+    "https://newsapi.org/v2/top-headlines?language=en&category=business",
 ]
 
-
-def scan_trends():
-
-    topic = random.choice(GLOBAL_TOPICS)
-
-    add_knowledge(topic, "radar")
-
-    print("RADAR topic detected:", topic)
+topics = []
 
 
-def radar_loop():
+def scan_news():
 
-    while True:
+    global topics
 
+    new_topics = []
+
+    for url in NEWS_SOURCES:
         try:
+            r = requests.get(url, timeout=5)
+            data = r.json()
 
-            scan_trends()
+            for article in data.get("articles", []):
+                title = article.get("title")
+                if title:
+                    new_topics.append(title)
 
         except Exception as e:
-
             print("Radar error:", e)
 
-        time.sleep(120)
+    topics = new_topics[:10]
+
+    print("Detected topics:", topics)
 
 
-def start_radar():
-
-    worker = threading.Thread(target=radar_loop)
-
-    worker.daemon = True
-
-    worker.start()
-
-    print("GLOBAL TOPIC RADAR STARTED")
+def run():
+    scan_news()
 
 
