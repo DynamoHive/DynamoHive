@@ -4,7 +4,7 @@ from backend.data_pipeline import start_pipeline
 from backend.growth_engine import start_growth
 from backend.viral_engine import start_viral_engine
 
-from backend.topic_radar import scan_topics
+import backend.topic_radar as topic_radar
 from backend.analytics_engine import run_analytics
 from backend.auto_content_loop import run_content_loop
 from backend.feed_engine import generate_feed
@@ -23,7 +23,7 @@ class DynamoHiveCore:
 
         while True:
 
-            scan_topics()
+            topic_radar.run()
             run_analytics()
 
             run_ai_analysis()
