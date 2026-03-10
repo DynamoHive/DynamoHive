@@ -1,14 +1,58 @@
-from collections import defaultdict
+import threading
+import time
+import random
 
-invites = defaultdict(int)
+from backend.growth_engine import record_referral, record_engagement
 
-def register_invite(inviter_id):
+fake_users = [
+    "alice",
+    "bob",
+    "charlie",
+    "diana",
+    "eric",
+    "fatima",
+    "george"
+]
 
-    invites[inviter_id] += 1
 
-    return invites[inviter_id]
+def viral_action():
+
+    user = random.choice(fake_users)
+
+    action = random.choice(["share", "invite", "like"])
+
+    if action == "invite":
+
+        record_referral(user)
+        print("Viral invite by:", user)
+
+    else:
+
+        record_engagement(user)
+        print("Viral engagement by:", user)
 
 
-def get_invite_count(user_id):
+def viral_loop():
 
-    return invites[user_id]
+    while True:
+
+        try:
+
+            viral_action()
+
+        except Exception as e:
+
+            print("Viral engine error:", e)
+
+        time.sleep(45)
+
+
+def start_viral_engine():
+
+    worker = threading.Thread(target=viral_loop)
+
+    worker.daemon = True
+
+    worker.start()
+
+    print("Viral engine started")
