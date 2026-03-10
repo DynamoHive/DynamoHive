@@ -11,7 +11,8 @@ import backend.feed_engine as feed_engine
 import backend.knowledge_ai as knowledge_ai
 import backend.knowledge_graph as knowledge_graph
 import backend.knowledge_map as knowledge_map
-
+import backend.trend_engine as trend_engine
+import backend.signal_detector as signal_detector
 
 def safe_run(module):
     try:
