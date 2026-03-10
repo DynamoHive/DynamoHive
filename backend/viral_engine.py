@@ -15,6 +15,10 @@ fake_users = [
 ]
 
 
+def register_invite(user_id):
+    record_referral(user_id)
+
+
 def viral_action():
 
     user = random.choice(fake_users)
@@ -22,14 +26,12 @@ def viral_action():
     action = random.choice(["share", "invite", "like"])
 
     if action == "invite":
-
-        record_referral(user)
-        print("Viral invite by:", user)
+        register_invite(user)
+        print("Viral invite:", user)
 
     else:
-
         record_engagement(user)
-        print("Viral engagement by:", user)
+        print("Viral engagement:", user)
 
 
 def viral_loop():
@@ -37,11 +39,9 @@ def viral_loop():
     while True:
 
         try:
-
             viral_action()
 
         except Exception as e:
-
             print("Viral engine error:", e)
 
         time.sleep(45)
