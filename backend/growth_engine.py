@@ -1,15 +1,4 @@
-from collections import defaultdict
-import threading
-import time
-
-referrals = defaultdict(int)
-creator_scores = defaultdict(float)
-
-
-def record_referral(inviter_id):
-
-    referrals[inviter_id] += 1
-    creator_scores[inviter_id] += 0.5
+   creator_scores[inviter_id] += 0.5
 
 
 def record_engagement(user_id):
