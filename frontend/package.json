@@ -1,0 +1,34 @@
+ };
+
+  return (
+
+    <div style={{fontFamily:"Arial",padding:"40px"}}>
+
+      <h1>DynamoHive</h1>
+
+      <h3>Global Feed</h3>
+
+      {posts.map((p,i) => (
+
+        <div key={i}
+        style={{
+          border:"1px solid #ccc",
+          padding:"10px",
+          marginBottom:"10px"
+        }}>
+
+        <b>{p.author}</b>
+
+        <p>{p.content}</p>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  );
+
+}
+
+export default App;
