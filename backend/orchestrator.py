@@ -16,6 +16,7 @@ import backend.signal_detector as signal_detector
 import backend.crawler_engine as crawler_engine 
 import backend.vector_memory as vector_memory
 import backend.distribution_engine as distribution_engine
+import backend.topic_authority_engine as topic_authority_engine
 def safe_run(module):
     try:
         if hasattr(module, "run"):
@@ -47,7 +48,7 @@ safe_run(distribution_engine)
             safe_run(knowledge_ai)
             safe_run(knowledge_graph)
             safe_run(knowledge_map)
-
+safe_run(topic_authority_engine)
             safe_run(auto_content_loop)
             safe_run(feed_engine)
 
