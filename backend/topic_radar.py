@@ -1,7 +1,7 @@
 import threading
 import time
 import random
-
+from backend.cache import get_cache
 from backend.knowledge_graph import add_knowledge
 
 
