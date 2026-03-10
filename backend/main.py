@@ -8,12 +8,19 @@ from backend.events import router as events_router
 from backend.posts import router as posts_router
 from backend.users import router as users_router
 
+from backend.orchestrator import DynamoHiveCore
+
+
 app = FastAPI()
 
-# sistemleri başlat
-start_pipeline()
-start_growth()
-start_viral_engine()
+# Core orchestrator
+core = DynamoHiveCore()
+
+
+@app.on_event("startup")
+async def startup_event():
+    core.start()
+
 
 # router bağlantıları
 app.include_router(events_router)
@@ -34,4 +41,3 @@ def feed():
             {"id": 2, "content": "AI powered creator platform"}
         ]
     }
-
