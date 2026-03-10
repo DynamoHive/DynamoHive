@@ -1,34 +1,15 @@
- };
-
-  return (
-
-    <div style={{fontFamily:"Arial",padding:"40px"}}>
-
-      <h1>DynamoHive</h1>
-
-      <h3>Global Feed</h3>
-
-      {posts.map((p,i) => (
-
-        <div key={i}
-        style={{
-          border:"1px solid #ccc",
-          padding:"10px",
-          marginBottom:"10px"
-        }}>
-
-        <b>{p.author}</b>
-
-        <p>{p.content}</p>
-
-        </div>
-
-      ))}
-
-    </div>
-
-  );
-
+{
+"name": "dynamohive-frontend",
+"version": "1.0.0",
+"private": true,
+"dependencies": {
+"axios": "^1.6.7",
+"react": "^18.2.0",
+"react-dom": "^18.2.0",
+"react-scripts": "5.0.1"
+},
+"scripts": {
+"start": "react-scripts start",
+"build": "react-scripts build"
 }
-
-export default App;
+}
