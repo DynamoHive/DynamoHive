@@ -15,6 +15,7 @@ import backend.trend_engine as trend_engine
 import backend.signal_detector as signal_detector
 import backend.crawler_engine as crawler_engine 
 import backend.vector_memory as vector_memory
+import backend.distribution_engine as distribution_engine
 def safe_run(module):
     try:
         if hasattr(module, "run"):
@@ -42,7 +43,7 @@ safe_run(trend_engine)
 safe_run(signal_detector)
             safe_run(topic_radar)
             safe_run(analytics_engine)
-
+safe_run(distribution_engine)
             safe_run(knowledge_ai)
             safe_run(knowledge_graph)
             safe_run(knowledge_map)
