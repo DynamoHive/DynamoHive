@@ -3,7 +3,7 @@ import time
 from backend.data_pipeline import start_pipeline
 from backend.growth_engine import start_growth
 from backend.viral_engine import start_viral_engine
-
+import backend.crawler_engine as crawler_engine
 import backend.topic_radar as topic_radar
 import backend.analytics_engine as analytics_engine
 import backend.auto_content_loop as auto_content_loop
@@ -32,7 +32,7 @@ class DynamoHiveCore:
         start_growth()
         start_viral_engine()
 
-        while True:safe_run(trend_engine)
+        while True:safe_run(trend_engine)safe_run(crawler_engine)
 safe_run(signal_detector)
 safe_run(trend_engine)
 safe_run(signal_detector)
