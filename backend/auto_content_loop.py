@@ -1,38 +1,50 @@
 import threading
 import time
+import random
 
 from backend.database import cursor, conn
 
-auto_posts = [
-    "AI is shaping the future.",
-    "Decentralized media is coming.",
-    "Creators will own their audience.",
-    "Autonomous platforms are the next step."
+topics = [
+    "AI revolution",
+    "climate change",
+    "future of energy",
+    "robotics innovation",
+    "space exploration",
+    "digital democracy",
+    "quantum computing",
+    "global economy"
 ]
+
 
 def generate_post():
 
-    import random
+    topic = random.choice(topics)
 
-    content = random.choice(auto_posts)
+    content = f"AI insight about {topic}"
 
     cursor.execute(
-        "INSERT INTO posts(user_id,content) VALUES (?,?)",
-        ("ai_system", content)
+        "INSERT INTO posts (content, user_id) VALUES (?, ?)",
+        (content, "ai")
     )
 
     conn.commit()
 
-    print("AI posted:", content)
+    print("AI created post:", content)
 
 
 def content_loop():
 
     while True:
 
-        generate_post()
+        try:
 
-        time.sleep(60)
+            generate_post()
+
+        except Exception as e:
+
+            print("Content loop error:", e)
+
+        time.sleep(90)
 
 
 def start_content_loop():
@@ -42,3 +54,7 @@ def start_content_loop():
     worker.daemon = True
 
     worker.start()
+
+    print("AI content engine started")
+
+ 
