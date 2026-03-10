@@ -4,34 +4,43 @@ import random
 
 from backend.knowledge_graph import add_knowledge
 
-global_topics = [
-    "ai",
-    "climate",
-    "energy",
-    "economy",
-    "technology",
-    "science",
-    "space",
-    "robotics"
+
+GLOBAL_TOPICS = [
+    "artificial intelligence",
+    "climate change",
+    "renewable energy",
+    "space exploration",
+    "robotics",
+    "biotechnology",
+    "quantum computing",
+    "global economy",
+    "cyber security",
+    "digital democracy"
 ]
 
 
 def scan_trends():
 
-    topic = random.choice(global_topics)
+    topic = random.choice(GLOBAL_TOPICS)
 
     add_knowledge(topic, "radar")
 
-    print("Radar detected topic:", topic)
+    print("RADAR topic detected:", topic)
 
 
 def radar_loop():
 
     while True:
 
-        scan_trends()
+        try:
 
-        time.sleep(90)
+            scan_trends()
+
+        except Exception as e:
+
+            print("Radar error:", e)
+
+        time.sleep(120)
 
 
 def start_radar():
@@ -41,3 +50,7 @@ def start_radar():
     worker.daemon = True
 
     worker.start()
+
+    print("GLOBAL TOPIC RADAR STARTED")
+
+
