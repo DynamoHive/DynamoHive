@@ -13,7 +13,7 @@ import backend.knowledge_graph as knowledge_graph
 import backend.knowledge_map as knowledge_map
 import backend.trend_engine as trend_engine
 import backend.signal_detector as signal_detector
-
+import backend.crawler_engine as crawler_engine
 def safe_run(module):
     try:
         if hasattr(module, "run"):
@@ -32,7 +32,8 @@ class DynamoHiveCore:
         start_growth()
         start_viral_engine()
 
-        while True:
+        while True:safe_run(trend_engine)
+safe_run(signal_detector)
 safe_run(trend_engine)
 safe_run(signal_detector)
             safe_run(topic_radar)
