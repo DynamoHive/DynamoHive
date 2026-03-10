@@ -1,18 +1,29 @@
-from collections import defaultdict
-
-knowledge_graph = defaultdict(list)
+graph = {}
 
 
-def add_knowledge(topic, post_id):
+def update_graph():
 
-    knowledge_graph[topic].append(post_id)
+    global graph
+
+    topics = [
+        "AI regulation",
+        "China technology",
+        "Middle East geopolitics",
+        "Energy markets",
+    ]
+
+    for topic in topics:
+
+        if topic not in graph:
+            graph[topic] = []
+
+        for other in topics:
+
+            if other != topic and other not in graph[topic]:
+                graph[topic].append(other)
+
+    print("Knowledge graph:", graph)
 
 
-def get_topic_posts(topic):
-
-    return knowledge_graph[topic]
-
-
-def get_graph():
-
-    return knowledge_graph
+def run():
+    update_graph()
