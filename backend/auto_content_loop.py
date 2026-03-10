@@ -1,60 +1,34 @@
-import threading
 import time
 import random
 
-from backend.database import cursor, conn
-
 topics = [
-    "AI revolution",
-    "climate change",
-    "future of energy",
-    "robotics innovation",
-    "space exploration",
-    "digital democracy",
-    "quantum computing",
-    "global economy"
+    "AI regulation in Europe",
+    "China technology strategy",
+    "Middle East power balance",
+    "Future of global energy",
+    "Digital surveillance economy",
+    "Geopolitics of artificial intelligence",
 ]
 
 
-def generate_post():
+def generate_content():
 
     topic = random.choice(topics)
 
-    content = f"AI insight about {topic}"
+    article = {
+        "title": topic,
+        "content": f"Analysis about {topic}",
+        "author": "DynamoHive AI"
+    }
 
-    cursor.execute(
-        "INSERT INTO posts (content, user_id) VALUES (?, ?)",
-        (content, "ai")
-    )
+    print("Generated content:", article)
 
-    conn.commit()
-
-    print("AI created post:", content)
-
-
-def content_loop():
-
-    while True:
-
-        try:
-
-            generate_post()
-
-        except Exception as e:
-
-            print("Content loop error:", e)
-
-        time.sleep(90)
+    return article
 
 
-def start_content_loop():
+def run():
 
-    worker = threading.Thread(target=content_loop)
+    article = generate_content()
 
-    worker.daemon = True
-
-    worker.start()
-
-    print("AI content engine started")
-
+    print("Publishing:", article)
  
