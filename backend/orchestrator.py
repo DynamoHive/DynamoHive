@@ -1,9 +1,3 @@
-from backend.orchestrator import DynamoHiveCoreimport time
-
-from backend.data_pipeline import start_pipeline
-from backend.growth_engine import start_growth
-from backend.viral_engine import start_viral_engine
-
 from backend.analytics_engine import run_analytics
 from backend.topic_radar import scan_topics
 from backend.auto_content_loop import run_content_loop
