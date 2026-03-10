@@ -1,15 +1,22 @@
 from fastapi import FastAPI
 from backend.orchestrator import DynamoHiveCore
-import os
+import threading
 
 app = FastAPI()
 
 core = DynamoHiveCore()
 
 
+def run_core():
+    core.start()
+
+
 @app.on_event("startup")
 async def startup_event():
-    core.start()
+
+    thread = threading.Thread(target=run_core)
+    thread.daemon = True
+    thread.start()
 
 
 @app.get("/")
