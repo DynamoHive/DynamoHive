@@ -7,18 +7,13 @@ app = FastAPI()
 core = DynamoHiveCore()
 
 
-def run_core():
-    core.start()
-
-
 @app.on_event("startup")
-async def startup_event():
-
-    thread = threading.Thread(target=run_core)
+def start_system():
+    thread = threading.Thread(target=core.start)
     thread.daemon = True
     thread.start()
 
 
 @app.get("/")
-def home():
+def root():
     return {"platform": "DynamoHive", "status": "running"}
