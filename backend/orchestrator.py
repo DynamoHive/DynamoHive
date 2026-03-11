@@ -48,7 +48,8 @@ def run_cycle():
         return
 
     topics = detect_topics(data)
-
+for t in topics:
+    register_event(t)
     update_trends(topics)
 
     viral_topics = detect_viral(topics)
