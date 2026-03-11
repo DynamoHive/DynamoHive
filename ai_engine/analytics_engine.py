@@ -1,12 +1,12 @@
-def analytics_engine(articles):
+def analyse(data):
 
-    if not articles:
-        return {}
+    analysis = []
 
-    stats = {
-        "articles": len(articles)
-    }
+    for item in data:
 
-    print("Analytics:", stats)
+        analysis.append({
+            "text": item["content"],
+            "score": len(item["content"])
+        })
 
-    return stats
+    return analysis
