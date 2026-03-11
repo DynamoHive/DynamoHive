@@ -11,9 +11,14 @@ from ai_engine.intelligence_engine import intelligence_engine
 from ai_engine.growth_engine import growth_engine
 from ai_engine.viral_engine import viral_engine
 
+from ai_engine.vector_memory import store_vector
+from ai_engine.knowledge_graph import build_graph
+from ai_engine.auto_content_loop import generate_content
+
 # --- PLATFORM IMPORTS (Kod-5) ---
 
 from backend.feed_engine import publish
+from backend.topic_authority_engine import run as topic_authority
 
 
 def safe_run(fn, *args):
@@ -82,17 +87,39 @@ class DynamoHiveCore:
             print("Analysis items:", len(analysis))
 
 
-            print("STEP 7: Publishing Content")
+            print("STEP 7: Knowledge Graph")
 
-            safe_run(publish, analysis)
+            safe_run(build_graph, analysis)
 
 
-            print("STEP 8: Growth Engine")
+            print("STEP 8: Vector Memory")
+
+            safe_run(store_vector, analysis)
+
+
+            print("STEP 9: Generate Content")
+
+            content = safe_run(generate_content, analysis)
+
+
+            print("STEP 10: Topic Authority Engine")
+
+            safe_run(topic_authority)
+
+
+            if content:
+
+                print("STEP 11: Publishing Content")
+
+                safe_run(publish, content)
+
+
+            print("STEP 12: Growth Engine")
 
             safe_run(growth_engine)
 
 
-            print("STEP 9: Viral Engine")
+            print("STEP 13: Viral Engine")
 
             safe_run(viral_engine)
 
