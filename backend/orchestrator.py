@@ -82,7 +82,15 @@ for t in topics:
 
     geo_signal = detect_geopolitical_signal(intelligence["content"])
     crisis = detect_global_crisis(intelligence["content"])
+forecast = generate_forecast(
+    topics,
+    spikes,
+    crisis,
+    propaganda
+)
 
+logger.info(f"strategic forecast: {forecast}")
+4️⃣ Pipeline son hali
 logger.info(f"global crisis radar: {crisis}")
 info_warfare = detect_information_warfare(intelligence["content"])
 
