@@ -14,7 +14,7 @@ from backend.task_queue import add_task
 from backend.feed_engine import publish
 from backend.distribution_engine import distribute
 from backend.task_queue import start_workers
-
+from ai_engine.multi_crawler import crawl
 CYCLE_TIME = 600
 
 
