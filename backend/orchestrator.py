@@ -17,7 +17,7 @@ from ai_engine.global_crisis_radar import detect_global_crisis
 from ai_engine.trend_engine import update_trends
 from ai_engine.viral_engine import detect_viral
 from ai_engine.growth_engine import update_growth
-
+from ai_engine.strategic_forecast_engine import generate_forecast
 from ai_engine.entity_extraction import extract_entities
 from ai_engine.actor_network import update_actor_network
 from ai_engine.propaganda_detector import detect_propaganda
