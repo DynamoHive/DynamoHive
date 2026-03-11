@@ -1,14 +1,23 @@
-sources = [
-    {"type": "rss", "url": "https://news.google.com/rss"},
-    {"type": "rss", "url": "https://www.aljazeera.com/xml/rss/all.xml"},
-]
-
-
-def get_sources():
-    return sources
-
-crawler içinde:
-
 from ai_engine.source_manager import get_sources
 
-ve:
+
+def crawl():
+
+    sources = get_sources()
+
+    results = []
+
+    for source in sources:
+
+        if source["type"] == "rss":
+
+            url = source["url"]
+
+            # burada RSS çekme işlemi olacak
+            # şimdilik örnek veri ekliyoruz
+
+            results.append({
+                "text": f"data from {url}"
+            })
+
+    return results
