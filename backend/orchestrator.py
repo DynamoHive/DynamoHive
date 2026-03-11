@@ -13,7 +13,7 @@ from ai_engine.knowledge_graph import update_graph
 from backend.task_queue import add_task
 from backend.feed_engine import publish
 from backend.distribution_engine import distribute
-
+from backend.task_queue import start_workers
 
 CYCLE_TIME = 600
 
@@ -37,7 +37,7 @@ def run_cycle():
 
     # 4️⃣ analytics
     analysis = analyse(data)
-
+start_workers(3)
     # 5️⃣ signal detection
     signals = detect_signals(analysis)
 
