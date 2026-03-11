@@ -1,5 +1,57 @@
 import time
+from collections import defaultdict
+import time
 
+narrative_db = defaultdict(list)
+
+KEYWORDS = [
+    "war",
+    "nato",
+    "sanction",
+    "ai regulation",
+    "cyber attack",
+    "economic crisis",
+    "propaganda",
+    "military"
+]
+
+
+def detect_narratives(text):
+
+    text_lower = text.lower()
+
+    found = []
+
+    for k in KEYWORDS:
+
+        if k in text_lower:
+            found.append(k)
+
+    return found
+
+
+def update_narratives(text):
+
+    narratives = detect_narratives(text)
+
+    now = time.time()
+
+    for n in narratives:
+
+        narrative_db[n].append(now)
+
+    return narratives
+
+
+def get_trending_narratives():
+
+    result = {}
+
+    for n, times in narrative_db.items():
+
+        result[n] = len(times)
+
+    return sorted(result.items(), key=lambda x: x[1], reverse=True)
 from backend.logger import logger
 
 from ai_engine.multi_crawler import crawl
@@ -81,7 +133,9 @@ def run_cycle():
     logger.info(f"entities: {entities}")
     logger.info(f"propaganda score: {propaganda}")
     logger.info(f"geopolitical signal: {geo_signal}")
+narratives = update_narratives(intelligence["content"])
 
+logger.info(f"narratives: {narratives}")
     post = generate_content(intelligence)
 
     if not post:
