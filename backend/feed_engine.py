@@ -1,17 +1,10 @@
-feed_storage = []
+from database.database import save_post
 
 
-def publish(items):
+def publish(post):
 
-    if not items:
-        return
+    title = post.get("title", "analysis")
 
-    for item in items:
-        feed_storage.append(item)
+    content = post.get("content", "")
 
-
-def get_feed():
-
-    return {
-        "items": feed_storage[-20:]
-    }
+    save_post(title, content)
