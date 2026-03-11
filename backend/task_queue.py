@@ -1,25 +1,29 @@
-import queue
-import threading
-
-task_queue = queue.Queue()
 
 
-def add_task(task):
-    task_queue.put(task)
+def add_task(task, *args):
+
+    TASK_QUEUE.put((task, args))
 
 
 def worker():
+
     while True:
-        task = task_queue.get()
+
+        task, args = TASK_QUEUE.get()
+
         try:
-            task()
+            task(*args)
+
         except Exception as e:
-            print("Task error:", e)
-        task_queue.task_done()
+            print("task error:", e)
+
+        TASK_QUEUE.task_done()
 
 
-def start_workers(num=3):
-    for _ in range(num):
+def start_workers(count=2):
+
+    for _ in range(count):
+
         t = threading.Thread(target=worker)
         t.daemon = True
         t.start()
