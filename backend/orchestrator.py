@@ -13,7 +13,7 @@ def safe_run(fn, *args):
         return fn(*args)
 
     except Exception as e:
-        print("Engine error:", e)
+        print("ENGINE ERROR:", fn.__name__, e)
         return None
 
 
@@ -21,11 +21,11 @@ class DynamoHiveCore:
 
     def start(self):
 
-        print("DynamoHive core started")
+        print("DynamoHive Core Started")
 
         while True:
 
-            print("Running crawler")
+            print("Step 1: Crawling")
 
             articles = safe_run(crawler_engine)
 
@@ -33,20 +33,22 @@ class DynamoHiveCore:
                 time.sleep(60)
                 continue
 
-            print("Detecting topics")
+            print("Step 2: Topic Detection")
 
             topics = safe_run(topic_radar, articles)
 
-            print("Generating analysis")
+            print("Topics:", topics)
+
+            print("Step 3: Intelligence Analysis")
 
             analysis = safe_run(intelligence_engine, articles)
 
             if analysis:
 
-                print("Publishing analysis")
+                print("Step 4: Publishing")
 
                 safe_run(publish, analysis)
 
-            print("Cycle complete")
+            print("Cycle Complete")
 
             time.sleep(600)
