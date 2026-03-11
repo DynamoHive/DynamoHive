@@ -87,9 +87,13 @@ def start():
     while True:
 
         try:
+
             run_cycle()
 
         except Exception as e:
+
             logger.error(f"orchestrator error: {e}")
 
-        time.sleep(CYCLE_TIME)
+        finally:
+
+            time.sleep(CYCLE_TIME)
