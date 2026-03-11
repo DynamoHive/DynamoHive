@@ -29,7 +29,6 @@ def build_intelligence_index():
     return index
 
 
-
 def get_top_topics(limit=10):
     """
     En güçlü topic'leri döndürür.
