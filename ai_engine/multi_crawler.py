@@ -1,12 +1,7 @@
 import feedparser
 import requests
 
-
-RSS_SOURCES = [
-    "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
-    "https://feeds.bbci.co.uk/news/technology/rss.xml",
-    "https://techcrunch.com/feed/"
-]
+from ai_engine.source_manager import get_rss_sources
 
 
 REDDIT_API = "https://www.reddit.com/r/technology/.json"
@@ -16,8 +11,9 @@ HN_API = "https://hacker-news.firebaseio.com/v0/topstories.json"
 def crawl_rss():
 
     results = []
+    sources = get_rss_sources()
 
-    for url in RSS_SOURCES:
+    for url in sources:
 
         try:
 
@@ -27,9 +23,10 @@ def crawl_rss():
 
                 results.append({
 
-                    "title": entry.get("title",""),
-                    "content": entry.get("summary",""),
-                    "source": "rss"
+                    "title": entry.get("title", ""),
+                    "content": entry.get("summary", ""),
+                    "source": "rss",
+                    "url": url
 
                 })
 
@@ -45,7 +42,11 @@ def crawl_reddit():
 
     try:
 
-        r = requests.get(REDDIT_API, headers={"User-Agent":"DynamoHive"})
+        r = requests.get(
+            REDDIT_API,
+            headers={"User-Agent": "DynamoHive"}
+        )
+
         data = r.json()
 
         for post in data["data"]["children"][:5]:
@@ -54,8 +55,8 @@ def crawl_reddit():
 
             results.append({
 
-                "title": p.get("title",""),
-                "content": p.get("selftext",""),
+                "title": p.get("title", ""),
+                "content": p.get("selftext", ""),
                 "source": "reddit"
 
             })
@@ -82,7 +83,7 @@ def crawl_hackernews():
 
             results.append({
 
-                "title": item.get("title",""),
+                "title": item.get("title", ""),
                 "content": "",
                 "source": "hackernews"
 
@@ -98,9 +99,9 @@ def crawl():
 
     results = []
 
-    results += crawl_rss()
-    results += crawl_reddit()
-    results += crawl_hackernews()
+    results.extend(crawl_rss())
+    results.extend(crawl_reddit())
+    results.extend(crawl_hackernews())
 
     print("multi crawler collected:", len(results))
 
