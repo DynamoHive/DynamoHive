@@ -40,7 +40,7 @@ def run_cycle():
             return
 
         topics = detect_topics(data)
-
+update_topic_authority(topics)
         analysis = analyse(data)
 
         signals = detect_signals(analysis)
