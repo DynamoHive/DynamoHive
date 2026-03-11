@@ -1,141 +1,53 @@
--- USERS
-
-CREATE TABLE users (
- id UUID PRIMARY KEY,
- username TEXT UNIQUE,
- email TEXT UNIQUE,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+from collections import Counter
+import re
 
 
--- POSTS (user generated)
+# common stopwords (ignored words)
 
-CREATE TABLE posts (
- id UUID PRIMARY KEY,
- user_id UUID,
- content TEXT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-
--- EVENTS (system tracking)
-
-CREATE TABLE events (
- id UUID PRIMARY KEY,
- user_id UUID,
- event_type TEXT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+STOPWORDS = {
+    "the","and","of","to","in","a","for","on","with","at","by","from",
+    "is","are","was","were","be","been","this","that","these","those",
+    "it","its","as","an","or"
+}
 
 
--- CRAWLED ARTICLES
+def clean_text(text):
 
-CREATE TABLE articles (
- id UUID PRIMARY KEY,
- title TEXT,
- link TEXT UNIQUE,
- summary TEXT,
- source TEXT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    text = text.lower()
 
+    text = re.sub(r"[^a-z0-9\s]", "", text)
 
--- AI ANALYSIS
+    words = text.split()
 
-CREATE TABLE analysis (
- id UUID PRIMARY KEY,
- article_id UUID,
- title TEXT,
- content TEXT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    words = [w for w in words if w not in STOPWORDS and len(w) > 2]
+
+    return words
 
 
--- FEED STORAGE
+def topic_radar(articles):
 
-CREATE TABLE feed (
- id UUID PRIMARY KEY,
- analysis_id UUID,
- score FLOAT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    words = []
 
+    for article in articles:
 
--- TOPIC RADAR
+        title = article.get("title","")
 
-CREATE TABLE topics (
- id UUID PRIMARY KEY,
- topic TEXT,
- score FLOAT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+        words += clean_text(title)
 
+    if not words:
+        return []
 
--- KNOWLEDGE GRAPH
+    counts = Counter(words)
 
-CREATE TABLE knowledge_nodes (
- id UUID PRIMARY KEY,
- name TEXT,
- type TEXT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    top = counts.most_common(10)
 
+    topics = []
 
-CREATE TABLE knowledge_edges (
- id UUID PRIMARY KEY,
- source_id UUID,
- target_id UUID,
- relation TEXT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    for word, score in top:
 
+        topics.append({
+            "topic": word,
+            "score": score
+        })
 
--- VECTOR MEMORY (AI MEMORY)
-
-CREATE TABLE vector_memory (
- id UUID PRIMARY KEY,
- content TEXT,
- embedding TEXT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-
--- DISTRIBUTION TRACKING
-
-CREATE TABLE distribution (
- id UUID PRIMARY KEY,
- analysis_id UUID,
- platform TEXT,
- status TEXT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-
--- GROWTH ENGINE DATA
-
-CREATE TABLE growth_metrics (
- id UUID PRIMARY KEY,
- metric TEXT,
- value FLOAT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-
--- VIRAL ENGINE
-
-CREATE TABLE viral_events (
- id UUID PRIMARY KEY,
- user_id UUID,
- event TEXT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-
--- SIGNAL DETECTOR
-
-CREATE TABLE signals (
- id UUID PRIMARY KEY,
- signal_type TEXT,
- payload TEXT,
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    return topics
