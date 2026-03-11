@@ -1,58 +1,5 @@
 import time
-from ai_engine.narrative_graph import update_narrative_graph
-from collections import defaultdict
-import time
 
-narrative_db = defaultdict(list)
-
-KEYWORDS = [
-    "war",
-    "nato",
-    "sanction",
-    "ai regulation",
-    "cyber attack",
-    "economic crisis",
-    "propaganda",
-    "military"
-]
-
-
-def detect_narratives(text):
-
-    text_lower = text.lower()
-
-    found = []
-
-    for k in KEYWORDS:
-
-        if k in text_lower:
-            found.append(k)
-
-    return found
-
-
-def update_narratives(text):
-update_narrative_graph(entities, narratives)
-    narratives = detect_narratives(text)
-
-    now = time.time()
-
-    for n in narratives:
-
-        narrative_db[n].append(now)
-
-    return narratives
-
-
-def get_trending_narratives():
-
-    result = {}
-
-    for n, times in narrative_db.items():
-
-        result[n] = len(times)
-
-    return sorted(result.items(), key=lambda x: x[1], reverse=True)
 from backend.logger import logger
 
 from ai_engine.multi_crawler import crawl
@@ -75,6 +22,7 @@ from ai_engine.entity_extraction import extract_entities
 from ai_engine.actor_network import update_actor_network
 from ai_engine.propaganda_detector import detect_propaganda
 from ai_engine.geopolitical_signals import detect_geopolitical_signal
+from ai_engine.narrative_engine import update_narratives
 
 from backend.feed_engine import publish
 from backend.distribution_engine import distribute
@@ -122,7 +70,8 @@ def run_cycle():
         logger.info("no intelligence")
         return
 
-    # ENTITY / PROPAGANDA / GEO ANALYSIS
+    # ---------------- AI ANALYSIS ----------------
+
     entities = extract_entities(intelligence["content"])
 
     update_actor_network(entities)
@@ -131,12 +80,15 @@ def run_cycle():
 
     geo_signal = detect_geopolitical_signal(intelligence["content"])
 
+    narratives = update_narratives(intelligence["content"], entities)
+
     logger.info(f"entities: {entities}")
     logger.info(f"propaganda score: {propaganda}")
     logger.info(f"geopolitical signal: {geo_signal}")
-narratives = update_narratives(intelligence["content"])
+    logger.info(f"narratives: {narratives}")
 
-logger.info(f"narratives: {narratives}")
+    # ---------------- CONTENT ----------------
+
     post = generate_content(intelligence)
 
     if not post:
