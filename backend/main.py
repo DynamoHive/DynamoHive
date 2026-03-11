@@ -7,30 +7,12 @@ from backend.topic_api import get_topics
 from backend.orchestrator import start as start_orchestrator
 
 
-app = FastAPI(
-    title="DynamoHive",
-    description="Autonomous AI Intelligence Platform",
-    version="1.0"
-)
+app = FastAPI()
 
-
-# DATABASE INIT
 init_database()
 
 
-# ORCHESTRATOR THREAD
-orchestrator_started = False
-
-
 def run_orchestrator():
-
-    global orchestrator_started
-
-    if orchestrator_started:
-        return
-
-    orchestrator_started = True
-
     start_orchestrator()
 
 
@@ -39,49 +21,21 @@ thread.daemon = True
 thread.start()
 
 
-# HOME
 @app.get("/")
 def home():
-
-    return {
-        "system": "DynamoHive running",
-        "status": "online"
-    }
+    return {"system": "DynamoHive running"}
 
 
-# HEALTH CHECK
-@app.get("/health")
-def health():
-
-    return {"status": "ok"}
-
-
-# FEED
 @app.get("/feed")
 def feed():
-
-    return {
-        "posts": get_feed()
-    }
+    return get_feed()
 
 
-# ARTICLE
 @app.get("/article/{post_id}")
 def article(post_id: int):
-
-    post = get_post(post_id)
-
-    if not post:
-
-        return {"error": "post not found"}
-
-    return post
+    return get_post(post_id)
 
 
-# TOPICS
 @app.get("/topics")
 def topics():
-
-    return {
-        "topics": get_topics()
-    }
+    return get_topics()
