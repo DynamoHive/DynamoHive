@@ -1,21 +1,12 @@
-import requests
 import feedparser
-
-
-SOURCES = [
-
-    "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
-    "https://feeds.bbci.co.uk/news/technology/rss.xml",
-    "https://www.theverge.com/rss/index.xml"
-
-]
+from ai_engine.sources import RSS_SOURCES
 
 
 def crawl():
 
     results = []
 
-    for url in SOURCES:
+    for url in RSS_SOURCES:
 
         try:
 
@@ -23,13 +14,10 @@ def crawl():
 
             for entry in feed.entries[:5]:
 
-                title = entry.get("title", "")
-                summary = entry.get("summary", "")
-
                 results.append({
 
-                    "title": title,
-                    "content": summary,
+                    "title": entry.get("title",""),
+                    "content": entry.get("summary",""),
                     "source": url
 
                 })
