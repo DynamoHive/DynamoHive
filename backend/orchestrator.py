@@ -1,7 +1,7 @@
 import time
 
 from backend.logger import logger
-
+from ai_engine.event_engine import register_event, detect_event_spikes
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 from ai_engine.topic_radar import detect_topics
