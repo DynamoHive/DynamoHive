@@ -70,12 +70,12 @@ def run_cycle():
     # 🔟 distribution
     distribute(post)
 
-    print("cycle complete")
+ logger.error(f"orchestrator error: {e}")
 
 
 def start():
 
-    print("DynamoHive orchestrator started")
+    logger.info("DynamoHive cycle start")
 
     while True:
 
