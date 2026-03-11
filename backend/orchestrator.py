@@ -6,7 +6,7 @@ from ai_engine.analytics_engine import analyse
 from ai_engine.signal_detector import detect_signals
 from ai_engine.intelligence_engine import generate_intelligence
 from ai_engine.auto_content_loop import generate_content
-
+from ai_engine.data_pipeline import process_data
 from backend.feed_engine import publish
 
 
@@ -18,7 +18,7 @@ def run_cycle():
     print("DynamoHive cycle start")
 
     data = crawl()
-
+data = process_data(raw_data)
     if not data:
         print("no crawl data")
         return
