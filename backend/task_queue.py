@@ -1,15 +1,21 @@
 import queue
 import threading
 
+# görev kuyruğu
 task_queue = queue.Queue()
 
 
 def add_task(task, *args):
-
+    """
+    Kuyruğa yeni görev ekler
+    """
     task_queue.put((task, args))
 
 
 def worker():
+    """
+    Kuyruktaki görevleri çalıştıran worker
+    """
 
     while True:
 
@@ -25,6 +31,9 @@ def worker():
 
 
 def start_workers(num=3):
+    """
+    Worker threadleri başlatır
+    """
 
     for _ in range(num):
 
