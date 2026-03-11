@@ -1,5 +1,5 @@
 import time
-
+from ai_engine.vector_memory import store_vector
 from ai_engine.crawler_engine import crawl
 from ai_engine.topic_radar import detect_topics
 from ai_engine.analytics_engine import analyse
