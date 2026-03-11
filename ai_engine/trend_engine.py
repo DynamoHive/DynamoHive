@@ -1,13 +1,24 @@
-def trend_engine(topics):
+trend_scores = {}
 
-    trends = []
+
+def update_trends(topics):
+
+    global trend_scores
 
     for t in topics:
-        trends.append({
-            "topic": t,
-            "trend_score": 1
-        })
 
-    print("Trends detected:", trends)
+        if t not in trend_scores:
+            trend_scores[t] = 0
 
-    return trends
+        trend_scores[t] += 1
+
+
+def get_trending(top_n=5):
+
+    sorted_trends = sorted(
+        trend_scores.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    return sorted_trends[:top_n]
