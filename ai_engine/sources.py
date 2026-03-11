@@ -1,0 +1,8 @@
+RSS_SOURCES = [
+
+    "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+    "https://feeds.bbci.co.uk/news/technology/rss.xml",
+    "https://www.theverge.com/rss/index.xml",
+    "https://techcrunch.com/feed/"
+
+]
