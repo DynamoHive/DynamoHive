@@ -15,7 +15,10 @@ init_database()
 
 
 def run_orchestrator():
-    start_orchestrator()
+    try:
+        start_orchestrator()
+    except Exception as e:
+        print("Orchestrator error:", e)
 
 
 @app.on_event("startup")
@@ -52,3 +55,8 @@ def article(post_id: int):
 @app.get("/topics")
 def topics():
     return get_topics()
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
