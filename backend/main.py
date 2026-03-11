@@ -1,91 +1,54 @@
-import time
+from fastapi import FastAPI
+import threading
 
-from ai_engine.multi_crawler import crawl
-from ai_engine.data_pipeline import process_data
-from ai_engine.topic_radar import detect_topics
-from ai_engine.analytics_engine import analyse
-from ai_engine.signal_detector import detect_signals
-from ai_engine.intelligence_engine import generate_intelligence
-from ai_engine.auto_content_loop import generate_content
-
-from ai_engine.knowledge_graph import update_graph
-from ai_engine.topic_learning_engine import learn_topics
-from ai_engine.vector_memory import store_vector
-
-from backend.feed_engine import publish
-from backend.distribution_engine import distribute
+from database.database import init_database
+from backend.posts import get_feed, get_post
+from backend.topic_api import get_topics
+from backend.orchestrator import start as start_orchestrator
 
 
-CYCLE_TIME = 600
+app = FastAPI(title="DynamoHive API")
 
 
-def run_cycle():
+# database başlat
+init_database()
 
-    print("DynamoHive cycle start")
 
-    # 1️⃣ crawl
-    raw_data = crawl()
+def run_orchestrator():
+    start_orchestrator()
 
-    if not raw_data:
-        print("no crawl data")
-        return
 
-    # 2️⃣ pipeline
-    data = process_data(raw_data)
+@app.on_event("startup")
+def start_background_tasks():
 
-    if not data:
-        print("pipeline empty")
-        return
+    thread = threading.Thread(target=run_orchestrator)
+    thread.daemon = True
+    thread.start()
 
-    # 3️⃣ topic detection
-    topics = detect_topics(data)
+    print("Orchestrator thread started")
 
-    # 4️⃣ analytics
-    analysis = analyse(data)
 
-    # 5️⃣ signal detection
-    signals = detect_signals(analysis)
+@app.get("/")
+def home():
+    return {"system": "DynamoHive running"}
 
-    if not signals:
-        print("no signals detected")
-        return
 
-    # 6️⃣ intelligence
-    intelligence = generate_intelligence(signals)
+@app.get("/feed")
+def feed():
+    return {"feed": get_feed()}
 
-    if not intelligence:
-        print("no intelligence")
-        return
 
-    # 7️⃣ content generation
-    post = generate_content(intelligence)
+@app.get("/article/{post_id}")
+def article(post_id: int):
+
+    post = get_post(post_id)
 
     if not post:
-        print("no content generated")
-        return
+        return {"error": "post not found"}
 
-    # 8️⃣ publish
-    publish(post)
-
-    # 9️⃣ knowledge systems
-    update_graph(post)
-    learn_topics(post)
-    store_vector(post)
-
-    # 🔟 distribution
-    distribute(post)
-
-    print("cycle complete")
+    return post
 
 
-def start():
-
-    print("DynamoHive orchestrator started")
-
-    while True:
-
-        try:
-            run_cycle()
-
-        except Exception as e:
-            print("orchestrator error:", e)
+@app.get("/topics")
+def topics():
+    return {"topics": get_topics()}
