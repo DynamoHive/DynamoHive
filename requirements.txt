@@ -2,6 +2,7 @@ fastapi
 uvicorn
 gunicorn
 redis
-psycopg2-binary
 sentence-transformers
 numpy
+feedparser
+requests
