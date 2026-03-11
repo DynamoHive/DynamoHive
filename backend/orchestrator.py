@@ -13,7 +13,7 @@ from ai_engine.information_warfare_engine import detect_information_warfare
 from ai_engine.knowledge_graph import update_graph
 from ai_engine.topic_learning_engine import learn_topics
 from ai_engine.vector_memory import store_vector
-
+from ai_engine.global_crisis_radar import detect_global_crisis
 from ai_engine.trend_engine import update_trends
 from ai_engine.viral_engine import detect_viral
 from ai_engine.growth_engine import update_growth
@@ -81,6 +81,9 @@ for t in topics:
     propaganda = detect_propaganda(intelligence["content"])
 
     geo_signal = detect_geopolitical_signal(intelligence["content"])
+    crisis = detect_global_crisis(intelligence["content"])
+
+logger.info(f"global crisis radar: {crisis}")
 info_warfare = detect_information_warfare(intelligence["content"])
 
 logger.info(f"information warfare: {info_warfare}")
