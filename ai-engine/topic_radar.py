@@ -1,12 +1,141 @@
-from collections import Counter
+-- USERS
 
-def topic_radar(articles):
+CREATE TABLE users (
+ id UUID PRIMARY KEY,
+ username TEXT UNIQUE,
+ email TEXT UNIQUE,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-    words = []
 
-    for a in articles:
-        words += a["title"].lower().split()
+-- POSTS (user generated)
 
-    top = Counter(words).most_common(5)
+CREATE TABLE posts (
+ id UUID PRIMARY KEY,
+ user_id UUID,
+ content TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-    return [w[0] for w in top]
+
+-- EVENTS (system tracking)
+
+CREATE TABLE events (
+ id UUID PRIMARY KEY,
+ user_id UUID,
+ event_type TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- CRAWLED ARTICLES
+
+CREATE TABLE articles (
+ id UUID PRIMARY KEY,
+ title TEXT,
+ link TEXT UNIQUE,
+ summary TEXT,
+ source TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- AI ANALYSIS
+
+CREATE TABLE analysis (
+ id UUID PRIMARY KEY,
+ article_id UUID,
+ title TEXT,
+ content TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- FEED STORAGE
+
+CREATE TABLE feed (
+ id UUID PRIMARY KEY,
+ analysis_id UUID,
+ score FLOAT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- TOPIC RADAR
+
+CREATE TABLE topics (
+ id UUID PRIMARY KEY,
+ topic TEXT,
+ score FLOAT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- KNOWLEDGE GRAPH
+
+CREATE TABLE knowledge_nodes (
+ id UUID PRIMARY KEY,
+ name TEXT,
+ type TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE knowledge_edges (
+ id UUID PRIMARY KEY,
+ source_id UUID,
+ target_id UUID,
+ relation TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- VECTOR MEMORY (AI MEMORY)
+
+CREATE TABLE vector_memory (
+ id UUID PRIMARY KEY,
+ content TEXT,
+ embedding TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- DISTRIBUTION TRACKING
+
+CREATE TABLE distribution (
+ id UUID PRIMARY KEY,
+ analysis_id UUID,
+ platform TEXT,
+ status TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- GROWTH ENGINE DATA
+
+CREATE TABLE growth_metrics (
+ id UUID PRIMARY KEY,
+ metric TEXT,
+ value FLOAT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- VIRAL ENGINE
+
+CREATE TABLE viral_events (
+ id UUID PRIMARY KEY,
+ user_id UUID,
+ event TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- SIGNAL DETECTOR
+
+CREATE TABLE signals (
+ id UUID PRIMARY KEY,
+ signal_type TEXT,
+ payload TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
