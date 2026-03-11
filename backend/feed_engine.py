@@ -1,24 +1,17 @@
-from datetime import datetime
-
-FEED = []
+feed_storage = []
 
 
 def publish(items):
 
-    global FEED
+    if not items:
+        return
 
     for item in items:
-
-        FEED.append({
-            "title": item["title"],
-            "content": item["content"],
-            "timestamp": datetime.utcnow().isoformat()
-        })
-
-    if len(FEED) > 200:
-        FEED = FEED[-200:]
+        feed_storage.append(item)
 
 
 def get_feed():
 
-    return list(reversed(FEED[-50:]))
+    return {
+        "items": feed_storage[-20:]
+    }
