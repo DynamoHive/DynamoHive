@@ -1,5 +1,5 @@
 import time
-
+from ai_engine.global_intelligence_engine import build_intelligence_index
 from ai_engine.crawler_engine import crawl
 from ai_engine.data_pipeline import process_data
 from ai_engine.topic_radar import detect_topics
@@ -28,7 +28,7 @@ CYCLE_TIME = 600
 
 
 def run_cycle():
-
+def run_cycle():
     print("DynamoHive cycle start")
 
     # 1 INTERNET CRAWL
