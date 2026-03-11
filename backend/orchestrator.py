@@ -19,7 +19,6 @@ from backend.feed_engine import publish
 def safe_run(fn, *args):
     try:
         return fn(*args)
-
     except Exception as e:
         print("ENGINE ERROR:", fn.__name__, e)
         return None
@@ -75,14 +74,17 @@ class DynamoHiveCore:
 
             analysis = safe_run(intelligence_engine, articles)
 
-            print("Analysis items:", len(analysis) if analysis else 0)
+            if not analysis:
+                print("No analysis generated")
+                time.sleep(60)
+                continue
+
+            print("Analysis items:", len(analysis))
 
 
-            if analysis:
+            print("STEP 7: Publishing Content")
 
-                print("STEP 7: Publishing Content")
-
-                safe_run(publish, analysis)
+            safe_run(publish, analysis)
 
 
             print("STEP 8: Growth Engine")
