@@ -1,74 +1,48 @@
-import math
-from collections import Counter
-
-MEMORY = []
+from sentence_transformers import SentenceTransformer
+import numpy as np
 
 
-def tokenize(text):
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
-    if not text:
-        return []
-
-    words = text.lower().split()
-
-    tokens = []
-
-    for w in words:
-        if len(w) > 3:
-            tokens.append(w)
-
-    return tokens
-
-
-def vectorize(text):
-
-    tokens = tokenize(text)
-
-    return Counter(tokens)
-
-
-def cosine_similarity(v1, v2):
-
-    intersection = set(v1.keys()) & set(v2.keys())
-
-    dot = sum(v1[x] * v2[x] for x in intersection)
-
-    mag1 = math.sqrt(sum(v ** 2 for v in v1.values()))
-    mag2 = math.sqrt(sum(v ** 2 for v in v2.values()))
-
-    if mag1 == 0 or mag2 == 0:
-        return 0
-
-    return dot / (mag1 * mag2)
+memory_vectors = []
+memory_texts = []
 
 
 def store_vector(post):
 
-    text = post.get("content", "")
+    text = ""
 
-    vector = vectorize(text)
+    if isinstance(post, dict):
 
-    MEMORY.append({
-        "topic": post.get("topic"),
-        "vector": vector,
-        "text": text
-    })
+        title = post.get("title", "")
+        content = post.get("content", "")
 
-    print("vector stored:", len(MEMORY))
+        text = title + " " + content
+
+    if not text:
+        return
+
+    vector = model.encode(text)
+
+    memory_vectors.append(vector)
+    memory_texts.append(text)
 
 
-def search_similar(text, top_k=3):
+def search_similar(query, top_k=3):
 
-    query_vector = vectorize(text)
+    if not memory_vectors:
+        return []
+
+    query_vector = model.encode(query)
 
     scores = []
 
-    for item in MEMORY:
+    for i, vec in enumerate(memory_vectors):
 
-        sim = cosine_similarity(query_vector, item["vector"])
+        score = np.dot(query_vector, vec)
 
-        scores.append((sim, item))
+        scores.append((score, memory_texts[i]))
 
-    scores.sort(reverse=True, key=lambda x: x[0])
+    scores.sort(reverse=True)
 
     return scores[:top_k]
