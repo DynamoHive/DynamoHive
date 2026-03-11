@@ -1,19 +1,20 @@
-import psycopg2
-import os
-from pathlib import Path
+import sqlite3
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-conn = psycopg2.connect(DATABASE_URL)
-cursor = conn.cursor()
-
+conn = None
 
 def init_database():
+    global conn
 
-    schema_path = Path(__file__).resolve().parent / "schema.sql"
+    conn = sqlite3.connect("dynamohive.db", check_same_thread=False)
 
-    with open(schema_path, "r") as f:
+    cursor = conn.cursor()
 
-        cursor.execute(f.read())
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS posts(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        content TEXT
+    )
+    """)
 
     conn.commit()
