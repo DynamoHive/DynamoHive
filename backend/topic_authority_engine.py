@@ -1,26 +1,3 @@
-topics = {
-    "ai_geopolitics": [
-        "AI regulation in Europe",
-        "AI regulation in US",
-        "China AI strategy",
-        "AI arms race",
-        "AI governance models"
-    ],
-
-    "energy_transition": [
-        "Global energy crisis",
-        "Energy geopolitics",
-        "Europe energy security",
-        "Future of nuclear energy",
-        "Renewable energy strategy"
-    ],
-
-    "china_technology": [
-        "China semiconductor strategy",
-        "US-China technology war",
-        "Chinese AI ecosystem",
-        "China digital economy",
-        "Tech sanctions impact"
     ]
 }
 
@@ -31,11 +8,11 @@ def generate_topic_content():
 
     for category in topics:
 
-        for t in topics[category]:
+        for title in topics[category]:
 
             article = {
                 "category": category,
-                "title": t,
+                "title": title,
                 "author": "DynamoHive AI"
             }
 
@@ -48,4 +25,4 @@ def generate_topic_content():
 
 def run():
 
-    generate_topic_content()
+    return generate_topic_content()
