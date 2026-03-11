@@ -1,38 +1,49 @@
-import requests
+from fastapi import FastAPI
+import threading
 
-SOURCES = [
-    "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
-    "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
-    "https://feeds.bbci.co.uk/news/world/rss.xml",
-]
-
-articles = []
+from database.database import init_database
+from backend.posts import get_feed, get_post
+from backend.topic_api import get_topics
+from backend.orchestrator import start as start_orchestrator
 
 
-def crawl():
+app = FastAPI(title="DynamoHive API")
 
-    global articles
-
-    results = []
-
-    for url in SOURCES:
-
-        try:
-            r = requests.get(url, timeout=5)
-            text = r.text
-
-            results.append({
-                "source": url,
-                "data": text[:500]
-            })
-
-        except Exception as e:
-            print("Crawler error:", e)
-
-    articles = results
-
-    print("Crawler collected:", len(articles))
+# database başlat
+init_database()
 
 
-def run():
-    crawl()
+# orchestrator thread
+def run_orchestrator():
+    start_orchestrator()
+
+
+orchestrator_thread = threading.Thread(target=run_orchestrator)
+orchestrator_thread.daemon = True
+orchestrator_thread.start()
+
+
+@app.get("/")
+def home():
+    return {"system": "DynamoHive running"}
+
+
+@app.get("/feed")
+def feed():
+    return {"posts": get_feed()}
+
+
+@app.get("/article/{post_id}")
+def article(post_id: int):
+
+    post = get_post(post_id)
+
+    if not post:
+        return {"error": "post not found"}
+
+    return post
+
+
+@app.get("/topics")
+def topics():
+    return {"topics": get_topics()}
