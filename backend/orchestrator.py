@@ -1,48 +1,21 @@
 import time
 
+from ai_engine.crawler_engine import crawler_engine
+from ai_engine.topic_radar import topic_radar
+from ai_engine.intelligence_engine import intelligence_engine
 
-def safe_run(fn):
+from backend.feed_engine import publish
+
+
+def safe_run(fn, *args):
+
     try:
-        fn()
+        return fn(*args)
+
     except Exception as e:
         print("Engine error:", e)
+        return None
 
-
-# ---- AI MODULES ----
-
-def crawler_engine():
-    print("Crawler engine running")
-
-
-def topic_radar():
-    print("Topic radar running")
-
-
-def analytics_engine():
-    print("Analytics engine running")
-
-
-def trend_engine():
-    print("Trend engine running")
-
-
-def signal_detector():
-    print("Signal detector running")
-
-
-def intelligence_engine():
-    print("Intelligence engine running")
-
-
-def growth_engine():
-    print("Growth engine running")
-
-
-def viral_engine():
-    print("Viral engine running")
-
-
-# ---- CORE LOOP ----
 
 class DynamoHiveCore:
 
@@ -52,13 +25,28 @@ class DynamoHiveCore:
 
         while True:
 
-            safe_run(crawler_engine)
-            safe_run(topic_radar)
-            safe_run(analytics_engine)
-            safe_run(trend_engine)
-            safe_run(signal_detector)
-            safe_run(intelligence_engine)
-            safe_run(growth_engine)
-            safe_run(viral_engine)
+            print("Running crawler")
 
-            time.sleep(5)
+            articles = safe_run(crawler_engine)
+
+            if not articles:
+                time.sleep(60)
+                continue
+
+            print("Detecting topics")
+
+            topics = safe_run(topic_radar, articles)
+
+            print("Generating analysis")
+
+            analysis = safe_run(intelligence_engine, articles)
+
+            if analysis:
+
+                print("Publishing analysis")
+
+                safe_run(publish, analysis)
+
+            print("Cycle complete")
+
+            time.sleep(600)
