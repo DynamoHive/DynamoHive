@@ -5,19 +5,19 @@ def get_feed():
 
     posts = get_posts()
 
-    results = []
+    feed = []
 
     for p in posts:
 
-        results.append({
+        feed.append({
             "id": p[0],
             "title": p[1]
         })
 
-    return results
+    return feed
 
 
-def get_post(post_id):
+def get_post_by_id(post_id):
 
     post = get_post(post_id)
 
