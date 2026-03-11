@@ -1,11 +1,20 @@
-import random
+viral_scores = {}
 
-users = ["alice", "bob", "charlie", "diana", "eric", "fatima", "george"]
 
-def viral_engine():
+def detect_viral(topics):
 
-    user = random.choice(users)
+    global viral_scores
 
-    print("Viral engagement:", user)
+    viral = []
 
-    return True
+    for t in topics:
+
+        if t not in viral_scores:
+            viral_scores[t] = 0
+
+        viral_scores[t] += 1
+
+        if viral_scores[t] > 5:
+            viral.append(t)
+
+    return viral
