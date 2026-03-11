@@ -25,59 +25,55 @@ def run_cycle():
 
     logger.info("DynamoHive cycle start")
 
-    # 1 crawl
-    raw_data = crawl()
+    try:
 
-    if not raw_data:
-        logger.info("no crawl data")
-        return
+        raw_data = crawl()
 
-    # 2 pipeline
-    data = process_data(raw_data)
+        if not raw_data:
+            logger.info("no crawl data")
+            return
 
-    if not data:
-        logger.info("pipeline empty")
-        return
+        data = process_data(raw_data)
 
-    # 3 topic detection
-    topics = detect_topics(data)
+        if not data:
+            logger.info("pipeline empty")
+            return
 
-    # 4 analytics
-    analysis = analyse(data)
+        topics = detect_topics(data)
 
-    # 5 signal detection
-    signals = detect_signals(analysis)
+        analysis = analyse(data)
 
-    if not signals:
-        logger.info("no signals detected")
-        return
+        signals = detect_signals(analysis)
 
-    # 6 intelligence
-    intelligence = generate_intelligence(signals)
+        if not signals:
+            logger.info("no signals detected")
+            return
 
-    if not intelligence:
-        logger.info("no intelligence")
-        return
+        intelligence = generate_intelligence(signals)
 
-    # 7 content generation
-    post = generate_content(intelligence)
+        if not intelligence:
+            logger.info("no intelligence")
+            return
 
-    if not post:
-        logger.info("no content generated")
-        return
+        post = generate_content(intelligence)
 
-    # 8 publish
-    publish(post)
+        if not post:
+            logger.info("no content generated")
+            return
 
-    # 9 knowledge
-    update_graph(post)
-    learn_topics(post)
-    store_vector(post)
+        publish(post)
 
-    # 10 distribution
-    distribute(post)
+        update_graph(post)
+        learn_topics(post)
+        store_vector(post)
 
-    logger.info("cycle complete")
+        distribute(post)
+
+        logger.info("cycle complete")
+
+    except Exception as e:
+
+        logger.error(f"cycle error: {e}")
 
 
 def start():
