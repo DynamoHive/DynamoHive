@@ -1,4 +1,5 @@
 import time
+from ai_engine.narrative_graph import update_narrative_graph
 from collections import defaultdict
 import time
 
@@ -31,7 +32,7 @@ def detect_narratives(text):
 
 
 def update_narratives(text):
-
+update_narrative_graph(entities, narratives)
     narratives = detect_narratives(text)
 
     now = time.time()
