@@ -31,7 +31,20 @@ CYCLE_TIME = 600
 def run_cycle():
 
     logger.info("DynamoHive cycle start")
+entities = extract_entities(intelligence["content"])
 
+# actor network
+update_actor_network(entities)
+
+# propaganda detection
+propaganda = detect_propaganda(intelligence["content"])
+
+# geopolitical signals
+geo_signal = detect_geopolitical_signal(intelligence["content"])
+
+logger.info(f"entities: {entities}")
+logger.info(f"propaganda score: {propaganda}")
+logger.info(f"geopolitical signal: {geo_signal}")
     raw_data = crawl()
 
     if not raw_data:
