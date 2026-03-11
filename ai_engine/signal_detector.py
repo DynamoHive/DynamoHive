@@ -1,16 +1,10 @@
-def signal_detector(trends):
+def detect_signals(analysis):
 
     signals = []
 
-    for t in trends:
+    for item in analysis:
 
-        if len(t["topic"]) > 4:
-
-            signals.append({
-                "topic": t["topic"],
-                "signal": "active"
-            })
-
-    print("Signals:", signals)
+        if item["score"] > 20:
+            signals.append(item)
 
     return signals
