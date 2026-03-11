@@ -25,56 +25,56 @@ def run_cycle():
 
     logger.info("DynamoHive cycle start")
 
-    # 1️⃣ crawl
+    # 1 crawl
     raw_data = crawl()
 
     if not raw_data:
         logger.info("no crawl data")
         return
 
-    # 2️⃣ pipeline
+    # 2 pipeline
     data = process_data(raw_data)
 
     if not data:
         logger.info("pipeline empty")
         return
 
-    # 3️⃣ topic detection
+    # 3 topic detection
     topics = detect_topics(data)
 
-    # 4️⃣ analytics
+    # 4 analytics
     analysis = analyse(data)
 
-    # 5️⃣ signal detection
+    # 5 signal detection
     signals = detect_signals(analysis)
 
     if not signals:
         logger.info("no signals detected")
         return
 
-    # 6️⃣ intelligence
+    # 6 intelligence
     intelligence = generate_intelligence(signals)
 
     if not intelligence:
         logger.info("no intelligence")
         return
 
-    # 7️⃣ content generation
+    # 7 content generation
     post = generate_content(intelligence)
 
     if not post:
         logger.info("no content generated")
         return
 
-    # 8️⃣ publish
+    # 8 publish
     publish(post)
 
-    # 9️⃣ knowledge systems
+    # 9 knowledge
     update_graph(post)
     learn_topics(post)
     store_vector(post)
 
-    # 🔟 distribution
+    # 10 distribution
     distribute(post)
 
     logger.info("cycle complete")
