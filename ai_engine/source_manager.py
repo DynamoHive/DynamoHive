@@ -1,23 +1,9 @@
-from ai_engine.source_manager import get_sources
+RSS_SOURCES = [
+    "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+    "https://feeds.bbci.co.uk/news/technology/rss.xml",
+    "https://techcrunch.com/feed/"
+]
 
 
-def crawl():
-
-    sources = get_sources()
-
-    results = []
-
-    for source in sources:
-
-        if source["type"] == "rss":
-
-            url = source["url"]
-
-            # burada RSS çekme işlemi olacak
-            # şimdilik örnek veri ekliyoruz
-
-            results.append({
-                "text": f"data from {url}"
-            })
-
-    return results
+def get_rss_sources():
+    return RSS_SOURCES
