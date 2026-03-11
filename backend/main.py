@@ -7,16 +7,17 @@ from backend.topic_api import get_topics
 from backend.orchestrator import start as start_orchestrator
 
 
-app = FastAPI(title="DynamoHive Intelligence Platform")
+app = FastAPI(title="DynamoHive API")
 
 
-# database başlat
 init_database()
 
 
 def run_orchestrator():
+
     try:
         start_orchestrator()
+
     except Exception as e:
         print("Orchestrator error:", e)
 
@@ -25,7 +26,9 @@ def run_orchestrator():
 def start_background_tasks():
 
     thread = threading.Thread(target=run_orchestrator)
+
     thread.daemon = True
+
     thread.start()
 
     print("Orchestrator thread started")
@@ -50,11 +53,6 @@ def article(post_id: int):
         return {"error": "post not found"}
 
     return post
-
-
-@app.get("/topics")
-def topics():
-    return get_topics()
 
 
 @app.get("/health")
