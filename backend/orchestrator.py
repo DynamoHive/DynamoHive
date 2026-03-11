@@ -14,7 +14,7 @@ CYCLE_TIME = 600
 
 
 def run_cycle():publish(post)
-
+update_graph(post)
     print("DynamoHive cycle start")
 
     data = crawl()
