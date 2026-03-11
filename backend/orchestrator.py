@@ -28,7 +28,7 @@ CYCLE_TIME = 600
 
 
 def run_cycle():
-def run_cycle():
+
     print("DynamoHive cycle start")
 
     # 1 INTERNET CRAWL
@@ -91,6 +91,9 @@ def run_cycle():
     # 16 VIRAL SIMULATION
     simulate_viral(post)
 
+    # 17 GLOBAL INTELLIGENCE INDEX
+    build_intelligence_index()
+
     print("cycle complete")
 
 
@@ -109,3 +112,4 @@ def start():
             print("orchestrator error:", e)
 
         time.sleep(CYCLE_TIME)
+Ne düzelttim
