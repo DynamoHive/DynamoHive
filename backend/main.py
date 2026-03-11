@@ -10,7 +10,7 @@ from backend.orchestrator import start as start_orchestrator
 app = FastAPI(title="DynamoHive API")
 
 
-# database başlat
+# veritabanını başlat
 init_database()
 
 
@@ -60,4 +60,3 @@ def topics():
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
