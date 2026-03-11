@@ -1,7 +1,9 @@
 from fastapi import FastAPI
+import threading
+
 from backend.orchestrator import DynamoHiveCore
 from backend.feed_engine import get_feed
-import threading
+
 
 app = FastAPI()
 
