@@ -8,7 +8,7 @@ from ai_engine.intelligence_engine import generate_intelligence
 from ai_engine.auto_content_loop import generate_content
 from ai_engine.data_pipeline import process_data
 from backend.feed_engine import publish
-
+from ai_engine.topic_learning_engine import learn_topics
 
 CYCLE_TIME = 600
 
