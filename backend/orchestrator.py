@@ -69,7 +69,7 @@ def run_cycle():
         logger.info("no intelligence")
         return
 
-    # ENTITY + PROPAGANDA + GEO ANALYSIS
+    # ENTITY / PROPAGANDA / GEO ANALYSIS
     entities = extract_entities(intelligence["content"])
 
     update_actor_network(entities)
