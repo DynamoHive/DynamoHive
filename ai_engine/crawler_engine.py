@@ -1,5 +1,7 @@
 import feedparser
 import hashlib
+import time
+
 
 SOURCES = [
     "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
@@ -7,12 +9,38 @@ SOURCES = [
     "https://www.theverge.com/rss/index.xml"
 ]
 
-# Daha önce görülen içerikleri tutar
+
+# daha önce görülen içerikler
 SEEN_HASHES = set()
+
+# RSS cache
+CACHE = {}
+
+# cache süresi (5 dakika)
+CACHE_TTL = 300
 
 
 def make_hash(text):
     return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+
+def get_feed(url):
+
+    now = time.time()
+
+    # cache kontrol
+    if url in CACHE:
+
+        cached_time, cached_feed = CACHE[url]
+
+        if now - cached_time < CACHE_TTL:
+            return cached_feed
+
+    feed = feedparser.parse(url)
+
+    CACHE[url] = (now, feed)
+
+    return feed
 
 
 def crawl():
@@ -22,7 +50,8 @@ def crawl():
     for url in SOURCES:
 
         try:
-            feed = feedparser.parse(url)
+
+            feed = get_feed(url)
 
             for entry in feed.entries[:5]:
 
@@ -31,7 +60,7 @@ def crawl():
 
                 fingerprint = make_hash(title + summary)
 
-                # Eğer daha önce işlendiyse atla
+                # dedup kontrol
                 if fingerprint in SEEN_HASHES:
                     continue
 
@@ -44,6 +73,7 @@ def crawl():
                 })
 
         except Exception as e:
+
             print("crawler error:", e)
 
     print("crawler collected:", len(results))
