@@ -1,35 +1,33 @@
 from fastapi import FastAPI
-import threading
 
-from backend.orchestrator import DynamoHiveCore
-from backend.feed_engine import get_feed
-
+from database.database import init_database
+from backend.posts import get_feed, get_post
+from backend.topic_api import get_topics
 
 app = FastAPI()
 
-core = DynamoHiveCore()
-
-
-@app.on_event("startup")
-def start_system():
-
-    thread = threading.Thread(target=core.start)
-
-    thread.daemon = True
-
-    thread.start()
+init_database()
 
 
 @app.get("/")
-def root():
+def home():
 
-    return {
-        "platform": "DynamoHive",
-        "status": "running"
-    }
+    return {"system": "DynamoHive running"}
 
 
 @app.get("/feed")
 def feed():
 
     return get_feed()
+
+
+@app.get("/article/{post_id}")
+def article(post_id: int):
+
+    return get_post(post_id)
+
+
+@app.get("/topics")
+def topics():
+
+    return get_topics()
