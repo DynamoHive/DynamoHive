@@ -1,29 +1,22 @@
-posts = []
+def distribute(post):
+
+    text = post["title"]
+
+    post_x(text)
+    post_linkedin(text)
+    post_reddit(text)
 
 
-def create_social_posts():
+def post_x(text):
 
-    global posts
-
-    articles = [
-        "AI regulation in Europe",
-        "Energy crisis in Europe",
-        "China technology strategy",
-        "Middle East geopolitics"
-    ]
-
-    generated = []
-
-    for a in articles:
-
-        post = f"New analysis: {a} – Read more on DynamoHive"
-
-        generated.append(post)
-
-    posts = generated
-
-    print("Distribution posts:", posts)
+    print("X:", text)
 
 
-def run():
-    create_social_posts()
+def post_linkedin(text):
+
+    print("LinkedIn:", text)
+
+
+def post_reddit(text):
+
+    print("Reddit:", text)
