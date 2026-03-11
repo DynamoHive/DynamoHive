@@ -1,14 +1,18 @@
-from database.database import cursor, conn
+from database.database import cursor
 
 
 def build_intelligence_index():
+    """
+    Posts tablosunu analiz eder ve topic bazlı
+    global intelligence index üretir.
+    """
 
     cursor.execute(
         """
-        SELECT topic, COUNT(*) as count
+        SELECT topic, COUNT(*) as score
         FROM posts
         GROUP BY topic
-        ORDER BY count DESC
+        ORDER BY score DESC
         """
     )
 
@@ -17,15 +21,9 @@ def build_intelligence_index():
     index = []
 
     for r in rows:
-
-        topic = r[0]
-        score = r[1]
-
         index.append({
-
-            "topic": topic,
-            "score": score
-
+            "topic": r[0],
+            "score": r[1]
         })
 
     return index
@@ -33,13 +31,16 @@ def build_intelligence_index():
 
 
 def get_top_topics(limit=10):
+    """
+    En güçlü topic'leri döndürür.
+    """
 
     cursor.execute(
         """
-        SELECT topic, COUNT(*) as count
+        SELECT topic, COUNT(*) as score
         FROM posts
         GROUP BY topic
-        ORDER BY count DESC
+        ORDER BY score DESC
         LIMIT %s
         """,
         (limit,)
@@ -50,12 +51,9 @@ def get_top_topics(limit=10):
     topics = []
 
     for r in rows:
-
         topics.append({
-
             "topic": r[0],
             "authority": r[1]
-
         })
 
     return topics
