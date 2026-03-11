@@ -58,7 +58,8 @@ for t in topics:
         update_growth(t)
 
     analysis = analyse(data)
-
+for t in topics:
+    register_event(t)
     signals = detect_signals(analysis)
 
     if not signals:
