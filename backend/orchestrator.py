@@ -1,5 +1,7 @@
 import time
 
+from backend.logger import logger
+
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 from ai_engine.topic_radar import detect_topics
@@ -15,25 +17,26 @@ from ai_engine.vector_memory import store_vector
 from backend.feed_engine import publish
 from backend.distribution_engine import distribute
 
+
 CYCLE_TIME = 600
 
 
 def run_cycle():
 
-    print("DynamoHive cycle start")
+    logger.info("DynamoHive cycle start")
 
     # 1️⃣ crawl
     raw_data = crawl()
 
     if not raw_data:
-        print("no crawl data")
+        logger.info("no crawl data")
         return
 
     # 2️⃣ pipeline
     data = process_data(raw_data)
 
     if not data:
-        print("pipeline empty")
+        logger.info("pipeline empty")
         return
 
     # 3️⃣ topic detection
@@ -45,18 +48,22 @@ def run_cycle():
     # 5️⃣ signal detection
     signals = detect_signals(analysis)
 
+    if not signals:
+        logger.info("no signals detected")
+        return
+
     # 6️⃣ intelligence
     intelligence = generate_intelligence(signals)
 
     if not intelligence:
-        print("no intelligence")
+        logger.info("no intelligence")
         return
 
     # 7️⃣ content generation
     post = generate_content(intelligence)
 
     if not post:
-        print("no content generated")
+        logger.info("no content generated")
         return
 
     # 8️⃣ publish
@@ -70,12 +77,12 @@ def run_cycle():
     # 🔟 distribution
     distribute(post)
 
- logger.error(f"orchestrator error: {e}")
+    logger.info("cycle complete")
 
 
 def start():
 
-    logger.info("DynamoHive cycle start")
+    logger.info("DynamoHive orchestrator started")
 
     while True:
 
@@ -83,6 +90,6 @@ def start():
             run_cycle()
 
         except Exception as e:
-            print("orchestrator error:", e)
+            logger.error(f"orchestrator error: {e}")
 
         time.sleep(CYCLE_TIME)
