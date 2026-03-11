@@ -16,7 +16,9 @@ from ai_engine.vector_memory import store_vector
 
 from backend.feed_engine import publish
 from backend.distribution_engine import distribute
-
+from ai_engine.trend_engine import update_trends
+from ai_engine.viral_engine import detect_viral
+from ai_engine.growth_engine import update_growth
 
 CYCLE_TIME = 600
 
