@@ -42,6 +42,13 @@ def run_cycle():
             return
 
         topics = detect_topics(data)
+update_trends(topics)
+
+viral_topics = detect_viral(topics)
+
+for t in topics:
+    update_growth(t)
+
 update_topic_authority(topics)
         analysis = analyse(data)
 
