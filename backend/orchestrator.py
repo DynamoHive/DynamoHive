@@ -9,11 +9,11 @@ from ai_engine.auto_content_loop import generate_content
 from ai_engine.data_pipeline import process_data
 from backend.feed_engine import publish
 from ai_engine.topic_learning_engine import learn_topics
-
+from ai_engine.knowledge_graph import update_graph
 CYCLE_TIME = 600
 
 
-def run_cycle():
+def run_cycle():publish(post)
 
     print("DynamoHive cycle start")
 
