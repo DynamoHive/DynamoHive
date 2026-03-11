@@ -9,7 +9,7 @@ from ai_engine.analytics_engine import analyse
 from ai_engine.signal_detector import detect_signals
 from ai_engine.intelligence_engine import generate_intelligence
 from ai_engine.auto_content_loop import generate_content
-
+from ai_engine.information_warfare_engine import detect_information_warfare
 from ai_engine.knowledge_graph import update_graph
 from ai_engine.topic_learning_engine import learn_topics
 from ai_engine.vector_memory import store_vector
@@ -81,7 +81,9 @@ for t in topics:
     propaganda = detect_propaganda(intelligence["content"])
 
     geo_signal = detect_geopolitical_signal(intelligence["content"])
+info_warfare = detect_information_warfare(intelligence["content"])
 
+logger.info(f"information warfare: {info_warfare}")
     narratives = update_narratives(intelligence["content"], entities)
 
     logger.info(f"entities: {entities}")
