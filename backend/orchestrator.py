@@ -18,12 +18,14 @@ from ai_engine.trend_engine import update_trends
 from ai_engine.viral_engine import detect_viral
 from ai_engine.growth_engine import update_growth
 
-from backend.feed_engine import publish
-from backend.distribution_engine import distribute
 from ai_engine.entity_extraction import extract_entities
 from ai_engine.actor_network import update_actor_network
 from ai_engine.propaganda_detector import detect_propaganda
 from ai_engine.geopolitical_signals import detect_geopolitical_signal
+
+from backend.feed_engine import publish
+from backend.distribution_engine import distribute
+
 
 CYCLE_TIME = 600
 
@@ -31,20 +33,7 @@ CYCLE_TIME = 600
 def run_cycle():
 
     logger.info("DynamoHive cycle start")
-entities = extract_entities(intelligence["content"])
 
-# actor network
-update_actor_network(entities)
-
-# propaganda detection
-propaganda = detect_propaganda(intelligence["content"])
-
-# geopolitical signals
-geo_signal = detect_geopolitical_signal(intelligence["content"])
-
-logger.info(f"entities: {entities}")
-logger.info(f"propaganda score: {propaganda}")
-logger.info(f"geopolitical signal: {geo_signal}")
     raw_data = crawl()
 
     if not raw_data:
@@ -79,6 +68,19 @@ logger.info(f"geopolitical signal: {geo_signal}")
     if not intelligence:
         logger.info("no intelligence")
         return
+
+    # ENTITY + PROPAGANDA + GEO ANALYSIS
+    entities = extract_entities(intelligence["content"])
+
+    update_actor_network(entities)
+
+    propaganda = detect_propaganda(intelligence["content"])
+
+    geo_signal = detect_geopolitical_signal(intelligence["content"])
+
+    logger.info(f"entities: {entities}")
+    logger.info(f"propaganda score: {propaganda}")
+    logger.info(f"geopolitical signal: {geo_signal}")
 
     post = generate_content(intelligence)
 
