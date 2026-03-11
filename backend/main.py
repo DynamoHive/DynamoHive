@@ -35,7 +35,7 @@ def home():
 
 @app.get("/feed")
 def feed():
-    return {"feed": get_feed()}
+    return get_feed()
 
 
 @app.get("/article/{post_id}")
@@ -51,4 +51,4 @@ def article(post_id: int):
 
 @app.get("/topics")
 def topics():
-    return {"topics": get_topics()}
+    return get_topics()
