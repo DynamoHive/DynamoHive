@@ -1,20 +1,13 @@
-from collections import Counter
+def detect_topics(data):
 
+    topics = []
 
-def topic_radar(articles):
+    for item in data:
 
-    if not articles:
-        return []
+        if "AI" in item["title"]:
+            topics.append("ai")
 
-    words = []
-
-    for a in articles:
-        words += a["title"].lower().split()
-
-    top = Counter(words).most_common(10)
-
-    topics = [w[0] for w in top]
-
-    print("Topic radar:", topics)
+        if "China" in item["title"]:
+            topics.append("china-tech")
 
     return topics
