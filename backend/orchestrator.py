@@ -10,7 +10,7 @@ from ai_engine.auto_content_loop import generate_content
 from ai_engine.vector_memory import store_vector
 from ai_engine.topic_learning_engine import learn_topics
 from ai_engine.knowledge_graph import update_graph
-
+from backend.task_queue import add_task
 from backend.feed_engine import publish
 from backend.distribution_engine import distribute
 
@@ -53,7 +53,10 @@ def run_cycle():
 
     # 8️⃣ publish
     publish(post)
-
+add_task(update_graph, post)
+add_task(learn_topics, post)
+add_task(store_vector, post)
+add_task(distribute, post)
     # 9️⃣ AI memory systems
     update_graph(post)
     learn_topics(post)
