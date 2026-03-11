@@ -1,130 +1,42 @@
 import time
 
-# --- AI ENGINE IMPORTS (Kod-6) ---
-
-from ai_engine.crawler_engine import crawler_engine
-from ai_engine.topic_radar import topic_radar
-from ai_engine.analytics_engine import analytics_engine
-from ai_engine.trend_engine import trend_engine
-from ai_engine.signal_detector import signal_detector
-from ai_engine.intelligence_engine import intelligence_engine
-from ai_engine.growth_engine import growth_engine
-from ai_engine.viral_engine import viral_engine
-
-from ai_engine.vector_memory import store_vector
-from ai_engine.knowledge_graph import build_graph
+from ai_engine.crawler_engine import crawl
+from ai_engine.topic_radar import detect_topics
+from ai_engine.analytics_engine import analyse
+from ai_engine.signal_detector import detect_signals
+from ai_engine.intelligence_engine import generate_intelligence
 from ai_engine.auto_content_loop import generate_content
 
-# --- PLATFORM IMPORTS (Kod-5) ---
-
 from backend.feed_engine import publish
-from backend.topic_authority_engine import run as topic_authority
 
 
-def safe_run(fn, *args):
-    try:
-        return fn(*args)
-    except Exception as e:
-        print("ENGINE ERROR:", fn.__name__, e)
-        return None
+def run_cycle():
+
+    data = crawl()
+
+    topics = detect_topics(data)
+
+    analysis = analyse(data)
+
+    signals = detect_signals(analysis)
+
+    intelligence = generate_intelligence(signals)
+
+    post = generate_content(intelligence)
+
+    publish(post)
 
 
-class DynamoHiveCore:
+def start():
 
-    def start(self):
+    while True:
 
-        print("DynamoHive Core Started")
+        try:
 
-        while True:
+            run_cycle()
 
-            print("STEP 1: Crawling Internet")
+        except Exception as e:
 
-            articles = safe_run(crawler_engine)
+            print("Pipeline error:", e)
 
-            if not articles:
-                print("No articles found")
-                time.sleep(60)
-                continue
-
-
-            print("STEP 2: Topic Detection")
-
-            topics = safe_run(topic_radar, articles)
-
-            print("Topics:", topics)
-
-
-            print("STEP 3: Analytics")
-
-            stats = safe_run(analytics_engine, articles)
-
-            print("Stats:", stats)
-
-
-            print("STEP 4: Trend Analysis")
-
-            trends = safe_run(trend_engine, topics)
-
-            print("Trends:", trends)
-
-
-            print("STEP 5: Signal Detection")
-
-            signals = safe_run(signal_detector, trends)
-
-            print("Signals:", signals)
-
-
-            print("STEP 6: Intelligence Generation")
-
-            analysis = safe_run(intelligence_engine, articles)
-
-            if not analysis:
-                print("No analysis generated")
-                time.sleep(60)
-                continue
-
-            print("Analysis items:", len(analysis))
-
-
-            print("STEP 7: Knowledge Graph")
-
-            safe_run(build_graph, analysis)
-
-
-            print("STEP 8: Vector Memory")
-
-            safe_run(store_vector, analysis)
-
-
-            print("STEP 9: Generate Content")
-
-            content = safe_run(generate_content, analysis)
-
-
-            print("STEP 10: Topic Authority Engine")
-
-            safe_run(topic_authority)
-
-
-            if content:
-
-                print("STEP 11: Publishing Content")
-
-                safe_run(publish, content)
-
-
-            print("STEP 12: Growth Engine")
-
-            safe_run(growth_engine)
-
-
-            print("STEP 13: Viral Engine")
-
-            safe_run(viral_engine)
-
-
-            print("Cycle Complete")
-            print("--------------------------")
-
-            time.sleep(600)
+        time.sleep(600)
