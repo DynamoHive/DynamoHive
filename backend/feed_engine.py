@@ -1,10 +1,11 @@
 from backend.database import cursor
 from backend.trust_engine import get_trust
 
-def rank_posts(user_id):
+
+def rank_posts(user_id=None):
 
     rows = cursor.execute(
-        "SELECT id,user_id,content FROM posts"
+        "SELECT id, user_id, content FROM posts"
     ).fetchall()
 
     ranked = []
@@ -18,12 +19,15 @@ def rank_posts(user_id):
             "engagement": 1
         }
 
-        trust = get_trust(post["user_id"])
+        try:
+            trust = get_trust(post["user_id"])
+        except:
+            trust = 1
 
         score = post["engagement"] * trust
 
         ranked.append((score, post))
 
-    ranked.sort(reverse=True, key=lambda x: x[0])
+    ranked.sort(key=lambda x: x[0], reverse=True)
 
     return [p[1] for p in ranked]
