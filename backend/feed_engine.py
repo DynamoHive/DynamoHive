@@ -1,33 +1,24 @@
-from backend.database import cursor
-from backend.trust_engine import get_trust
+from datetime import datetime
+
+FEED = []
 
 
-def rank_posts(user_id=None):
+def publish(items):
 
-    rows = cursor.execute(
-        "SELECT id, user_id, content FROM posts"
-    ).fetchall()
+    global FEED
 
-    ranked = []
+    for item in items:
 
-    for r in rows:
+        FEED.append({
+            "title": item["title"],
+            "content": item["content"],
+            "timestamp": datetime.utcnow().isoformat()
+        })
 
-        post = {
-            "id": r[0],
-            "user_id": r[1],
-            "content": r[2],
-            "engagement": 1
-        }
+    if len(FEED) > 200:
+        FEED = FEED[-200:]
 
-        try:
-            trust = get_trust(post["user_id"])
-        except:
-            trust = 1
 
-        score = post["engagement"] * trust
+def get_feed():
 
-        ranked.append((score, post))
-
-    ranked.sort(key=lambda x: x[0], reverse=True)
-
-    return [p[1] for p in ranked]
+    return list(reversed(FEED[-50:]))
