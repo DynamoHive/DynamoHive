@@ -66,7 +66,7 @@ def run_cycle():
     # 6️⃣ SIGNAL RANKING
     signals = rank_signals(signals)
 
-    # 7️⃣ MEMORY FILTER (duplicate / known patterns)
+    # 7️⃣ MEMORY FILTER
     signals = [s for s in signals if not memory_engine.seen_before(s)]
 
     if not signals:
