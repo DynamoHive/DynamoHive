@@ -13,7 +13,9 @@ from ai_engine.auto_content_loop import generate_content
 from ai_engine.knowledge_graph import update_graph
 from ai_engine.topic_learning_engine import learn_topics
 from ai_engine.trend_scoring_engine import is_trending
-
+from ai_engine.source_intelligence import SourceIntelligence
+from ai_engine.signal_ranking_engine import rank_signals
+from ai_engine.memory_pattern_engine import MemoryPatternEngine
 
 CYCLE_INTERVAL = 600
 ERROR_SLEEP = 30
