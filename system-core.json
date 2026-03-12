@@ -1,12 +1,6 @@
 {
- "platform": "DynamoHive",
- "version": "0.1",
- "architecture": "microservices",
- "modules": [
-  "user-system",
-  "content-engine",
-  "ai-engine",
-  "analytics",
-  "reward-system"
- ]
+  "system": "DynamoHive",
+  "mode": "autonomous",
+  "version": "1.0",
+  "status": "active"
 }
