@@ -1,7 +1,8 @@
 import time
-
 from backend.logger import logger
-from ai_engine.event_engine import register_event, detect_event_spikes
+
+# --- AI ENGINE IMPORTS ---
+
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 from ai_engine.topic_radar import detect_topics
@@ -9,135 +10,66 @@ from ai_engine.analytics_engine import analyse
 from ai_engine.signal_detector import detect_signals
 from ai_engine.intelligence_engine import generate_intelligence
 from ai_engine.auto_content_loop import generate_content
-from ai_engine.information_warfare_engine import detect_information_warfare
+
 from ai_engine.knowledge_graph import update_graph
 from ai_engine.topic_learning_engine import learn_topics
-from ai_engine.vector_memory import store_vector
-from ai_engine.global_crisis_radar import detect_global_crisis
-from ai_engine.trend_engine import update_trends
-from ai_engine.viral_engine import detect_viral
-from ai_engine.growth_engine import update_growth
-from ai_engine.strategic_forecast_engine import generate_forecast
-from ai_engine.entity_extraction import extract_entities
-from ai_engine.actor_network import update_actor_network
-from ai_engine.propaganda_detector import detect_propaganda
-from ai_engine.geopolitical_signals import detect_geopolitical_signal
-from ai_engine.narrative_engine import update_narratives
-
-from backend.feed_engine import publish
-from backend.distribution_engine import distribute
 
 
-CYCLE_TIME = 600
+LOOP_INTERVAL = 600  # seconds
 
 
-def run_cycle():
+def dynamo_cycle():
 
-    logger.info("DynamoHive cycle start")
+    logger.info("DynamoHive cycle started")
 
+    # 1️⃣ Crawl sources
     raw_data = crawl()
 
-    if not raw_data:
-        logger.info("no crawl data")
-        return
+    # 2️⃣ Process data
+    structured_data = process_data(raw_data)
 
-    data = process_data(raw_data)
+    # 3️⃣ Detect topics
+    topics = detect_topics(structured_data)
 
-    if not data:
-        logger.info("pipeline empty")
-        return
+    # 4️⃣ Analytics
+    analytics = analyse(topics)
 
-    topics = detect_topics(data)
-for t in topics:
-    register_event(t)
-    update_trends(topics)
+    # 5️⃣ Detect signals
+    signals = detect_signals(analytics)
 
-    viral_topics = detect_viral(topics)
-
-    for t in topics:
-        update_growth(t)
-
-    analysis = analyse(data)
-for t in topics:
-    register_event(t)
-    signals = detect_signals(analysis)
-
-    if not signals:
-        logger.info("no signals detected")
-        return
-
+    # 6️⃣ Intelligence layer
     intelligence = generate_intelligence(signals)
 
-    if not intelligence:
-        logger.info("no intelligence")
-        return
+    # 7️⃣ Update knowledge graph
+    update_graph(intelligence)
 
-    # ---------------- AI ANALYSIS ----------------
+    # 8️⃣ Topic learning
+    learn_topics(intelligence)
 
-    entities = extract_entities(intelligence["content"])
+    # 9️⃣ Generate content
+    content = generate_content(intelligence)
 
-    update_actor_network(entities)
+    logger.info("Cycle finished")
 
-    propaganda = detect_propaganda(intelligence["content"])
-
-    geo_signal = detect_geopolitical_signal(intelligence["content"])
-    crisis = detect_global_crisis(intelligence["content"])
-forecast = generate_forecast(
-    topics,
-    spikes,
-    crisis,
-    propaganda
-)
-
-logger.info(f"strategic forecast: {forecast}")
-4️⃣ Pipeline son hali
-logger.info(f"global crisis radar: {crisis}")
-info_warfare = detect_information_warfare(intelligence["content"])
-
-logger.info(f"information warfare: {info_warfare}")
-    narratives = update_narratives(intelligence["content"], entities)
-
-    logger.info(f"entities: {entities}")
-    logger.info(f"propaganda score: {propaganda}")
-    logger.info(f"geopolitical signal: {geo_signal}")
-    logger.info(f"narratives: {narratives}")
-
-    # ---------------- CONTENT ----------------
-
-    post = generate_content(intelligence)
-
-    if not post:
-        logger.info("no content generated")
-        return
-
-    publish(post)
-
-    update_graph(post)
-    learn_topics(post)
-    store_vector(post)
-
-    distribute(post)
-
-    logger.info("cycle complete")
+    return content
 
 
-def start():
+def start_dynamohive():
 
-    logger.info("DynamoHive orchestrator started")
-    logger.info(f"cycle interval: {CYCLE_TIME}s")
+    logger.info("DynamoHive system booting")
 
     while True:
 
-        cycle_start = time.time()
-
         try:
-            run_cycle()
+
+            dynamo_cycle()
 
         except Exception as e:
-            logger.error(f"orchestrator error: {e}")
 
-        elapsed = time.time() - cycle_start
+            logger.error(f"DynamoHive error: {e}")
 
-        sleep_time = max(0, CYCLE_TIME - elapsed)
+        time.sleep(LOOP_INTERVAL)
 
-        time.sleep(sleep_time)
+
+if __name__ == "__main__":
+    start_dynamohive()
