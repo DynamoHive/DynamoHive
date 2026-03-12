@@ -1,9 +1,7 @@
 import sqlite3
 
-DB_PATH = "database/dynamohive.db"
-
 def init_database():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect("database/dynamohive.db")
     cursor = conn.cursor()
 
     cursor.execute("""
