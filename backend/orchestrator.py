@@ -8,7 +8,7 @@ from ai_engine.data_pipeline import process_data
 from ai_engine.topic_radar import detect_topics
 from ai_engine.analytics_engine import analyse
 from ai_engine.signal_detector import detect_signals
-from ai_engine.intelligence_engine import generate_intelligence
+from ai_engine.global_intelligence_engine import generate_intelligence
 from ai_engine.auto_content_loop import generate_content
 from ai_engine.knowledge_graph import update_graph
 from ai_engine.topic_learning_engine import learn_topics
