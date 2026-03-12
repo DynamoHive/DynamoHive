@@ -11,13 +11,15 @@ app = FastAPI(
     version="1.0"
 )
 
-# HTML templates
+# templates
 templates = Jinja2Templates(directory="backend/templates")
 
 DB_PATH = "database/dynamohive.db"
 
+# basit signal storage
+latest_signals = []
 
-# DATABASE INIT
+
 def init_database():
 
     os.makedirs("database", exist_ok=True)
@@ -37,7 +39,6 @@ def init_database():
     conn.close()
 
 
-# ORCHESTRATOR START
 def start_orchestrator():
 
     try:
@@ -53,7 +54,6 @@ def start_orchestrator():
         print("AI engine failed:", e)
 
 
-# STARTUP
 @app.on_event("startup")
 def startup():
 
@@ -80,4 +80,16 @@ def home(request: Request):
 @app.get("/health")
 def health():
 
-    return {"status": "ok"}
+    return {
+        "status": "ok"
+    }
+
+
+# SIGNAL FEED
+@app.get("/signals")
+def signals():
+
+    return {
+        "platform": "DynamoHive",
+        "signals": latest_signals
+    }
