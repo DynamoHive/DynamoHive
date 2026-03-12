@@ -10,27 +10,22 @@ from backend.orchestrator import start as start_orchestrator
 app = FastAPI(title="DynamoHive API")
 
 
+# initialize database
 init_database()
 
 
 def run_orchestrator():
-
     try:
         start_orchestrator()
-
     except Exception as e:
         print("Orchestrator error:", e)
 
 
 @app.on_event("startup")
 def start_background_tasks():
-
     thread = threading.Thread(target=run_orchestrator)
-
     thread.daemon = True
-
     thread.start()
-
     print("Orchestrator thread started")
 
 
@@ -42,6 +37,11 @@ def home():
 @app.get("/feed")
 def feed():
     return get_feed()
+
+
+@app.get("/topics")
+def topics():
+    return get_topics()
 
 
 @app.get("/article/{post_id}")
