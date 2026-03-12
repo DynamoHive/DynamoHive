@@ -12,7 +12,6 @@ DB_PATH = "database/dynamohive.db"
 
 
 def init_database():
-
     os.makedirs("database", exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
@@ -36,15 +35,19 @@ def start_orchestrator():
 
         from backend.orchestrator import start
 
+        print("Starting DynamoHive AI engine")
+
         start()
 
     except Exception as e:
 
-        print("Orchestrator error:", e)
+        print("AI engine failed:", e)
 
 
 @app.on_event("startup")
 def startup():
+
+    print("DynamoHive boot sequence")
 
     init_database()
 
