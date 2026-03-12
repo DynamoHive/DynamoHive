@@ -1,4 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
 import os
 import sqlite3
 from threading import Thread
@@ -8,10 +11,15 @@ app = FastAPI(
     version="1.0"
 )
 
+# HTML templates
+templates = Jinja2Templates(directory="backend/templates")
+
 DB_PATH = "database/dynamohive.db"
 
 
+# DATABASE INIT
 def init_database():
+
     os.makedirs("database", exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
@@ -29,6 +37,7 @@ def init_database():
     conn.close()
 
 
+# ORCHESTRATOR START
 def start_orchestrator():
 
     try:
@@ -44,6 +53,7 @@ def start_orchestrator():
         print("AI engine failed:", e)
 
 
+# STARTUP
 @app.on_event("startup")
 def startup():
 
@@ -52,24 +62,22 @@ def startup():
     init_database()
 
     thread = Thread(target=start_orchestrator)
-
     thread.daemon = True
-
     thread.start()
 
 
-@app.get("/")
-def root():
+# LANDING PAGE
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
 
-    return {
-        "platform": "DynamoHive",
-        "status": "running"
-    }
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request}
+    )
 
 
+# HEALTH CHECK
 @app.get("/health")
 def health():
 
-    return {
-        "status": "ok"
-    }
+    return {"status": "ok"}
