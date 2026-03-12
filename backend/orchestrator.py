@@ -23,7 +23,6 @@ CYCLE_INTERVAL = 600
 ERROR_SLEEP = 30
 
 
-# GLOBAL ENGINES
 source_intel = SourceIntelligence()
 memory_engine = MemoryPatternEngine()
 
@@ -36,65 +35,53 @@ def run_cycle():
 
     try:
 
-        # 1️⃣ CRAWL
         raw_data = crawl()
 
         if not raw_data:
             logger.warning("No data from crawler")
             return
 
-        # 2️⃣ PROCESS DATA
         processed = process_data(raw_data)
 
         if not processed:
             logger.warning("Pipeline returned empty data")
             return
 
-        # 3️⃣ TOPIC DETECTION
         topics = detect_topics(processed)
 
         if not topics:
             logger.warning("No topics detected")
             return
 
-        # 4️⃣ ANALYTICS
         analytics = analyse(topics) or {}
 
-        # 5️⃣ SIGNAL DETECTION
         signals = detect_signals(analytics)
 
         if not signals:
             logger.info("No signals detected")
             return
 
-        # 6️⃣ SIGNAL RANKING
         signals = rank_signals(signals)
 
-        # 7️⃣ MEMORY FILTER
         signals = [s for s in signals if not memory_engine.seen_before(s)]
 
         if not signals:
             logger.info("Signals filtered by memory engine")
             return
 
-        # 8️⃣ MEMORY STORE
         for s in signals:
             memory_engine.store(s)
 
-        # 9️⃣ INTELLIGENCE GENERATION
         intelligence = generate_intelligence(signals)
 
         if not intelligence:
             logger.info("No intelligence generated")
             return
 
-        # 🔟 KNOWLEDGE GRAPH UPDATE
         update_graph(intelligence)
 
-        # 1️⃣1️⃣ LEARNING ENGINE
         learn_topics(intelligence)
 
-        # 1️⃣2️⃣ TREND FILTER + CONTENT
         if is_trending(intelligence):
 
             generate_content(intelligence)
