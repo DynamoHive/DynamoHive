@@ -1,7 +1,6 @@
 import time
 from backend.logger import logger
 
-# AI ENGINE MODULES
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 from ai_engine.topic_radar import detect_topics
@@ -14,63 +13,49 @@ from ai_engine.topic_learning_engine import learn_topics
 from ai_engine.trend_scoring_engine import is_trending
 
 
-CYCLE_INTERVAL = 600  # 10 dakika
+CYCLE_INTERVAL = 600
+ERROR_SLEEP = 30
 
 
 def run_cycle():
 
     logger.info("DynamoHive cycle started")
 
-    try:
+    raw_data = crawl()
 
-        # 1 CRAWL
-        raw_data = crawl()
+    if not raw_data:
+        logger.warning("Crawler returned no data")
+        return
 
-        if not raw_data:
-            logger.warning("Crawler returned no data")
-            return
+    processed_data = process_data(raw_data)
 
-        # 2 DATA PIPELINE
-        processed_data = process_data(raw_data)
+    if not processed_data:
+        logger.warning("Pipeline returned empty data")
+        return
 
-        if not processed_data:
-            logger.warning("Data pipeline returned empty result")
-            return
+    topics = detect_topics(processed_data)
 
-        # 3 TOPIC DETECTION
-        topics = detect_topics(processed_data)
+    analytics = analyse(topics)
 
-        # 4 ANALYTICS
-        analytics = analyse(topics)
+    signals = detect_signals(analytics)
 
-        # 5 SIGNAL DETECTION
-        signals = detect_signals(analytics)
+    intelligence = generate_intelligence(signals)
 
-        # 6 INTELLIGENCE
-        intelligence = generate_intelligence(signals)
+    update_graph(intelligence)
 
-        # 7 KNOWLEDGE GRAPH
-        update_graph(intelligence)
+    learn_topics(intelligence)
 
-        # 8 LEARNING
-        learn_topics(intelligence)
+    if is_trending(intelligence):
 
-        # 9 TREND FILTER + CONTENT
-        if is_trending(intelligence):
+        generate_content(intelligence)
 
-            generate_content(intelligence)
+        logger.info("Trending content generated")
 
-            logger.info("Content generated for trending topic")
+    else:
 
-        else:
+        logger.info("Topic skipped (not trending)")
 
-            logger.info("Topic not strong enough for content")
-
-        logger.info("Cycle completed")
-
-    except Exception as e:
-
-        logger.error(f"DynamoHive cycle error: {e}")
+    logger.info("Cycle finished")
 
 
 def start():
@@ -79,9 +64,17 @@ def start():
 
     while True:
 
-        run_cycle()
+        try:
 
-        time.sleep(CYCLE_INTERVAL)
+            run_cycle()
+
+            time.sleep(CYCLE_INTERVAL)
+
+        except Exception as e:
+
+            logger.error(f"System error: {e}")
+
+            time.sleep(ERROR_SLEEP)
 
 
 if __name__ == "__main__":
