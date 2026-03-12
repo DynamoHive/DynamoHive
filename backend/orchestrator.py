@@ -1,6 +1,8 @@
 import time
+import gc
 from backend.logger import logger
 
+# AI ENGINE MODULES
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 from ai_engine.topic_radar import detect_topics
@@ -13,38 +15,47 @@ from ai_engine.topic_learning_engine import learn_topics
 from ai_engine.trend_scoring_engine import is_trending
 
 
-CYCLE_INTERVAL = 600
-ERROR_SLEEP = 30
+CYCLE_INTERVAL = 600   # 10 dakika
+ERROR_SLEEP = 30       # hata olursa bekleme süresi
 
 
 def run_cycle():
 
     logger.info("DynamoHive cycle started")
 
+    # 1 CRAWL
     raw_data = crawl()
 
     if not raw_data:
         logger.warning("Crawler returned no data")
         return
 
+    # 2 DATA PIPELINE
     processed_data = process_data(raw_data)
 
     if not processed_data:
         logger.warning("Pipeline returned empty data")
         return
 
+    # 3 TOPIC DETECTION
     topics = detect_topics(processed_data)
 
+    # 4 ANALYTICS
     analytics = analyse(topics)
 
+    # 5 SIGNAL DETECTION
     signals = detect_signals(analytics)
 
+    # 6 INTELLIGENCE
     intelligence = generate_intelligence(signals)
 
+    # 7 KNOWLEDGE GRAPH
     update_graph(intelligence)
 
+    # 8 LEARNING
     learn_topics(intelligence)
 
+    # 9 TREND FILTER
     if is_trending(intelligence):
 
         generate_content(intelligence)
@@ -56,6 +67,9 @@ def run_cycle():
         logger.info("Topic skipped (not trending)")
 
     logger.info("Cycle finished")
+
+    # memory cleanup
+    gc.collect()
 
 
 def start():
