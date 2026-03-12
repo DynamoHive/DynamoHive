@@ -1,25 +1,38 @@
 from fastapi import FastAPI
-from threading import Thread
-
-from backend.orchestrator import start
-from database.database import init_database
+import os
+import sqlite3
 
 app = FastAPI(
     title="DynamoHive",
     version="1.0"
 )
 
+DB_PATH = "database/dynamohive.db"
+
+
+def init_database():
+
+    os.makedirs("database", exist_ok=True)
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS system_state (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        status TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
 
 @app.on_event("startup")
 def startup():
 
-    # database başlat
     init_database()
-
-    # orchestrator arka planda başlat
-    t = Thread(target=start)
-    t.daemon = True
-    t.start()
 
 
 @app.get("/")
@@ -27,7 +40,8 @@ def root():
 
     return {
         "platform": "DynamoHive",
-        "status": "running"
+        "status": "running",
+        "mode": "emergency_boot"
     }
 
 
