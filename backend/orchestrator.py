@@ -1,7 +1,6 @@
 import time
 from backend.logger import logger
 
-# AI ENGINE MODULES
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 from ai_engine.topic_radar import detect_topics
@@ -14,57 +13,54 @@ from ai_engine.knowledge_graph import update_graph
 from ai_engine.topic_learning_engine import learn_topics
 
 
-CYCLE_INTERVAL = 600   # 10 dakika
+CYCLE_INTERVAL = 600
 
 
 def run_cycle():
 
     logger.info("DynamoHive cycle started")
 
-    # 1 CRAWL
-    raw_data = crawl()
+    try:
 
-    # 2 DATA PIPELINE
-    processed_data = process_data(raw_data)
+        raw_data = crawl()
+        if not raw_data:
+            logger.warning("Crawler returned no data")
+            return
 
-    # 3 TOPIC DETECTION
-    topics = detect_topics(processed_data)
+        processed_data = process_data(raw_data)
+        if not processed_data:
+            logger.warning("Data pipeline produced empty output")
+            return
 
-    # 4 ANALYTICS
-    analytics = analyse(topics)
+        topics = detect_topics(processed_data)
+        analytics = analyse(topics)
+        signals = detect_signals(analytics)
 
-    # 5 SIGNAL DETECTION
-    signals = detect_signals(analytics)
+        intelligence = generate_intelligence(signals)
 
-    # 6 INTELLIGENCE
-    intelligence = generate_intelligence(signals)
+        update_graph(intelligence)
+        learn_topics(intelligence)
 
-    # 7 KNOWLEDGE GRAPH
-    update_graph(intelligence)
+        generate_content(intelligence)
 
-    # 8 LEARNING
-    learn_topics(intelligence)
+        logger.info("Cycle completed")
 
-    # 9 CONTENT
-    generate_content(intelligence)
+    except Exception as e:
 
-    logger.info("Cycle completed")
+        logger.error(f"Cycle failure: {e}")
 
 
 def start():
 
-    logger.info("DynamoHive started")
+    logger.info("DynamoHive system started")
 
     while True:
 
-        try:
-            run_cycle()
-
-        except Exception as e:
-            logger.error(f"DynamoHive error: {e}")
+        run_cycle()
 
         time.sleep(CYCLE_INTERVAL)
 
 
 if __name__ == "__main__":
-    start()   
+    start()
+Şu anda orchestrator ne yapıyor?
