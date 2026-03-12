@@ -30,81 +30,92 @@ memory_engine = MemoryPatternEngine()
 
 def run_cycle():
 
+    start_time = time.time()
+
     logger.info("DynamoHive cycle started")
 
-    # 1️⃣ CRAWL
-    raw_data = crawl()
+    try:
 
-    if not raw_data:
-        logger.warning("No data from crawler")
-        return
+        # 1️⃣ CRAWL
+        raw_data = crawl()
 
-    # 2️⃣ PROCESS DATA
-    processed = process_data(raw_data)
+        if not raw_data:
+            logger.warning("No data from crawler")
+            return
 
-    if not processed:
-        logger.warning("Pipeline returned empty data")
-        return
+        # 2️⃣ PROCESS DATA
+        processed = process_data(raw_data)
 
-    # 3️⃣ TOPIC DETECTION
-    topics = detect_topics(processed)
+        if not processed:
+            logger.warning("Pipeline returned empty data")
+            return
 
-    if not topics:
-        logger.warning("No topics detected")
-        return
+        # 3️⃣ TOPIC DETECTION
+        topics = detect_topics(processed)
 
-    # 4️⃣ ANALYTICS
-    analytics = analyse(topics) or {}
+        if not topics:
+            logger.warning("No topics detected")
+            return
 
-    # 5️⃣ SIGNAL DETECTION
-    signals = detect_signals(analytics)
+        # 4️⃣ ANALYTICS
+        analytics = analyse(topics) or {}
 
-    if not signals:
-        logger.info("No signals detected")
-        return
+        # 5️⃣ SIGNAL DETECTION
+        signals = detect_signals(analytics)
 
-    # 6️⃣ SIGNAL RANKING
-    signals = rank_signals(signals)
+        if not signals:
+            logger.info("No signals detected")
+            return
 
-    # 7️⃣ MEMORY FILTER
-    signals = [s for s in signals if not memory_engine.seen_before(s)]
+        # 6️⃣ SIGNAL RANKING
+        signals = rank_signals(signals)
 
-    if not signals:
-        logger.info("Signals filtered by memory engine")
-        return
+        # 7️⃣ MEMORY FILTER
+        signals = [s for s in signals if not memory_engine.seen_before(s)]
 
-    # 8️⃣ MEMORY STORE
-    for s in signals:
-        memory_engine.store(s)
+        if not signals:
+            logger.info("Signals filtered by memory engine")
+            return
 
-    # 9️⃣ INTELLIGENCE GENERATION
-    intelligence = generate_intelligence(signals)
+        # 8️⃣ MEMORY STORE
+        for s in signals:
+            memory_engine.store(s)
 
-    if not intelligence:
-        logger.info("No intelligence generated")
-        return
+        # 9️⃣ INTELLIGENCE GENERATION
+        intelligence = generate_intelligence(signals)
 
-    # 🔟 KNOWLEDGE GRAPH UPDATE
-    update_graph(intelligence)
+        if not intelligence:
+            logger.info("No intelligence generated")
+            return
 
-    # 1️⃣1️⃣ LEARNING ENGINE
-    learn_topics(intelligence)
+        # 🔟 KNOWLEDGE GRAPH UPDATE
+        update_graph(intelligence)
 
-    # 1️⃣2️⃣ TREND FILTER + CONTENT
-    if is_trending(intelligence):
+        # 1️⃣1️⃣ LEARNING ENGINE
+        learn_topics(intelligence)
 
-        generate_content(intelligence)
+        # 1️⃣2️⃣ TREND FILTER + CONTENT
+        if is_trending(intelligence):
 
-        logger.info("Trending content generated")
+            generate_content(intelligence)
 
-    else:
+            logger.info("Trending content generated")
 
-        logger.info("Topic skipped (not trending)")
+        else:
 
-    logger.info("Cycle finished")
+            logger.info("Topic skipped (not trending)")
 
-    # MEMORY CLEANUP
-    gc.collect()
+    except Exception as e:
+
+        logger.error(f"Cycle error: {e}")
+
+    finally:
+
+        gc.collect()
+
+        elapsed = round(time.time() - start_time, 2)
+
+        logger.info(f"Cycle finished in {elapsed}s")
 
 
 def start():
