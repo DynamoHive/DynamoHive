@@ -1,8 +1,7 @@
 import time
 from backend.logger import logger
 
-# --- AI ENGINE IMPORTS ---
-
+# AI ENGINE MODULES
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 from ai_engine.topic_radar import detect_topics
@@ -15,61 +14,57 @@ from ai_engine.knowledge_graph import update_graph
 from ai_engine.topic_learning_engine import learn_topics
 
 
-LOOP_INTERVAL = 600  # seconds
+CYCLE_INTERVAL = 600   # 10 dakika
 
 
-def dynamo_cycle():
+def run_cycle():
 
     logger.info("DynamoHive cycle started")
 
-    # 1️⃣ Crawl sources
+    # 1 CRAWL
     raw_data = crawl()
 
-    # 2️⃣ Process data
-    structured_data = process_data(raw_data)
+    # 2 DATA PIPELINE
+    processed_data = process_data(raw_data)
 
-    # 3️⃣ Detect topics
-    topics = detect_topics(structured_data)
+    # 3 TOPIC DETECTION
+    topics = detect_topics(processed_data)
 
-    # 4️⃣ Analytics
+    # 4 ANALYTICS
     analytics = analyse(topics)
 
-    # 5️⃣ Detect signals
+    # 5 SIGNAL DETECTION
     signals = detect_signals(analytics)
 
-    # 6️⃣ Intelligence layer
+    # 6 INTELLIGENCE
     intelligence = generate_intelligence(signals)
 
-    # 7️⃣ Update knowledge graph
+    # 7 KNOWLEDGE GRAPH
     update_graph(intelligence)
 
-    # 8️⃣ Topic learning
+    # 8 LEARNING
     learn_topics(intelligence)
 
-    # 9️⃣ Generate content
-    content = generate_content(intelligence)
+    # 9 CONTENT
+    generate_content(intelligence)
 
-    logger.info("Cycle finished")
-
-    return content
+    logger.info("Cycle completed")
 
 
-def start_dynamohive():
+def start():
 
-    logger.info("DynamoHive system booting")
+    logger.info("DynamoHive started")
 
     while True:
 
         try:
-
-            dynamo_cycle()
+            run_cycle()
 
         except Exception as e:
-
             logger.error(f"DynamoHive error: {e}")
 
-        time.sleep(LOOP_INTERVAL)
+        time.sleep(CYCLE_INTERVAL)
 
 
 if __name__ == "__main__":
-    start_dynamohive()
+    start()   
