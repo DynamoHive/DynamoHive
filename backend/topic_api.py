@@ -1,6 +1,19 @@
-import sqlite3
+from database.database import get_cursor
 
-conn = sqlite3.connect("database.db", check_same_thread=False)
 
-def get_cursor():
-    return conn.cursor()
+def get_topics():
+
+    cursor = get_cursor()
+
+    cursor.execute(
+        """
+        SELECT topic, COUNT(*) as count
+        FROM posts
+        GROUP BY topic
+        ORDER BY count DESC
+        """
+    )
+
+    topics = cursor.fetchall()
+
+    return topics
