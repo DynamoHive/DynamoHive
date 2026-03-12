@@ -2,16 +2,12 @@ from fastapi import FastAPI
 import os
 import sqlite3
 
-app = FastAPI(
-    title="DynamoHive",
-    version="1.0"
-)
+app = FastAPI(title="DynamoHive", version="1.0")
 
 DB_PATH = "database/dynamohive.db"
 
 
 def init_database():
-
     os.makedirs("database", exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
@@ -31,21 +27,18 @@ def init_database():
 
 @app.on_event("startup")
 def startup():
-
     init_database()
 
 
 @app.get("/")
 def root():
-
     return {
         "platform": "DynamoHive",
-        "status": "running",
-        "mode": "emergency_boot"
+        "status": "running"
     }
 
 
 @app.get("/health")
 def health():
-
     return {"status": "ok"}
+
