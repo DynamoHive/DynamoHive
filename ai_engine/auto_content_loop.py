@@ -1,4 +1,6 @@
 import random
+import json
+from datetime import datetime
 
 
 TEMPLATES = [
@@ -29,12 +31,21 @@ def build_content(topic):
     paragraphs = []
 
     for template in TEMPLATES:
-
         paragraphs.append(template.format(topic=topic))
 
-    content = " ".join(paragraphs)
+    return " ".join(paragraphs)
 
-    return content
+
+
+def save_post(post):
+
+    try:
+
+        with open("generated_posts.json", "a") as f:
+            f.write(json.dumps(post) + "\n")
+
+    except Exception as e:
+        print("save error:", e)
 
 
 
@@ -46,17 +57,19 @@ def generate_content(intelligence):
     topic = intelligence.get("topic", "technology")
 
     title = build_title(topic)
-
     content = build_content(topic)
 
     post = {
 
         "title": title,
         "content": content,
-        "topic": topic
+        "topic": topic,
+        "created_at": datetime.utcnow().isoformat()
 
     }
 
     print("content generated:", title)
+
+    save_post(post)
 
     return post
