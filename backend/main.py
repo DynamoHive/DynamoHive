@@ -16,27 +16,30 @@ templates = Jinja2Templates(directory="backend/templates")
 
 DB_PATH = "database/dynamohive.db"
 
-# basit signal storage
-latest_signals = []
-
 
 def init_database():
 
     os.makedirs("database", exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS system_state (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        status TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
+    try:
 
-    conn.commit()
-    conn.close()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS system_state (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            status TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+
+        conn.commit()
+
+    finally:
+
+        conn.close()
 
 
 def start_orchestrator():
@@ -80,16 +83,32 @@ def home(request: Request):
 @app.get("/health")
 def health():
 
-    return {
-        "status": "ok"
-    }
+    return {"status": "ok"}
 
 
 # SIGNAL FEED
 @app.get("/signals")
 def signals():
 
+    from ai_engine.signal_radar import get_latest_signals
+
+    signals = get_latest_signals()
+
     return {
         "platform": "DynamoHive",
-        "signals": latest_signals
+        "signals": signals
+    }
+
+
+# NEWS FEED
+@app.get("/feed")
+def feed():
+
+    from backend.storage import get_posts
+
+    posts = get_posts()
+
+    return {
+        "platform": "DynamoHive",
+        "feed": posts
     }
