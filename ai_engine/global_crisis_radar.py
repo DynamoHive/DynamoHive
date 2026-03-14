@@ -1,52 +1,59 @@
+from datetime import datetime
+
 CRISIS_KEYWORDS = {
 
-    "war_risk": [
-        "military escalation",
-        "troop mobilization",
-        "airstrike",
-        "missile attack",
-        "border conflict"
-    ],
+    "war": ("military_conflict", 80),
+    "conflict": ("military_conflict", 70),
+    "invasion": ("military_conflict", 90),
 
-    "economic_crisis": [
-        "bank collapse",
-        "inflation surge",
-        "debt crisis",
-        "market crash",
-        "economic collapse"
-    ],
+    "sanction": ("economic_warfare", 65),
+    "trade war": ("economic_warfare", 75),
 
-    "cyber_warfare": [
-        "cyber attack",
-        "critical infrastructure hack",
-        "state hackers",
-        "ransomware attack"
-    ],
+    "energy": ("energy_instability", 60),
+    "oil": ("energy_instability", 65),
+    "gas": ("energy_instability", 65),
 
-    "diplomatic_crisis": [
-        "sanctions escalation",
-        "diplomatic expulsion",
-        "embassy closure",
-        "treaty breakdown"
-    ]
+    "inflation": ("economic_instability", 60),
+    "bank": ("financial_instability", 55),
+
+    "ai": ("technology_competition", 50),
+    "chip": ("technology_competition", 60),
+    "semiconductor": ("technology_competition", 60),
+
+    "supply chain": ("supply_chain_risk", 55)
 }
 
 
-def detect_global_crisis(text):
+def detect_crisis_signals(items):
 
-    text = text.lower()
+    signals = []
 
-    results = {}
+    for item in items:
 
-    for category, keywords in CRISIS_KEYWORDS.items():
+        title = item.get("title", "").lower()
+        content = item.get("content", "").lower()
 
-        score = 0
+        text = title + " " + content
 
-        for k in keywords:
+        for keyword, (category, score) in CRISIS_KEYWORDS.items():
 
-            if k in text:
-                score += 1
+            if keyword in text:
 
-        results[category] = score
+                signal = {
 
-    return results
+                    "title": item.get("title"),
+                    "category": category,
+                    "score": score,
+                    "source": item.get("source"),
+                    "timestamp": datetime.utcnow().timestamp(),
+
+                    # varsayılan koordinatlar (dashboard haritası için)
+                    "lat": 0,
+                    "lon": 0
+                }
+
+                signals.append(signal)
+
+                break
+
+    return signals
