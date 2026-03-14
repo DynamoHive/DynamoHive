@@ -1,6 +1,9 @@
 import feedparser
 import hashlib
 import time
+from datetime import datetime
+
+from ai_engine.signal_radar import radar
 
 
 SOURCES = [
@@ -10,13 +13,22 @@ SOURCES = [
 ]
 
 
-# daha önce görülen içerikler
+KEYWORDS = [
+    "ai",
+    "technology",
+    "chip",
+    "semiconductor",
+    "supply chain",
+    "energy",
+    "war",
+    "conflict"
+]
+
+
 SEEN_HASHES = set()
 
-# RSS cache
 CACHE = {}
 
-# cache süresi (5 dakika)
 CACHE_TTL = 300
 
 
@@ -28,7 +40,6 @@ def get_feed(url):
 
     now = time.time()
 
-    # cache kontrol
     if url in CACHE:
 
         cached_time, cached_feed = CACHE[url]
@@ -41,6 +52,17 @@ def get_feed(url):
     CACHE[url] = (now, feed)
 
     return feed
+
+
+def is_signal(title, summary):
+
+    text = (title + " " + summary).lower()
+
+    for keyword in KEYWORDS:
+        if keyword in text:
+            return True
+
+    return False
 
 
 def crawl():
@@ -60,17 +82,25 @@ def crawl():
 
                 fingerprint = make_hash(title + summary)
 
-                # dedup kontrol
                 if fingerprint in SEEN_HASHES:
                     continue
 
                 SEEN_HASHES.add(fingerprint)
 
-                results.append({
+                if not is_signal(title, summary):
+                    continue
+
+                signal = {
                     "title": title,
-                    "content": summary,
-                    "source": url
-                })
+                    "score": 60,
+                    "lat": 0,
+                    "lon": 0,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+
+                radar.push(signal)
+
+                results.append(signal)
 
         except Exception as e:
 
@@ -79,3 +109,5 @@ def crawl():
     print("crawler collected:", len(results))
 
     return results
+
+
