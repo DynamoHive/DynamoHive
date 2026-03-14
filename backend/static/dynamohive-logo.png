@@ -1,0 +1,2 @@
+app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+3️⃣ index.html içine ekle
