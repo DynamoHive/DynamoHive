@@ -6,8 +6,8 @@ def publish_article(article):
     if not article:
         return False
 
-    title = article.get("title", "")
-    content = article.get("content", "")
+    title = article.get("title")
+    content = article.get("content")
 
     if not title:
         return False
@@ -15,6 +15,7 @@ def publish_article(article):
     conn = get_connection()
     cursor = conn.cursor()
 
+    # tablo yoksa oluştur
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,10 +25,11 @@ def publish_article(article):
         )
     """)
 
-    cursor.execute("""
-        INSERT INTO posts (title, content)
-        VALUES (?, ?)
-    """, (title, content))
+    # post ekle
+    cursor.execute(
+        "INSERT INTO posts (title, content) VALUES (?, ?)",
+        (title, content)
+    )
 
     conn.commit()
     conn.close()
