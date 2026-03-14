@@ -1,6 +1,7 @@
 {
-  "system": "DynamoHive",
-  "mode": "autonomous",
+  "name": "DynamoHive",
   "version": "1.0",
-  "status": "active"
+  "engines": {
+    "python": "3.11"
+  }
 }
