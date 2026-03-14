@@ -9,7 +9,10 @@
 <title>DynamoHive Dashboard</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 
@@ -46,7 +49,7 @@ margin:0;
 
 .container{
 padding:40px;
-max-width:1400px;
+max-width:1500px;
 margin:auto;
 }
 
@@ -68,14 +71,18 @@ margin-top:0;
 }
 
 #map{
-height:350px;
+height:320px;
 border-radius:8px;
 }
 
 #network{
-height:350px;
-border-radius:8px;
+height:320px;
 background:#0B0F19;
+border-radius:8px;
+}
+
+#trendChart{
+height:320px;
 }
 
 .signal{
@@ -114,7 +121,7 @@ margin-top:40px;
 <header>
 
 <h1>DynamoHive Intelligence Dashboard</h1>
-<p>Signals · Narratives · Intelligence Reports</p>
+<p>Signals · Trends · Narratives</p>
 
 </header>
 
@@ -132,6 +139,14 @@ margin-top:40px;
 
 <div class="panel">
 
+<h2>Signal Trend Radar</h2>
+
+<canvas id="trendChart"></canvas>
+
+</div>
+
+<div class="panel">
+
 <h2>Narrative Network</h2>
 
 <div id="network"></div>
@@ -140,7 +155,7 @@ margin-top:40px;
 
 <div class="panel">
 
-<h2>Signal Feed</h2>
+<h2>Top Ranked Signals</h2>
 
 <div id="signal-list">Loading signals...</div>
 
@@ -150,9 +165,7 @@ margin-top:40px;
 
 <h2>AI Intelligence Reports</h2>
 
-<div id="report-list">
-Loading intelligence analysis...
-</div>
+<div id="report-list">Loading analysis...</div>
 
 </div>
 
@@ -185,7 +198,11 @@ const res = await fetch("/signals");
 const data = await res.json();
 
 const container = document.getElementById("signal-list");
+
 container.innerHTML="";
+
+const labels=[];
+const values=[];
 
 (data.signals || []).forEach((signal,i)=>{
 
@@ -194,6 +211,10 @@ div.className="signal";
 div.innerText=signal.title || JSON.stringify(signal);
 
 container.appendChild(div);
+
+labels.push(signal.title || "signal");
+
+values.push(signal.score || Math.floor(Math.random()*100));
 
 const lat = signal.lat || (Math.random()*140-70);
 const lon = signal.lon || (Math.random()*360-180);
@@ -204,6 +225,32 @@ L.marker([lat,lon])
 
 });
 
+createTrendChart(labels,values);
+
+}
+
+function createTrendChart(labels,values){
+
+const ctx=document.getElementById("trendChart");
+
+new Chart(ctx,{
+type:"radar",
+data:{
+labels:labels,
+datasets:[{
+label:"Signal Strength",
+data:values,
+backgroundColor:"rgba(0,240,255,0.3)",
+borderColor:"#00F0FF"
+}]
+},
+options:{
+plugins:{
+legend:{display:false}
+}
+}
+});
+
 }
 
 async function loadReports(){
@@ -211,7 +258,8 @@ async function loadReports(){
 const res = await fetch("/feed");
 const data = await res.json();
 
-const container = document.getElementById("report-list");
+const container=document.getElementById("report-list");
+
 container.innerHTML="";
 
 (data.feed || []).forEach(post=>{
@@ -219,7 +267,7 @@ container.innerHTML="";
 const div=document.createElement("div");
 div.className="report";
 
-div.innerText = post.title || JSON.stringify(post);
+div.innerText=post.title || JSON.stringify(post);
 
 container.appendChild(div);
 
@@ -234,7 +282,7 @@ loadReports();
 
 <script>
 
-const nodes = new vis.DataSet([
+const nodes=new vis.DataSet([
 {id:1,label:"State Media"},
 {id:2,label:"Telegram Network"},
 {id:3,label:"Influencer Cluster"},
@@ -242,28 +290,20 @@ const nodes = new vis.DataSet([
 {id:5,label:"Global Audience"}
 ]);
 
-const edges = new vis.DataSet([
+const edges=new vis.DataSet([
 {from:1,to:4},
 {from:2,to:4},
 {from:3,to:4},
 {from:4,to:5}
 ]);
 
-const container = document.getElementById("network");
+const container=document.getElementById("network");
 
-const data = {
-nodes:nodes,
-edges:edges
-};
+const data={nodes:nodes,edges:edges};
 
-const options = {
-nodes:{
-color:"#00F0FF",
-font:{color:"white"}
-},
-edges:{
-color:"#00FF9C"
-}
+const options={
+nodes:{color:"#00F0FF",font:{color:"white"}},
+edges:{color:"#00FF9C"}
 };
 
 new vis.Network(container,data,options);
