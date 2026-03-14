@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 import os
 import sqlite3
@@ -11,14 +12,17 @@ app = FastAPI(
     version="1.0"
 )
 
-# Templates directory
+# Templates
 templates = Jinja2Templates(directory="backend/templates")
+
+# Static files (logo, css, js)
+os.makedirs("backend/static", exist_ok=True)
+app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 
 DB_PATH = "database/dynamohive.db"
 
 
 def init_database():
-
     os.makedirs("database", exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
@@ -41,7 +45,6 @@ def init_database():
 
 
 def start_orchestrator():
-
     try:
         from backend.orchestrator import start
 
@@ -90,6 +93,30 @@ def dashboard(request: Request):
 
 
 # -------------------------------
+# FEED PAGE
+# -------------------------------
+@app.get("/feed", response_class=HTMLResponse)
+def feed_page(request: Request):
+
+    return templates.TemplateResponse(
+        "feed.html",
+        {"request": request}
+    )
+
+
+# -------------------------------
+# ABOUT PAGE
+# -------------------------------
+@app.get("/about", response_class=HTMLResponse)
+def about(request: Request):
+
+    return templates.TemplateResponse(
+        "about.html",
+        {"request": request}
+    )
+
+
+# -------------------------------
 # HEALTH CHECK
 # -------------------------------
 @app.get("/health")
@@ -99,7 +126,7 @@ def health():
 
 
 # -------------------------------
-# SIGNAL FEED
+# SIGNAL API
 # -------------------------------
 @app.get("/signals")
 def signals():
@@ -115,10 +142,10 @@ def signals():
 
 
 # -------------------------------
-# NEWS FEED
+# NEWS FEED API
 # -------------------------------
-@app.get("/feed")
-def feed():
+@app.get("/api/feed")
+def feed_api():
 
     from backend.storage import get_posts
 
