@@ -1,8 +1,13 @@
-from database.database import get_connection
+import sqlite3
+
+DB_PATH = "database/dynamohive.db"
 
 
-def init_posts_table():
-    conn = get_connection()
+def get_posts():
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -14,42 +19,12 @@ def init_posts_table():
         )
     """)
 
-    conn.commit()
-    conn.close()
-
-
-def save_post(title: str, content: str):
-    if not title:
-        return False
-
-    init_posts_table()
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "INSERT INTO posts (title, content) VALUES (?, ?)",
-        (title, content or "")
-    )
-
-    conn.commit()
-    conn.close()
-
-    return True
-
-
-def get_posts(limit: int = 50):
-    init_posts_table()
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
     cursor.execute("""
         SELECT id, title, content, created_at
         FROM posts
         ORDER BY created_at DESC
-        LIMIT ?
-    """, (limit,))
+        LIMIT 50
+    """)
 
     rows = cursor.fetchall()
     conn.close()
@@ -65,4 +40,3 @@ def get_posts(limit: int = 50):
         })
 
     return posts
-    
