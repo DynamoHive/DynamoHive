@@ -6,13 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>DynamoHive Dashboard</title>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>DynamoHive</title>
 
 <style>
 
@@ -21,12 +15,12 @@ background:#0B0F19;
 color:white;
 font-family:Arial, Helvetica, sans-serif;
 margin:0;
+text-align:center;
 }
 
 nav{
 background:#05080F;
 padding:15px;
-text-align:center;
 }
 
 nav a{
@@ -36,72 +30,38 @@ text-decoration:none;
 font-size:14px;
 }
 
-header{
-padding:40px;
-text-align:center;
-border-bottom:1px solid #1f2937;
+.hero{
+padding:120px 20px;
 }
 
-h1{
-color:#00F0FF;
-margin:0;
+.logo{
+font-size:64px;
+color:#D4AF37;
+margin-bottom:20px;
 }
 
-.container{
-padding:40px;
-max-width:1500px;
+.slogan{
+font-size:28px;
+color:white;
+margin-bottom:20px;
+}
+
+.tagline{
+font-size:20px;
+color:#9fb3c8;
+max-width:700px;
 margin:auto;
 }
 
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(450px,1fr));
-gap:25px;
-}
-
-.panel{
-background:#111827;
-padding:25px;
-border-radius:10px;
-}
-
-.panel h2{
-color:#00FF9C;
-margin-top:0;
-}
-
-#map{
-height:320px;
-border-radius:8px;
-}
-
-#network{
-height:320px;
-background:#0B0F19;
-border-radius:8px;
-}
-
-#trendChart{
-height:320px;
-}
-
-.signal{
-padding:10px 0;
-border-bottom:1px solid #1f2937;
-}
-
-.report{
-padding:10px 0;
-border-bottom:1px solid #1f2937;
-color:#9fb3c8;
-}
-
-footer{
-padding:30px;
-text-align:center;
-color:#777;
-border-top:1px solid #1f2937;
+.button{
+display:inline-block;
 margin-top:40px;
+padding:16px 32px;
+background:#00F0FF;
+color:black;
+text-decoration:none;
+border-radius:6px;
+font-weight:bold;
 }
 
 </style>
@@ -111,204 +71,38 @@ margin-top:40px;
 <body>
 
 <nav>
+
 <a href="/">Home</a>
 <a href="/dashboard">Dashboard</a>
 <a href="/feed">Feed</a>
 <a href="/signals">Signals</a>
 <a href="/about">About</a>
+
 </nav>
 
-<header>
+<section class="hero">
 
-<h1>DynamoHive Intelligence Dashboard</h1>
-<p>Signals · Trends · Narratives</p>
+<div class="logo">
+DynamoHive
+</div>
 
-</header>
+<div class="slogan">
+Detecting the moments before they change the world
+</div>
 
-<div class="container">
+<div class="tagline">
 
-<div class="grid">
-
-<div class="panel">
-
-<h2>Global Signal Map</h2>
-
-<div id="map"></div>
+DynamoHive is an autonomous intelligence platform detecting weak signals,
+mapping global narratives and generating strategic analysis from global data streams.
 
 </div>
 
-<div class="panel">
+<a class="button" href="/dashboard">
+Enter Intelligence Dashboard
+</a>
 
-<h2>Signal Trend Radar</h2>
-
-<canvas id="trendChart"></canvas>
-
-</div>
-
-<div class="panel">
-
-<h2>Narrative Network</h2>
-
-<div id="network"></div>
-
-</div>
-
-<div class="panel">
-
-<h2>Top Ranked Signals</h2>
-
-<div id="signal-list">Loading signals...</div>
-
-</div>
-
-<div class="panel">
-
-<h2>AI Intelligence Reports</h2>
-
-<div id="report-list">Loading analysis...</div>
-
-</div>
-
-</div>
-
-</div>
-
-<footer>
-
-DynamoHive Intelligence System
-
-</footer>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<script>
-
-const map = L.map('map').setView([20,0],2);
-
-L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-maxZoom:5
-}
-).addTo(map);
-
-async function loadSignals(){
-
-const res = await fetch("/signals");
-const data = await res.json();
-
-const container = document.getElementById("signal-list");
-
-container.innerHTML="";
-
-const labels=[];
-const values=[];
-
-(data.signals || []).forEach((signal,i)=>{
-
-const div=document.createElement("div");
-div.className="signal";
-div.innerText=signal.title || JSON.stringify(signal);
-
-container.appendChild(div);
-
-labels.push(signal.title || "signal");
-
-values.push(signal.score || Math.floor(Math.random()*100));
-
-const lat = signal.lat || (Math.random()*140-70);
-const lon = signal.lon || (Math.random()*360-180);
-
-L.marker([lat,lon])
-.addTo(map)
-.bindPopup(signal.title || "Signal");
-
-});
-
-createTrendChart(labels,values);
-
-}
-
-function createTrendChart(labels,values){
-
-const ctx=document.getElementById("trendChart");
-
-new Chart(ctx,{
-type:"radar",
-data:{
-labels:labels,
-datasets:[{
-label:"Signal Strength",
-data:values,
-backgroundColor:"rgba(0,240,255,0.3)",
-borderColor:"#00F0FF"
-}]
-},
-options:{
-plugins:{
-legend:{display:false}
-}
-}
-});
-
-}
-
-async function loadReports(){
-
-const res = await fetch("/feed");
-const data = await res.json();
-
-const container=document.getElementById("report-list");
-
-container.innerHTML="";
-
-(data.feed || []).forEach(post=>{
-
-const div=document.createElement("div");
-div.className="report";
-
-div.innerText=post.title || JSON.stringify(post);
-
-container.appendChild(div);
-
-});
-
-}
-
-loadSignals();
-loadReports();
-
-</script>
-
-<script>
-
-const nodes=new vis.DataSet([
-{id:1,label:"State Media"},
-{id:2,label:"Telegram Network"},
-{id:3,label:"Influencer Cluster"},
-{id:4,label:"Political Narrative"},
-{id:5,label:"Global Audience"}
-]);
-
-const edges=new vis.DataSet([
-{from:1,to:4},
-{from:2,to:4},
-{from:3,to:4},
-{from:4,to:5}
-]);
-
-const container=document.getElementById("network");
-
-const data={nodes:nodes,edges:edges};
-
-const options={
-nodes:{color:"#00F0FF",font:{color:"white"}},
-edges:{color:"#00FF9C"}
-};
-
-new vis.Network(container,data,options);
-
-</script>
+</section>
 
 </body>
+
 </html>
