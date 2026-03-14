@@ -29,14 +29,3 @@ def get_posts():
     conn.close()
 
     return [dict(row) for row in rows]
-Sonra main.py içinde şu import olmalı
-from backend.storage import get_posts
-
-ve endpoint:
-
-@app.get("/api/feed")
-def feed_api():
-    return {
-        "platform": "DynamoHive",
-        "feed": get_posts()
-    }
