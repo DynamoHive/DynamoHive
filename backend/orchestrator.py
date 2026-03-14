@@ -22,20 +22,18 @@ from newsroom.article_engine import generate_article
 from newsroom.publish_engine import publish_article
 
 
-CYCLE_INTERVAL = 600
+# -------- AYARLAR --------
+CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 MAX_WORKERS = 4
 
 memory_engine = MemoryPatternEngine()
 
 
-# ---------------------------------
-# PARALLEL CRAWL
-# ---------------------------------
+# -------- PARALLEL CRAWL --------
 def parallel_crawl():
 
     try:
-
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             future = executor.submit(crawl)
             data = future.result()
@@ -43,14 +41,11 @@ def parallel_crawl():
         return data or []
 
     except Exception as e:
-
         logger.error(f"Crawl failed: {e}")
         return []
 
 
-# ---------------------------------
-# NEWSROOM PIPELINE
-# ---------------------------------
+# -------- NEWSROOM PIPELINE --------
 def newsroom_pipeline(intel):
 
     try:
@@ -70,14 +65,11 @@ def newsroom_pipeline(intel):
         return True
 
     except Exception as e:
-
         logger.warning(f"Newsroom error: {e}")
         return False
 
 
-# ---------------------------------
-# MAIN CYCLE
-# ---------------------------------
+# -------- MAIN CYCLE --------
 def run_cycle():
 
     start_time = time.time()
@@ -135,13 +127,11 @@ def run_cycle():
         if not isinstance(intelligence, list):
             intelligence = [intelligence]
 
-        # Knowledge Graph update
         try:
             update_graph(intelligence)
         except Exception as e:
             logger.warning(f"Graph update failed: {e}")
 
-        # Topic learning
         try:
             learn_topics(intelligence)
         except Exception as e:
@@ -157,7 +147,6 @@ def run_cycle():
         logger.info(f"Articles published: {published}")
 
     except Exception as e:
-
         logger.error(f"Cycle error: {e}")
 
     finally:
@@ -169,9 +158,7 @@ def run_cycle():
         logger.info(f"Cycle finished in {elapsed}s")
 
 
-# ---------------------------------
-# SYSTEM START
-# ---------------------------------
+# -------- SYSTEM START --------
 def start():
 
     logger.info("DynamoHive system started")
@@ -189,4 +176,4 @@ def start():
             logger.error(f"System error: {e}")
 
             time.sleep(ERROR_SLEEP)
-          
+Özet
