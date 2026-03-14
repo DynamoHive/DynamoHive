@@ -1,6 +1,0 @@
-{
-  "project": "DynamoHive",
-  "environment": "production",
-  "runtime": "python3.11",
-  "service": "backend"
-}
