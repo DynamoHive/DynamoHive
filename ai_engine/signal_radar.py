@@ -7,18 +7,50 @@ class SignalRadar:
         self.signals = deque(maxlen=size)
 
     def push(self, signal):
-        if not isinstance(signal, dict) or "title" not in signal:
-            raise ValueError("Signal must be a dictionary with at least a 'title' key")
 
-        signal_entry = {
-            "signal": signal,
+        entry = {
+            "title": signal.get("title", "Unknown signal"),
+            "score": signal.get("score", 50),
+            "lat": signal.get("lat", 0),
+            "lon": signal.get("lon", 0),
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
-        self.signals.append(signal_entry)
+        self.signals.append(entry)
 
     def latest(self, n=10):
         return list(self.signals)[-n:]
 
     def all(self):
         return list(self.signals)
+
+
+radar = SignalRadar()
+
+
+def get_latest_signals():
+
+    if not radar.signals:
+
+        radar.push({
+            "title": "Energy Market Instability",
+            "score": 82,
+            "lat": 48,
+            "lon": 16
+        })
+
+        radar.push({
+            "title": "AI Strategic Competition",
+            "score": 71,
+            "lat": 37,
+            "lon": -122
+        })
+
+        radar.push({
+            "title": "Supply Chain Stress",
+            "score": 64,
+            "lat": 31,
+            "lon": 121
+        })
+
+    return radar.latest(10)
