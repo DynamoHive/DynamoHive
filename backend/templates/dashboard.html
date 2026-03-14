@@ -1,6 +1,168 @@
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request):
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request}
-    )
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DynamoHive Dashboard</title>
+
+<style>
+body{
+background:#0B0F19;
+color:white;
+font-family:Arial, Helvetica, sans-serif;
+margin:0;
+}
+
+nav{
+background:#05080F;
+padding:15px;
+text-align:center;
+}
+
+nav a{
+color:#00F0FF;
+margin:0 15px;
+text-decoration:none;
+font-size:14px;
+}
+
+header{
+padding:40px;
+text-align:center;
+border-bottom:1px solid #1f2937;
+}
+
+h1{
+color:#00F0FF;
+margin:0;
+}
+
+.container{
+padding:40px;
+max-width:1200px;
+margin:auto;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+gap:25px;
+}
+
+.panel{
+background:#111827;
+padding:25px;
+border-radius:10px;
+}
+
+.panel h2{
+color:#00FF9C;
+margin-top:0;
+}
+
+.signal{
+padding:10px 0;
+border-bottom:1px solid #1f2937;
+}
+
+.signal:last-child{
+border-bottom:none;
+}
+
+footer{
+padding:30px;
+text-align:center;
+color:#777;
+border-top:1px solid #1f2937;
+margin-top:40px;
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+<a href="/">Home</a>
+<a href="/dashboard">Dashboard</a>
+<a href="/feed">Feed</a>
+<a href="/signals">Signals</a>
+<a href="/about">About</a>
+</nav>
+
+<header>
+<h1>DynamoHive Intelligence Dashboard</h1>
+<p>Real-time global intelligence signals</p>
+</header>
+
+<div class="container">
+
+<div class="grid">
+
+<div class="panel">
+<h2>Global Signal Radar</h2>
+<div id="signal-list">Loading signals...</div>
+</div>
+
+<div class="panel">
+<h2>Narrative Warfare Monitor</h2>
+<div class="signal">Narrative analysis active</div>
+<div class="signal">Propaganda detection running</div>
+<div class="signal">Influence network monitoring</div>
+</div>
+
+<div class="panel">
+<h2>Intelligence Feed</h2>
+<div id="feed-list">Loading intelligence feed...</div>
+</div>
+
+<div class="panel">
+<h2>Crisis Radar</h2>
+<div class="signal">Scanning geopolitical instability</div>
+<div class="signal">Economic stress indicators</div>
+<div class="signal">Conflict escalation signals</div>
+</div>
+
+</div>
+
+</div>
+
+<footer>
+DynamoHive Intelligence System
+</footer>
+
+<script>
+
+async function loadSignals(){
+    const res = await fetch("/signals");
+    const data = await res.json();
+    const container = document.getElementById("signal-list");
+    container.innerHTML = "";
+    data.signals.forEach(signal => {
+        const div = document.createElement("div");
+        div.className = "signal";
+        div.innerText = signal.title || JSON.stringify(signal);
+        container.appendChild(div);
+    });
+}
+
+async function loadFeed(){
+    const res = await fetch("/feed");
+    const data = await res.json();
+    const container = document.getElementById("feed-list");
+    container.innerHTML = "";
+    data.feed.forEach(post => {
+        const div = document.createElement("div");
+        div.className = "signal";
+        div.innerText = post.title || JSON.stringify(post);
+        container.appendChild(div);
+    });
+}
+
+loadSignals();
+loadFeed();
+
+</script>
+
+</body>
+</html>
