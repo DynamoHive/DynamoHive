@@ -1,7 +1,5 @@
 {
-  "name": "DynamoHive",
+  "project": "DynamoHive",
   "version": "1.0",
-  "engines": {
-    "python": "3.11"
-  }
+  "runtime": "python3.11"
 }
