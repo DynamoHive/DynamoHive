@@ -8,7 +8,7 @@
 
 <title>DynamoHive Dashboard</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
 
@@ -51,7 +51,7 @@ margin:auto;
 
 .grid{
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+grid-template-columns:repeat(auto-fit,minmax(500px,1fr));
 gap:25px;
 }
 
@@ -71,13 +71,8 @@ padding:10px 0;
 border-bottom:1px solid #1f2937;
 }
 
-.signal:last-child{
-border-bottom:none;
-}
-
-canvas{
-background:#0B0F19;
-padding:10px;
+#map{
+height:400px;
 border-radius:8px;
 }
 
@@ -96,19 +91,17 @@ margin-top:40px;
 <body>
 
 <nav>
-
 <a href="/">Home</a>
 <a href="/dashboard">Dashboard</a>
 <a href="/feed">Feed</a>
 <a href="/signals">Signals</a>
 <a href="/about">About</a>
-
 </nav>
 
 <header>
 
 <h1>DynamoHive Intelligence Dashboard</h1>
-<p>Real-time global intelligence signals</p>
+<p>Global Signal Monitoring</p>
 
 </header>
 
@@ -118,37 +111,19 @@ margin-top:40px;
 
 <div class="panel">
 
-<h2>Global Signal Radar</h2>
+<h2>Global Signal Map</h2>
 
-<canvas id="signalChart"></canvas>
-
-</div>
-
-<div class="panel">
-
-<h2>Narrative Warfare Monitor</h2>
-
-<div class="signal">Narrative analysis active</div>
-<div class="signal">Propaganda detection running</div>
-<div class="signal">Influence network monitoring</div>
+<div id="map"></div>
 
 </div>
 
 <div class="panel">
 
-<h2>Intelligence Feed</h2>
+<h2>Signal Feed</h2>
 
-<div id="feed-list">Loading feed...</div>
-
+<div id="signal-list">
+Loading signals...
 </div>
-
-<div class="panel">
-
-<h2>Crisis Radar</h2>
-
-<div class="signal">Scanning geopolitical instability</div>
-<div class="signal">Economic stress indicators</div>
-<div class="signal">Conflict escalation signals</div>
 
 </div>
 
@@ -162,73 +137,49 @@ DynamoHive Intelligence System
 
 </footer>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
+
+const map = L.map('map').setView([20,0],2);
+
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom:5
+}
+).addTo(map);
 
 async function loadSignals(){
 
-    const res = await fetch("/signals");
-    const data = await res.json();
+const res = await fetch("/signals");
+const data = await res.json();
 
-    const signals = data.signals || [];
+const container = document.getElementById("signal-list");
+container.innerHTML="";
 
-    const labels = [];
-    const values = [];
+(data.signals || []).forEach((signal,i)=>{
 
-    signals.forEach((s,i)=>{
+const div=document.createElement("div");
+div.className="signal";
+div.innerText=signal.title || JSON.stringify(signal);
 
-        labels.push(s.title || "signal "+i);
-        values.push(s.score || Math.floor(Math.random()*100));
+container.appendChild(div);
 
-    });
+const lat = signal.lat || (Math.random()*140-70);
+const lon = signal.lon || (Math.random()*360-180);
 
-    const ctx = document.getElementById("signalChart").getContext("2d");
+L.marker([lat,lon])
+.addTo(map)
+.bindPopup(signal.title || "Signal");
 
-    new Chart(ctx,{
-        type:"bar",
-        data:{
-            labels:labels,
-            datasets:[{
-                label:"Signal Strength",
-                data:values,
-                backgroundColor:"#00F0FF"
-            }]
-        },
-        options:{
-            responsive:true,
-            plugins:{
-                legend:{display:false}
-            }
-        }
-    });
-
-}
-
-async function loadFeed(){
-
-    const res = await fetch("/feed");
-    const data = await res.json();
-
-    const container = document.getElementById("feed-list");
-
-    container.innerHTML="";
-
-    data.feed.forEach(post=>{
-
-        const div=document.createElement("div");
-        div.className="signal";
-        div.innerText=post.title || JSON.stringify(post);
-
-        container.appendChild(div);
-
-    });
+});
 
 }
 
 loadSignals();
-loadFeed();
 
 </script>
 
 </body>
-
 </html>
