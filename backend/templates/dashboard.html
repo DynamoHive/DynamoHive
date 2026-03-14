@@ -2,11 +2,16 @@
 <html lang="en">
 
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>DynamoHive Dashboard</title>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
+
 body{
 background:#0B0F19;
 color:white;
@@ -70,6 +75,12 @@ border-bottom:1px solid #1f2937;
 border-bottom:none;
 }
 
+canvas{
+background:#0B0F19;
+padding:10px;
+border-radius:8px;
+}
+
 footer{
 padding:30px;
 text-align:center;
@@ -77,22 +88,28 @@ color:#777;
 border-top:1px solid #1f2937;
 margin-top:40px;
 }
+
 </style>
+
 </head>
 
 <body>
 
 <nav>
+
 <a href="/">Home</a>
 <a href="/dashboard">Dashboard</a>
 <a href="/feed">Feed</a>
 <a href="/signals">Signals</a>
 <a href="/about">About</a>
+
 </nav>
 
 <header>
+
 <h1>DynamoHive Intelligence Dashboard</h1>
 <p>Real-time global intelligence signals</p>
+
 </header>
 
 <div class="container">
@@ -100,27 +117,39 @@ margin-top:40px;
 <div class="grid">
 
 <div class="panel">
+
 <h2>Global Signal Radar</h2>
-<div id="signal-list">Loading signals...</div>
+
+<canvas id="signalChart"></canvas>
+
 </div>
 
 <div class="panel">
+
 <h2>Narrative Warfare Monitor</h2>
+
 <div class="signal">Narrative analysis active</div>
 <div class="signal">Propaganda detection running</div>
 <div class="signal">Influence network monitoring</div>
+
 </div>
 
 <div class="panel">
+
 <h2>Intelligence Feed</h2>
-<div id="feed-list">Loading intelligence feed...</div>
+
+<div id="feed-list">Loading feed...</div>
+
 </div>
 
 <div class="panel">
+
 <h2>Crisis Radar</h2>
+
 <div class="signal">Scanning geopolitical instability</div>
 <div class="signal">Economic stress indicators</div>
 <div class="signal">Conflict escalation signals</div>
+
 </div>
 
 </div>
@@ -128,35 +157,71 @@ margin-top:40px;
 </div>
 
 <footer>
+
 DynamoHive Intelligence System
+
 </footer>
 
 <script>
 
 async function loadSignals(){
+
     const res = await fetch("/signals");
     const data = await res.json();
-    const container = document.getElementById("signal-list");
-    container.innerHTML = "";
-    data.signals.forEach(signal => {
-        const div = document.createElement("div");
-        div.className = "signal";
-        div.innerText = signal.title || JSON.stringify(signal);
-        container.appendChild(div);
+
+    const signals = data.signals || [];
+
+    const labels = [];
+    const values = [];
+
+    signals.forEach((s,i)=>{
+
+        labels.push(s.title || "signal "+i);
+        values.push(s.score || Math.floor(Math.random()*100));
+
     });
+
+    const ctx = document.getElementById("signalChart").getContext("2d");
+
+    new Chart(ctx,{
+        type:"bar",
+        data:{
+            labels:labels,
+            datasets:[{
+                label:"Signal Strength",
+                data:values,
+                backgroundColor:"#00F0FF"
+            }]
+        },
+        options:{
+            responsive:true,
+            plugins:{
+                legend:{display:false}
+            }
+        }
+    });
+
 }
 
 async function loadFeed(){
+
     const res = await fetch("/feed");
     const data = await res.json();
+
     const container = document.getElementById("feed-list");
-    container.innerHTML = "";
-    data.feed.forEach(post => {
-        const div = document.createElement("div");
-        div.className = "signal";
-        div.innerText = post.title || JSON.stringify(post);
+
+    container.innerHTML="";
+
+    data.feed.forEach(post=>{
+
+        const div=document.createElement("div");
+        div.className="signal";
+        div.innerText=post.title || JSON.stringify(post);
+
         container.appendChild(div);
+
     });
+
 }
 
 loadSignals();
@@ -165,4 +230,5 @@ loadFeed();
 </script>
 
 </body>
+
 </html>
