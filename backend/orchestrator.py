@@ -93,33 +93,49 @@ def run_cycle():
             logger.info("No intelligence generated")
             return
 
+        # intelligence tek obje döndürürse listeye çevir
+        if not isinstance(intelligence, list):
+            intelligence = [intelligence]
+
         # 9️⃣ Knowledge graph update
         try:
             update_graph(intelligence)
         except Exception as e:
             logger.warning(f"Knowledge graph update failed: {e}")
 
-        # 10️⃣ Topic learning
+        # 🔟 Topic learning
         try:
             learn_topics(intelligence)
         except Exception as e:
             logger.warning(f"Topic learning failed: {e}")
 
-        # 11️⃣ Trend filter
-        if not is_trending(intelligence):
-            logger.info("Topic skipped (not trending)")
-            return
+        # 11️⃣ Newsroom pipeline
+        published_count = 0
 
-        # 12️⃣ Newsroom pipeline
-        story = build_story(intelligence)
+        for intel in intelligence:
 
-        story = apply_editorial(story)
+            try:
 
-        article = generate_article(story)
+                if not is_trending(intel):
+                    logger.info("Signal skipped (not trending)")
+                    continue
 
-        publish_article(article)
+                story = build_story(intel)
 
-        logger.info("Intelligence article published")
+                story = apply_editorial(story)
+
+                article = generate_article(story)
+
+                publish_article(article)
+
+                published_count += 1
+
+                logger.info("Intelligence article published")
+
+            except Exception as e:
+                logger.warning(f"Newsroom pipeline failed: {e}")
+
+        logger.info(f"Articles published this cycle: {published_count}")
 
     except Exception as e:
 
