@@ -10,6 +10,8 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
 <style>
 
 body{
@@ -45,13 +47,13 @@ margin:0;
 
 .container{
 padding:40px;
-max-width:1200px;
+max-width:1400px;
 margin:auto;
 }
 
 .grid{
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(500px,1fr));
+grid-template-columns:repeat(auto-fit,minmax(450px,1fr));
 gap:25px;
 }
 
@@ -66,14 +68,20 @@ color:#00FF9C;
 margin-top:0;
 }
 
+#map{
+height:350px;
+border-radius:8px;
+}
+
+#network{
+height:350px;
+border-radius:8px;
+background:#0B0F19;
+}
+
 .signal{
 padding:10px 0;
 border-bottom:1px solid #1f2937;
-}
-
-#map{
-height:400px;
-border-radius:8px;
 }
 
 footer{
@@ -101,7 +109,7 @@ margin-top:40px;
 <header>
 
 <h1>DynamoHive Intelligence Dashboard</h1>
-<p>Global Signal Monitoring</p>
+<p>Signals · Narratives · Global Monitoring</p>
 
 </header>
 
@@ -119,11 +127,17 @@ margin-top:40px;
 
 <div class="panel">
 
+<h2>Narrative Network</h2>
+
+<div id="network"></div>
+
+</div>
+
+<div class="panel">
+
 <h2>Signal Feed</h2>
 
-<div id="signal-list">
-Loading signals...
-</div>
+<div id="signal-list">Loading signals...</div>
 
 </div>
 
@@ -178,6 +192,47 @@ L.marker([lat,lon])
 }
 
 loadSignals();
+
+</script>
+
+<script>
+
+const nodes = new vis.DataSet([
+{id:1,label:"State Media"},
+{id:2,label:"Telegram Network"},
+{id:3,label:"Influencer Cluster"},
+{id:4,label:"Political Narrative"},
+{id:5,label:"Global Audience"}
+]);
+
+const edges = new vis.DataSet([
+{from:1,to:4},
+{from:2,to:4},
+{from:3,to:4},
+{from:4,to:5}
+]);
+
+const container = document.getElementById("network");
+
+const data = {
+nodes:nodes,
+edges:edges
+};
+
+const options = {
+nodes:{
+color:"#00F0FF",
+font:{color:"white"}
+},
+edges:{
+color:"#00FF9C"
+},
+physics:{
+enabled:true
+}
+};
+
+new vis.Network(container,data,options);
 
 </script>
 
