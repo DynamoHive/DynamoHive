@@ -1,18 +1,35 @@
-# backend/newsroom/publish_engine.py
-
-from backend.storage import save_post
+from database.database import get_connection
 
 
-def publish(article):
+def publish_article(article):
 
     if not article:
-        return None
+        return False
 
-    post = {
-        "title": "DynamoHive Intelligence",
-        "content": article
-    }
+    title = article.get("title", "")
+    content = article.get("content", "")
 
-    save_post(post)
+    if not title:
+        return False
 
-    return post
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            content TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        INSERT INTO posts (title, content)
+        VALUES (?, ?)
+    """, (title, content))
+
+    conn.commit()
+    conn.close()
+
+    return True
