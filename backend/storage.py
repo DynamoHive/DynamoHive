@@ -1,30 +1,39 @@
-import os
-import psycopg2
+import sqlite3
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-conn = None
+DB_PATH = "database/dynamohive.db"
 
 
-def connect():
+def get_posts():
 
-    global conn
+    conn = sqlite3.connect(DB_PATH)
 
-    if conn is None:
-        conn = psycopg2.connect(DATABASE_URL)
+    conn.row_factory = sqlite3.Row
 
-    return conn
+    cursor = conn.cursor()
 
-
-def save_article(title, content):
-
-    c = connect().cursor()
-
-    c.execute(
-        "INSERT INTO articles (title, content) VALUES (%s, %s)",
-        (title, content)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        content TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
+    """)
 
-    connect().commit()
+    cursor.execute("SELECT * FROM posts ORDER BY created_at DESC LIMIT 50")
 
-    c.close()
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    posts = []
+
+    for r in rows:
+        posts.append({
+            "id": r["id"],
+            "title": r["title"],
+            "content": r["content"],
+            "created_at": r["created_at"]
+        })
+
+    return posts
