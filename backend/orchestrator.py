@@ -4,17 +4,17 @@ from concurrent.futures import ThreadPoolExecutor
 
 from backend.logger import logger
 
-from ai_engine.multi_crawler import crawl
-from ai_engine.data_pipeline import process_data
-from ai_engine.topic_radar import detect_topics
-from ai_engine.analytics_engine import analyse
-from ai_engine.signal_detector import detect_signals
-from ai_engine.global_intelligence_engine import generate_intelligence
-from ai_engine.knowledge_graph import update_graph
-from ai_engine.topic_learning_engine import learn_topics
-from ai_engine.trend_scoring_engine import is_trending
-from ai_engine.signal_ranking_engine import rank_signals
-from ai_engine.memory_pattern_engine import MemoryPatternEngine
+from backend.ai_engine.multi_crawler import crawl
+from backend.ai_engine.data_pipeline import process_data
+from backend.ai_engine.topic_radar import detect_topics
+from backend.ai_engine.analytics_engine import analyse
+from backend.ai_engine.signal_detector import detect_signals
+from backend.ai_engine.global_intelligence_engine import generate_intelligence
+from backend.ai_engine.knowledge_graph import update_graph
+from backend.ai_engine.topic_learning_engine import learn_topics
+from backend.ai_engine.trend_scoring_engine import is_trending
+from backend.ai_engine.signal_ranking_engine import rank_signals
+from backend.ai_engine.memory_pattern_engine import MemoryPatternEngine
 
 from backend.newsroom.story_engine import build_story
 from backend.newsroom.editorial_engine import apply_editorial
@@ -22,7 +22,6 @@ from backend.newsroom.article_engine import generate_article
 from backend.newsroom.publish_engine import publish_article
 
 
-# SETTINGS
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 MAX_WORKERS = 4
