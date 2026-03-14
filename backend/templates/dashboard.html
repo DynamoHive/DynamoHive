@@ -5,7 +5,6 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>DynamoHive</title>
 
 <style>
@@ -32,6 +31,8 @@ font-size:14px;
 
 .hero{
 padding:120px 20px;
+max-width:900px;
+margin:auto;
 }
 
 .logo{
@@ -42,12 +43,11 @@ margin-bottom:20px;
 
 .slogan{
 font-size:28px;
-color:white;
 margin-bottom:20px;
 }
 
 .tagline{
-font-size:20px;
+font-size:18px;
 color:#9fb3c8;
 max-width:700px;
 margin:auto;
@@ -64,6 +64,36 @@ border-radius:6px;
 font-weight:bold;
 }
 
+.section{
+padding:80px 20px;
+max-width:1200px;
+margin:auto;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:25px;
+}
+
+.card{
+background:#111827;
+padding:25px;
+border-radius:10px;
+text-align:left;
+}
+
+.card h3{
+color:#00FF9C;
+}
+
+footer{
+padding:40px;
+color:#777;
+border-top:1px solid #1f2937;
+margin-top:60px;
+}
+
 </style>
 
 </head>
@@ -71,38 +101,61 @@ font-weight:bold;
 <body>
 
 <nav>
-
 <a href="/">Home</a>
 <a href="/dashboard">Dashboard</a>
-<a href="/feed">Feed</a>
 <a href="/signals">Signals</a>
-<a href="/about">About</a>
-
+<a href="/feed">Feed</a>
 </nav>
 
 <section class="hero">
 
-<div class="logo">
-DynamoHive
-</div>
+<div class="logo">DynamoHive</div>
 
 <div class="slogan">
 Detecting the moments before they change the world
 </div>
 
 <div class="tagline">
-
-DynamoHive is an autonomous intelligence platform detecting weak signals,
-mapping global narratives and generating strategic analysis from global data streams.
-
+Autonomous intelligence platform detecting weak signals, mapping global narratives and generating strategic insight from global data streams.
 </div>
 
-<a class="button" href="/dashboard">
-Enter Intelligence Dashboard
-</a>
+<a class="button" href="/dashboard">Enter Intelligence Dashboard</a>
 
 </section>
 
-</body>
+<section class="section">
 
+<div class="grid">
+
+<div class="card">
+<h3>Early Signal Detection</h3>
+<p>Identify emerging geopolitical, economic and technological signals.</p>
+</div>
+
+<div class="card">
+<h3>Narrative Analysis</h3>
+<p>Track narrative flows and influence networks.</p>
+</div>
+
+<div class="card">
+<h3>Strategic Intelligence</h3>
+<p>Generate analysis from global data streams.</p>
+</div>
+
+<div class="card">
+<h3>Global Risk Monitoring</h3>
+<p>Detect early indicators of geopolitical instability.</p>
+</div>
+
+</div>
+
+</section>
+
+<footer>
+
+DynamoHive Intelligence Network
+
+</footer>
+
+</body>
 </html>
