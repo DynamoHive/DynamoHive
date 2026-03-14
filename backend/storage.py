@@ -2,16 +2,13 @@ import sqlite3
 
 DB_PATH = "database/dynamohive.db"
 
-
 def get_posts():
-
     conn = sqlite3.connect(DB_PATH)
-
     conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
 
-    cursor = conn.cursor()
-
-    cursor.execute("""
+    # tablo yoksa oluştur
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS posts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT,
@@ -20,20 +17,17 @@ def get_posts():
     )
     """)
 
-    cursor.execute("SELECT * FROM posts ORDER BY created_at DESC LIMIT 50")
-
-    rows = cursor.fetchall()
-
+    # veri çek
+    cur.execute("SELECT id, title, content, created_at FROM posts ORDER BY created_at DESC LIMIT 50")
+    rows = cur.fetchall()
     conn.close()
 
-    posts = []
-
-    for r in rows:
-        posts.append({
+    return [
+        {
             "id": r["id"],
             "title": r["title"],
             "content": r["content"],
             "created_at": r["created_at"]
-        })
-
-    return posts
+        }
+        for r in rows
+    ]
