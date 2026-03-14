@@ -37,71 +37,80 @@ def run_cycle():
 
     try:
 
-        # crawl data
-        raw_data = crawl()
+        # 1️⃣ Crawl
+        raw_data = crawl() or []
 
         if not raw_data:
-            logger.warning("No data from crawler")
+            logger.warning("Crawler returned no data")
             return
 
-        # pipeline processing
-        processed = process_data(raw_data)
+        # 2️⃣ Pipeline processing
+        processed = process_data(raw_data) or []
 
         if not processed:
-            logger.warning("Pipeline returned empty data")
+            logger.warning("Pipeline produced no usable data")
             return
 
-        # topic detection
-        topics = detect_topics(processed)
+        # 3️⃣ Topic detection
+        topics = detect_topics(processed) or []
 
         if not topics:
             logger.warning("No topics detected")
             return
 
-        # analytics
+        # 4️⃣ Analytics
         analytics = analyse(topics) or {}
 
-        # signal detection
-        signals = detect_signals(analytics)
+        # 5️⃣ Signal detection
+        signals = detect_signals(analytics) or []
 
         if not signals:
             logger.info("No signals detected")
             return
 
-        # ranking
+        # 6️⃣ Ranking
         signals = rank_signals(signals)
 
-        # memory filtering
+        # 7️⃣ Memory filtering
         new_signals = []
 
         for s in signals:
+
             if not memory_engine.seen_before(s):
+
                 memory_engine.store(s)
+
                 new_signals.append(s)
 
         if not new_signals:
-            logger.info("Signals filtered by memory engine")
+            logger.info("All signals filtered by memory engine")
             return
 
-        # intelligence generation
+        # 8️⃣ Intelligence generation
         intelligence = generate_intelligence(new_signals)
 
         if not intelligence:
             logger.info("No intelligence generated")
             return
 
-        # knowledge graph update
-        update_graph(intelligence)
+        # 9️⃣ Knowledge graph update
+        try:
+            update_graph(intelligence)
+        except Exception as e:
+            logger.warning(f"Knowledge graph update failed: {e}")
 
-        # topic learning
-        learn_topics(intelligence)
+        # 10️⃣ Topic learning
+        try:
+            learn_topics(intelligence)
+        except Exception as e:
+            logger.warning(f"Topic learning failed: {e}")
 
-        # trend check
+        # 11️⃣ Trend filter
         if not is_trending(intelligence):
             logger.info("Topic skipped (not trending)")
             return
 
-        # newsroom pipeline
+        # 12️⃣ Newsroom pipeline
         story = build_story(intelligence)
 
         story = apply_editorial(story)
