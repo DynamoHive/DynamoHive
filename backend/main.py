@@ -17,9 +17,8 @@ app = FastAPI(
 # -------------------------------
 templates = Jinja2Templates(directory="backend/templates")
 
-
 # -------------------------------
-# STATIC FILES (logo, css, js)
+# STATIC FILES
 # -------------------------------
 STATIC_PATH = "backend/static"
 
@@ -31,7 +30,6 @@ app.mount(
     name="static"
 )
 
-
 # -------------------------------
 # DATABASE
 # -------------------------------
@@ -42,7 +40,7 @@ def init_database():
 
     os.makedirs("database", exist_ok=True)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 
     try:
 
@@ -59,7 +57,6 @@ def init_database():
         conn.commit()
 
     finally:
-
         conn.close()
 
 
@@ -91,10 +88,7 @@ def startup():
 
     init_database()
 
-    thread = Thread(target=start_orchestrator)
-
-    thread.daemon = True
-
+    thread = Thread(target=start_orchestrator, daemon=True)
     thread.start()
 
 
