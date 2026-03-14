@@ -57,17 +57,13 @@ def newsroom_pipeline(intel):
 
         article = generate_article(story)
 
-        try:
+        if article:
             publish_article(article)
-        except Exception as e:
-            logger.warning(f"Publish failed: {e}")
 
         return True
 
     except Exception as e:
-
         logger.warning(f"Newsroom error: {e}")
-
         return False
 
 
@@ -148,7 +144,6 @@ def run_cycle():
         logger.info(f"Articles published: {published}")
 
     except Exception as e:
-
         logger.error(f"Cycle error: {e}")
 
     finally:
@@ -167,15 +162,10 @@ def start():
     while True:
 
         try:
-
             run_cycle()
-
             time.sleep(CYCLE_INTERVAL)
 
         except Exception as e:
-
             logger.error(f"System error: {e}")
-
             time.sleep(ERROR_SLEEP)
-
           
