@@ -30,30 +30,23 @@ memory_engine = MemoryPatternEngine()
 
 
 def parallel_crawl():
-
     try:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             future = executor.submit(crawl)
             data = future.result()
-
         return data or []
-
     except Exception as e:
         logger.error(f"Crawl failed: {e}")
         return []
 
 
 def newsroom_pipeline(intel):
-
     try:
-
         if not is_trending(intel):
             return False
 
         story = build_story(intel)
-
         story = apply_editorial(story)
-
         article = generate_article(story)
 
         if article:
@@ -67,13 +60,10 @@ def newsroom_pipeline(intel):
 
 
 def run_cycle():
-
     start_time = time.time()
-
     logger.info("DynamoHive cycle started")
 
     try:
-
         raw_data = parallel_crawl()
 
         if not raw_data:
@@ -93,7 +83,6 @@ def run_cycle():
             return
 
         analytics = analyse(topics) or {}
-
         signals = detect_signals(analytics) or []
 
         if not signals:
@@ -103,9 +92,7 @@ def run_cycle():
         signals = rank_signals(signals)
 
         new_signals = []
-
         for s in signals:
-
             if not memory_engine.seen_before(s):
                 memory_engine.store(s)
                 new_signals.append(s)
@@ -134,9 +121,7 @@ def run_cycle():
             logger.warning(f"Topic learning failed: {e}")
 
         published = 0
-
         for intel in intelligence:
-
             if newsroom_pipeline(intel):
                 published += 1
 
@@ -146,26 +131,18 @@ def run_cycle():
         logger.error(f"Cycle error: {e}")
 
     finally:
-
         gc.collect()
-
         elapsed = round(time.time() - start_time, 2)
-
         logger.info(f"Cycle finished in {elapsed}s")
 
 
 def start():
-
     logger.info("DynamoHive system started")
 
     while True:
-
         try:
-
             run_cycle()
             time.sleep(CYCLE_INTERVAL)
-
         except Exception as e:
-
             logger.error(f"System error: {e}")
             time.sleep(ERROR_SLEEP)
