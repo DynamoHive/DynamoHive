@@ -11,7 +11,7 @@ app = FastAPI(
     version="1.0"
 )
 
-# templates
+# Templates directory
 templates = Jinja2Templates(directory="backend/templates")
 
 DB_PATH = "database/dynamohive.db"
@@ -24,7 +24,6 @@ def init_database():
     conn = sqlite3.connect(DB_PATH)
 
     try:
-
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -38,14 +37,12 @@ def init_database():
         conn.commit()
 
     finally:
-
         conn.close()
 
 
 def start_orchestrator():
 
     try:
-
         from backend.orchestrator import start
 
         print("Starting DynamoHive AI engine")
@@ -53,7 +50,6 @@ def start_orchestrator():
         start()
 
     except Exception as e:
-
         print("AI engine failed:", e)
 
 
@@ -69,7 +65,9 @@ def startup():
     thread.start()
 
 
+# -------------------------------
 # LANDING PAGE
+# -------------------------------
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
 
@@ -79,14 +77,30 @@ def home(request: Request):
     )
 
 
+# -------------------------------
+# DASHBOARD PAGE
+# -------------------------------
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
+
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request}
+    )
+
+
+# -------------------------------
 # HEALTH CHECK
+# -------------------------------
 @app.get("/health")
 def health():
 
     return {"status": "ok"}
 
 
+# -------------------------------
 # SIGNAL FEED
+# -------------------------------
 @app.get("/signals")
 def signals():
 
@@ -100,7 +114,9 @@ def signals():
     }
 
 
+# -------------------------------
 # NEWS FEED
+# -------------------------------
 @app.get("/feed")
 def feed():
 
