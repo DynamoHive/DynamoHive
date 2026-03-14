@@ -1,22 +1,24 @@
 import sqlite3
-import os
 
 DB_PATH = "database/dynamohive.db"
 
-def init_database():
-
-    os.makedirs("database", exist_ok=True)
-
+def get_connection():
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    conn.row_factory = sqlite3.Row
+    return conn
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS system_state (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        status TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
+def get_cursor():
+    conn = get_connection()
+    return conn, conn.cursor()
 
-    conn.commit()
-    conn.close()
+Sonra cursor kullanacağın yerlerde şu şekilde kullan:
+
+from database.database import get_cursor
+
+conn, cursor = get_cursor()
+
+cursor.execute("SELECT * FROM posts")
+
+rows = cursor.fetchall()
+
+conn.close()
