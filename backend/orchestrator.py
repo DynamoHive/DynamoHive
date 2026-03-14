@@ -16,7 +16,6 @@ from ai_engine.trend_scoring_engine import is_trending
 from ai_engine.signal_ranking_engine import rank_signals
 from ai_engine.memory_pattern_engine import MemoryPatternEngine
 
-# newsroom
 from backend.newsroom.story_engine import build_story
 from backend.newsroom.editorial_engine import apply_editorial
 from backend.newsroom.article_engine import generate_article
@@ -31,8 +30,6 @@ memory_engine = MemoryPatternEngine()
 
 
 def parallel_crawl():
-
-    logger.info("Starting parallel crawl")
 
     try:
 
@@ -56,9 +53,6 @@ def newsroom_pipeline(intel):
     try:
 
         if not is_trending(intel):
-
-            logger.info("Signal skipped (not trending)")
-
             return False
 
         story = build_story(intel)
@@ -68,8 +62,6 @@ def newsroom_pipeline(intel):
         article = generate_article(story)
 
         publish_article(article)
-
-        logger.info("Article published")
 
         return True
 
@@ -84,61 +76,38 @@ def run_cycle():
 
     start_time = time.time()
 
-    stats = {
-        "raw": 0,
-        "processed": 0,
-        "topics": 0,
-        "signals": 0,
-        "published": 0
-    }
-
     logger.info("DynamoHive cycle started")
 
     try:
 
-        # 1️⃣ Crawl
         raw_data = parallel_crawl()
-
-        stats["raw"] = len(raw_data)
 
         if not raw_data:
             logger.warning("No crawl data")
             return
 
-        # 2️⃣ Pipeline
         processed = process_data(raw_data) or []
-
-        stats["processed"] = len(processed)
 
         if not processed:
             logger.warning("No processed data")
             return
 
-        # 3️⃣ Topics
         topics = detect_topics(processed) or []
-
-        stats["topics"] = len(topics)
 
         if not topics:
             logger.warning("No topics detected")
             return
 
-        # 4️⃣ Analytics
         analytics = analyse(topics) or {}
 
-        # 5️⃣ Signals
         signals = detect_signals(analytics) or []
 
         if not signals:
             logger.info("No signals detected")
             return
 
-        # 6️⃣ Ranking
         signals = rank_signals(signals)
 
-        stats["signals"] = len(signals)
-
-        # 7️⃣ Memory filter
         new_signals = []
 
         for s in signals:
@@ -150,10 +119,9 @@ def run_cycle():
                 new_signals.append(s)
 
         if not new_signals:
-            logger.info("All signals filtered by memory")
+            logger.info("All signals filtered")
             return
 
-        # 8️⃣ Intelligence
         intelligence = generate_intelligence(new_signals)
 
         if not intelligence:
@@ -163,27 +131,22 @@ def run_cycle():
         if not isinstance(intelligence, list):
             intelligence = [intelligence]
 
-        # 9️⃣ Graph update
         try:
             update_graph(intelligence)
         except Exception as e:
             logger.warning(f"Graph update failed: {e}")
 
-        # 🔟 Learning
         try:
             learn_topics(intelligence)
         except Exception as e:
-            logger.warning(f"Learning failed: {e}")
+            logger.warning(f"Topic learning failed: {e}")
 
-        # 11️⃣ Newsroom publishing
         published = 0
 
         for intel in intelligence:
 
             if newsroom_pipeline(intel):
                 published += 1
-
-        stats["published"] = published
 
         logger.info(f"Articles published: {published}")
 
@@ -197,14 +160,7 @@ def run_cycle():
 
         elapsed = round(time.time() - start_time, 2)
 
-        logger.info(
-            f"Cycle finished in {elapsed}s | "
-            f"raw:{stats['raw']} "
-            f"processed:{stats['processed']} "
-            f"topics:{stats['topics']} "
-            f"signals:{stats['signals']} "
-            f"published:{stats['published']}"
-        )
+        logger.info(f"Cycle finished in {elapsed}s")
 
 
 def start():
