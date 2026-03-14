@@ -7,30 +7,28 @@ import os
 import sqlite3
 from threading import Thread
 
-app = FastAPI(
-    title="DynamoHive",
-    version="1.0"
-)
+app = FastAPI(title="DynamoHive", version="1.0")
 
-# -------------------------------
+# -----------------------
 # PATHS
-# -------------------------------
+# -----------------------
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_PATH = os.path.join(BASE_DIR, "templates")
 STATIC_PATH = os.path.join(BASE_DIR, "static")
+
 DB_DIR = os.path.join(BASE_DIR, "..", "database")
 DB_PATH = os.path.join(DB_DIR, "dynamohive.db")
 
-# -------------------------------
+# -----------------------
 # TEMPLATES
-# -------------------------------
+# -----------------------
 
 templates = Jinja2Templates(directory=TEMPLATES_PATH)
 
-# -------------------------------
+# -----------------------
 # STATIC FILES
-# -------------------------------
+# -----------------------
 
 os.makedirs(STATIC_PATH, exist_ok=True)
 
@@ -40,9 +38,9 @@ app.mount(
     name="static"
 )
 
-# -------------------------------
+# -----------------------
 # DATABASE
-# -------------------------------
+# -----------------------
 
 def init_database():
 
@@ -65,17 +63,19 @@ def init_database():
         conn.commit()
 
     finally:
+
         conn.close()
 
-# -------------------------------
+
+# -----------------------
 # AI ENGINE
-# -------------------------------
+# -----------------------
 
 def start_orchestrator():
 
     try:
 
-        from orchestrator import start
+        from backend.orchestrator import start
 
         print("Starting DynamoHive AI engine")
 
@@ -85,9 +85,10 @@ def start_orchestrator():
 
         print("AI engine failed:", e)
 
-# -------------------------------
+
+# -----------------------
 # STARTUP
-# -------------------------------
+# -----------------------
 
 @app.on_event("startup")
 def startup():
@@ -98,15 +99,15 @@ def startup():
 
     thread = Thread(
         target=start_orchestrator,
-        daemon=True,
-        name="dynamohive-orchestrator"
+        daemon=True
     )
 
     thread.start()
 
-# -------------------------------
-# LANDING PAGE
-# -------------------------------
+
+# -----------------------
+# PAGES
+# -----------------------
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
@@ -116,9 +117,6 @@ def home(request: Request):
         {"request": request}
     )
 
-# -------------------------------
-# DASHBOARD
-# -------------------------------
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
@@ -128,9 +126,6 @@ def dashboard(request: Request):
         {"request": request}
     )
 
-# -------------------------------
-# FEED PAGE
-# -------------------------------
 
 @app.get("/feed", response_class=HTMLResponse)
 def feed_page(request: Request):
@@ -140,9 +135,6 @@ def feed_page(request: Request):
         {"request": request}
     )
 
-# -------------------------------
-# ABOUT PAGE
-# -------------------------------
 
 @app.get("/about", response_class=HTMLResponse)
 def about(request: Request):
@@ -152,9 +144,10 @@ def about(request: Request):
         {"request": request}
     )
 
-# -------------------------------
+
+# -----------------------
 # HEALTH CHECK
-# -------------------------------
+# -----------------------
 
 @app.get("/health")
 def health():
@@ -164,14 +157,15 @@ def health():
         "status": "running"
     }
 
-# -------------------------------
+
+# -----------------------
 # SIGNAL API
-# -------------------------------
+# -----------------------
 
 @app.get("/signals")
 def signals():
 
-    from ai_engine.signal_radar import get_latest_signals
+    from backend.ai_engine.signal_radar import get_latest_signals
 
     signals = get_latest_signals()
 
@@ -180,14 +174,15 @@ def signals():
         "signals": signals
     }
 
-# -------------------------------
+
+# -----------------------
 # NEWS FEED API
-# -------------------------------
+# -----------------------
 
 @app.get("/api/feed")
 def feed_api():
 
-    from storage import get_posts
+    from backend.storage import get_posts
 
     posts = get_posts()
 
