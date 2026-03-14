@@ -1,5 +1,6 @@
 import feedparser
-import requests
+import hashlib
+import time
 
 RSS_SOURCES = [
 
@@ -19,6 +20,35 @@ RSS_SOURCES = [
 ]
 
 
+SEEN = set()
+
+CACHE = {}
+
+CACHE_TTL = 300
+
+
+def make_hash(text):
+    return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+
+def get_feed(url):
+
+    now = time.time()
+
+    if url in CACHE:
+
+        cached_time, cached_feed = CACHE[url]
+
+        if now - cached_time < CACHE_TTL:
+            return cached_feed
+
+    feed = feedparser.parse(url)
+
+    CACHE[url] = (now, feed)
+
+    return feed
+
+
 def crawl():
 
     results = []
@@ -27,20 +57,27 @@ def crawl():
 
         try:
 
-            feed = feedparser.parse(url)
+            feed = get_feed(url)
 
             for entry in feed.entries[:5]:
 
+                title = entry.get("title", "")
+                content = entry.get("summary", entry.get("description", ""))
+
+                fingerprint = make_hash(title + content)
+
+                if fingerprint in SEEN:
+                    continue
+
+                SEEN.add(fingerprint)
+
                 results.append({
 
-                    "title": entry.get("title", ""),
+                    "title": title,
+                    "content": content,
+                    "source": url,
+                    "timestamp": time.time()
 
-                    "content": entry.get(
-                        "summary",
-                        entry.get("description", "")
-                    ),
-
-                    "source": url
                 })
 
         except Exception as e:
@@ -50,3 +87,5 @@ def crawl():
     print("crawler collected:", len(results))
 
     return results
+
+    
