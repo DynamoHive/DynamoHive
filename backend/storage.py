@@ -40,4 +40,3 @@ def get_posts():
             "created_at": r["created_at"]
         })
 
-    return posts
