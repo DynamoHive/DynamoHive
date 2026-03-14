@@ -1,8 +1,8 @@
 fastapi
 uvicorn
 gunicorn
+jinja2
 redis
-sentence-transformers
 numpy
 feedparser
 requests
