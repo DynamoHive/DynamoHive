@@ -1,4 +1,4 @@
-from database.database import get_posts, get_post
+from backend.storage import get_posts
 
 
 def get_feed():
@@ -10,8 +10,8 @@ def get_feed():
     for p in posts:
 
         feed.append({
-            "id": p[0],
-            "title": p[1]
+            "id": p["id"],
+            "title": p["title"]
         })
 
     return feed
@@ -19,13 +19,16 @@ def get_feed():
 
 def get_post_by_id(post_id):
 
-    post = get_post(post_id)
+    posts = get_posts()
 
-    if not post:
-        return None
+    for p in posts:
 
-    return {
-        "id": post[0],
-        "title": post[1],
-        "content": post[2]
-    }
+        if p["id"] == post_id:
+            return {
+                "id": p["id"],
+                "title": p["title"],
+                "content": p["content"],
+                "created_at": p["created_at"]
+            }
+
+    return None
