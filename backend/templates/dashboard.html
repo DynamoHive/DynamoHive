@@ -9,7 +9,6 @@
 <title>DynamoHive Dashboard</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 
 <style>
@@ -84,6 +83,12 @@ padding:10px 0;
 border-bottom:1px solid #1f2937;
 }
 
+.report{
+padding:10px 0;
+border-bottom:1px solid #1f2937;
+color:#9fb3c8;
+}
+
 footer{
 padding:30px;
 text-align:center;
@@ -109,7 +114,7 @@ margin-top:40px;
 <header>
 
 <h1>DynamoHive Intelligence Dashboard</h1>
-<p>Signals · Narratives · Global Monitoring</p>
+<p>Signals · Narratives · Intelligence Reports</p>
 
 </header>
 
@@ -138,6 +143,16 @@ margin-top:40px;
 <h2>Signal Feed</h2>
 
 <div id="signal-list">Loading signals...</div>
+
+</div>
+
+<div class="panel">
+
+<h2>AI Intelligence Reports</h2>
+
+<div id="report-list">
+Loading intelligence analysis...
+</div>
 
 </div>
 
@@ -191,7 +206,29 @@ L.marker([lat,lon])
 
 }
 
+async function loadReports(){
+
+const res = await fetch("/feed");
+const data = await res.json();
+
+const container = document.getElementById("report-list");
+container.innerHTML="";
+
+(data.feed || []).forEach(post=>{
+
+const div=document.createElement("div");
+div.className="report";
+
+div.innerText = post.title || JSON.stringify(post);
+
+container.appendChild(div);
+
+});
+
+}
+
 loadSignals();
+loadReports();
 
 </script>
 
@@ -226,9 +263,6 @@ font:{color:"white"}
 },
 edges:{
 color:"#00FF9C"
-},
-physics:{
-enabled:true
 }
 };
 
