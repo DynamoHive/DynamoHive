@@ -4,32 +4,27 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
 import os
-import sqlite3
 from threading import Thread
 
-app = FastAPI(title="DynamoHive", version="1.0")
+from backend.storage import get_posts
 
-# -----------------------
-# PATHS
-# -----------------------
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_PATH = os.path.join(BASE_DIR, "templates")
-STATIC_PATH = os.path.join(BASE_DIR, "static")
+app = FastAPI(
+    title="DynamoHive",
+    version="1.0"
+)
 
-DB_DIR = os.path.join(BASE_DIR, "..", "database")
-DB_PATH = os.path.join(DB_DIR, "dynamohive.db")
-
-# -----------------------
+# -------------------------
 # TEMPLATES
-# -----------------------
+# -------------------------
 
-templates = Jinja2Templates(directory=TEMPLATES_PATH)
+templates = Jinja2Templates(directory="backend/templates")
 
-# -----------------------
+# -------------------------
 # STATIC FILES
-# -----------------------
+# -------------------------
 
+STATIC_PATH = "backend/static"
 os.makedirs(STATIC_PATH, exist_ok=True)
 
 app.mount(
@@ -38,38 +33,39 @@ app.mount(
     name="static"
 )
 
-# -----------------------
-# DATABASE
-# -----------------------
+# -------------------------
+# DATABASE INIT
+# -------------------------
+
+DB_PATH = "database/dynamohive.db"
+
 
 def init_database():
 
-    os.makedirs(DB_DIR, exist_ok=True)
+    os.makedirs("database", exist_ok=True)
 
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    import sqlite3
 
-    try:
+    conn = sqlite3.connect(DB_PATH)
 
-        cursor = conn.cursor()
+    cursor = conn.cursor()
 
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS system_state (
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            status TEXT,
+            title TEXT,
+            content TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-        """)
+    """)
 
-        conn.commit()
-
-    finally:
-
-        conn.close()
+    conn.commit()
+    conn.close()
 
 
-# -----------------------
+# -------------------------
 # AI ENGINE
-# -----------------------
+# -------------------------
 
 def start_orchestrator():
 
@@ -86,9 +82,9 @@ def start_orchestrator():
         print("AI engine failed:", e)
 
 
-# -----------------------
+# -------------------------
 # STARTUP
-# -----------------------
+# -------------------------
 
 @app.on_event("startup")
 def startup():
@@ -97,17 +93,13 @@ def startup():
 
     init_database()
 
-    thread = Thread(
-        target=start_orchestrator,
-        daemon=True
-    )
-
+    thread = Thread(target=start_orchestrator, daemon=True)
     thread.start()
 
 
-# -----------------------
-# PAGES
-# -----------------------
+# -------------------------
+# LANDING PAGE
+# -------------------------
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
@@ -118,6 +110,10 @@ def home(request: Request):
     )
 
 
+# -------------------------
+# DASHBOARD
+# -------------------------
+
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
 
@@ -126,6 +122,10 @@ def dashboard(request: Request):
         {"request": request}
     )
 
+
+# -------------------------
+# FEED PAGE
+# -------------------------
 
 @app.get("/feed", response_class=HTMLResponse)
 def feed_page(request: Request):
@@ -136,53 +136,12 @@ def feed_page(request: Request):
     )
 
 
-@app.get("/about", response_class=HTMLResponse)
-def about(request: Request):
-
-    return templates.TemplateResponse(
-        "about.html",
-        {"request": request}
-    )
-
-
-# -----------------------
-# HEALTH CHECK
-# -----------------------
-
-@app.get("/health")
-def health():
-
-    return {
-        "platform": "DynamoHive",
-        "status": "running"
-    }
-
-
-# -----------------------
-# SIGNAL API
-# -----------------------
-
-@app.get("/signals")
-def signals():
-
-    from backend.ai_engine.signal_radar import get_latest_signals
-
-    signals = get_latest_signals()
-
-    return {
-        "platform": "DynamoHive",
-        "signals": signals
-    }
-
-
-# -----------------------
-# NEWS FEED API
-# -----------------------
+# -------------------------
+# API FEED
+# -------------------------
 
 @app.get("/api/feed")
 def feed_api():
-
-    from backend.storage import get_posts
 
     posts = get_posts()
 
@@ -190,3 +149,13 @@ def feed_api():
         "platform": "DynamoHive",
         "feed": posts
     }
+
+
+# -------------------------
+# HEALTH CHECK
+# -------------------------
+
+@app.get("/health")
+def health():
+
+    return {"status": "ok"}
