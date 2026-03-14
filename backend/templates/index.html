@@ -8,6 +8,8 @@
 
 <title>DynamoHive</title>
 
+<link rel="icon" href="/static/dynamohive-logo.png">
+
 <style>
 
 body{
@@ -21,17 +23,30 @@ text-align:center;
 nav{
 background:#05080F;
 padding:15px;
+display:flex;
+align-items:center;
+justify-content:center;
+gap:25px;
+}
+
+nav img{
+height:32px;
+margin-right:10px;
 }
 
 nav a{
 color:#00F0FF;
-margin:0 15px;
 text-decoration:none;
 font-size:14px;
 }
 
 header{
 padding:120px 20px;
+}
+
+.logo{
+width:120px;
+margin-bottom:20px;
 }
 
 h1{
@@ -100,14 +115,20 @@ border-top:1px solid #1f2937;
 <body>
 
 <nav>
+
+<img src="/static/dynamohive-logo.png">
+
 <a href="/">Home</a>
 <a href="/dashboard">Dashboard</a>
 <a href="/feed">Feed</a>
 <a href="/signals">Signals</a>
 <a href="/about">About</a>
+
 </nav>
 
 <header>
+
+<img class="logo" src="/static/dynamohive-logo.png">
 
 <h1>DynamoHive</h1>
 
