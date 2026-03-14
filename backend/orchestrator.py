@@ -2,7 +2,7 @@ import time
 import gc
 from concurrent.futures import ThreadPoolExecutor
 
-from backend.logger import logger
+from logger import logger
 
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
@@ -16,10 +16,10 @@ from ai_engine.trend_scoring_engine import is_trending
 from ai_engine.signal_ranking_engine import rank_signals
 from ai_engine.memory_pattern_engine import MemoryPatternEngine
 
-from backend.newsroom.story_engine import build_story
-from backend.newsroom.editorial_engine import apply_editorial
-from backend.newsroom.article_engine import generate_article
-from backend.newsroom.publish_engine import publish_article
+from newsroom.story_engine import build_story
+from newsroom.editorial_engine import apply_editorial
+from newsroom.article_engine import generate_article
+from newsroom.publish_engine import publish_article
 
 
 CYCLE_INTERVAL = 600
@@ -29,6 +29,9 @@ MAX_WORKERS = 4
 memory_engine = MemoryPatternEngine()
 
 
+# ---------------------------------
+# PARALLEL CRAWL
+# ---------------------------------
 def parallel_crawl():
 
     try:
@@ -40,10 +43,14 @@ def parallel_crawl():
         return data or []
 
     except Exception as e:
+
         logger.error(f"Crawl failed: {e}")
         return []
 
 
+# ---------------------------------
+# NEWSROOM PIPELINE
+# ---------------------------------
 def newsroom_pipeline(intel):
 
     try:
@@ -63,10 +70,14 @@ def newsroom_pipeline(intel):
         return True
 
     except Exception as e:
+
         logger.warning(f"Newsroom error: {e}")
         return False
 
 
+# ---------------------------------
+# MAIN CYCLE
+# ---------------------------------
 def run_cycle():
 
     start_time = time.time()
@@ -124,11 +135,13 @@ def run_cycle():
         if not isinstance(intelligence, list):
             intelligence = [intelligence]
 
+        # Knowledge Graph update
         try:
             update_graph(intelligence)
         except Exception as e:
             logger.warning(f"Graph update failed: {e}")
 
+        # Topic learning
         try:
             learn_topics(intelligence)
         except Exception as e:
@@ -144,6 +157,7 @@ def run_cycle():
         logger.info(f"Articles published: {published}")
 
     except Exception as e:
+
         logger.error(f"Cycle error: {e}")
 
     finally:
@@ -155,6 +169,9 @@ def run_cycle():
         logger.info(f"Cycle finished in {elapsed}s")
 
 
+# ---------------------------------
+# SYSTEM START
+# ---------------------------------
 def start():
 
     logger.info("DynamoHive system started")
@@ -162,10 +179,14 @@ def start():
     while True:
 
         try:
+
             run_cycle()
+
             time.sleep(CYCLE_INTERVAL)
 
         except Exception as e:
+
             logger.error(f"System error: {e}")
+
             time.sleep(ERROR_SLEEP)
           
