@@ -1,58 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
 
-<title>DynamoHive</title>
-
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>DynamoHive</title>
 
 <style>
 
 body{
 background:#0B0F19;
 color:white;
-font-family:Arial;
+font-family:Arial, Helvetica, sans-serif;
 margin:0;
 text-align:center;
 }
 
+nav{
+background:#05080F;
+padding:15px;
+}
+
+nav a{
+color:#00F0FF;
+margin:0 15px;
+text-decoration:none;
+font-size:14px;
+}
+
 header{
-padding:100px 20px;
+padding:120px 20px;
 }
 
 h1{
-font-size:60px;
+font-size:64px;
 color:#00F0FF;
 margin:0;
 }
 
-.tagline{
-font-size:22px;
-color:#9fb3c8;
+.slogan{
+font-size:26px;
+color:#00F0FF;
 margin-top:20px;
+}
+
+.tagline{
+font-size:20px;
+color:#9fb3c8;
+margin-top:10px;
+}
+
+.button{
+display:inline-block;
+margin-top:40px;
+padding:15px 30px;
+background:#00F0FF;
+color:black;
+text-decoration:none;
+border-radius:6px;
+font-weight:bold;
 }
 
 .section{
 padding:60px 20px;
-max-width:900px;
+max-width:1000px;
 margin:auto;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:20px;
 }
 
 .card{
 background:#111827;
 padding:30px;
-margin:20px;
 border-radius:10px;
 }
 
 .card h3{
 color:#00FF9C;
+margin-top:0;
 }
 
 footer{
 padding:40px;
+margin-top:60px;
 color:#777;
+border-top:1px solid #1f2937;
 }
 
 </style>
@@ -61,30 +99,50 @@ color:#777;
 
 <body>
 
+<nav>
+<a href="/">Home</a>
+<a href="/dashboard">Dashboard</a>
+<a href="/feed">Feed</a>
+<a href="/signals">Signals</a>
+<a href="/about">About</a>
+</nav>
+
 <header>
 
 <h1>DynamoHive</h1>
+
+<div class="slogan">
+Detecting the moments before they change the world
+</div>
 
 <div class="tagline">
 Autonomous Intelligence Radar
 </div>
 
 <div class="tagline">
-Detecting signals before they become global events
+AI powered system detecting weak signals and emerging global events
 </div>
+
+<a class="button" href="/dashboard">
+Enter Intelligence Dashboard
+</a>
 
 </header>
 
 <div class="section">
 
+<h2>Platform Intelligence Modules</h2>
+
+<div class="grid">
+
 <div class="card">
 <h3>Signal Detection</h3>
-<p>Identify weak signals before they become major events.</p>
+<p>Identify weak signals before they evolve into major global events.</p>
 </div>
 
 <div class="card">
 <h3>Narrative Mapping</h3>
-<p>Track narrative flows and information warfare patterns.</p>
+<p>Track narrative flows and information warfare patterns across media ecosystems.</p>
 </div>
 
 <div class="card">
@@ -92,7 +150,14 @@ Detecting signals before they become global events
 <p>Build evolving intelligence graphs from global data streams.</p>
 </div>
 
-<p>
+<div class="card">
+<h3>Crisis Radar</h3>
+<p>Monitor geopolitical and economic instability signals worldwide.</p>
+</div>
+
+</div>
+
+<p style="margin-top:40px">
 <a href="/health">System Status</a>
 </p>
 
