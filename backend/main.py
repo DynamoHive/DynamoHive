@@ -12,22 +12,40 @@ app = FastAPI(
     version="1.0"
 )
 
-# Templates
+# -------------------------------
+# TEMPLATES
+# -------------------------------
 templates = Jinja2Templates(directory="backend/templates")
 
-# Static files (logo, css, js)
-os.makedirs("backend/static", exist_ok=True)
-app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 
+# -------------------------------
+# STATIC FILES (logo, css, js)
+# -------------------------------
+STATIC_PATH = "backend/static"
+
+os.makedirs(STATIC_PATH, exist_ok=True)
+
+app.mount(
+    "/static",
+    StaticFiles(directory=STATIC_PATH),
+    name="static"
+)
+
+
+# -------------------------------
+# DATABASE
+# -------------------------------
 DB_PATH = "database/dynamohive.db"
 
 
 def init_database():
+
     os.makedirs("database", exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
 
     try:
+
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -41,11 +59,17 @@ def init_database():
         conn.commit()
 
     finally:
+
         conn.close()
 
 
+# -------------------------------
+# AI ENGINE
+# -------------------------------
 def start_orchestrator():
+
     try:
+
         from backend.orchestrator import start
 
         print("Starting DynamoHive AI engine")
@@ -53,9 +77,13 @@ def start_orchestrator():
         start()
 
     except Exception as e:
+
         print("AI engine failed:", e)
 
 
+# -------------------------------
+# STARTUP
+# -------------------------------
 @app.on_event("startup")
 def startup():
 
@@ -64,7 +92,9 @@ def startup():
     init_database()
 
     thread = Thread(target=start_orchestrator)
+
     thread.daemon = True
+
     thread.start()
 
 
@@ -81,7 +111,7 @@ def home(request: Request):
 
 
 # -------------------------------
-# DASHBOARD PAGE
+# DASHBOARD
 # -------------------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
