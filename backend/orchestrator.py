@@ -34,17 +34,13 @@ def parallel_crawl():
     try:
 
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-
             future = executor.submit(crawl)
-
             data = future.result()
 
         return data or []
 
     except Exception as e:
-
         logger.error(f"Crawl failed: {e}")
-
         return []
 
 
@@ -61,7 +57,10 @@ def newsroom_pipeline(intel):
 
         article = generate_article(story)
 
-        publish_article(article)
+        try:
+            publish_article(article)
+        except Exception as e:
+            logger.warning(f"Publish failed: {e}")
 
         return True
 
@@ -113,9 +112,7 @@ def run_cycle():
         for s in signals:
 
             if not memory_engine.seen_before(s):
-
                 memory_engine.store(s)
-
                 new_signals.append(s)
 
         if not new_signals:
