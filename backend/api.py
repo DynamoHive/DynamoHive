@@ -1,42 +1,22 @@
-from flask import Flask, jsonify
-import json
-import os
+from fastapi import APIRouter
+from backend.storage import get_posts
 
-app = Flask(__name__)
-
-POST_FILE = "storage/generated_posts.json"
+router = APIRouter()
 
 
-def load_posts():
-
-    if not os.path.exists(POST_FILE):
-        return []
-
-    posts = []
-
-    with open(POST_FILE, "r") as f:
-        for line in f:
-            try:
-                posts.append(json.loads(line))
-            except:
-                pass
-
-    return posts
+@router.get("/posts")
+def get_posts_api():
+    posts = get_posts()
+    return {"posts": posts}
 
 
-@app.route("/posts")
-def get_posts():
+@router.get("/posts/{post_id}")
+def get_post(post_id: int):
 
-    posts = load_posts()
+    posts = get_posts()
 
-    return jsonify(posts)
+    for p in posts:
+        if p["id"] == post_id:
+            return p
 
-
-@app.route("/")
-def home():
-
-    return {"status": "DynamoHive API running"}
-
-
-if __name__ == "__main__":
-    app.run(port=5000)
+    return {"error": "post not found"}
