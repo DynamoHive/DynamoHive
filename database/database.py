@@ -1,10 +1,5 @@
-import sys
 import sqlite3
 import os
-
-# allow imports like: from database.database import ...
-sys.modules["database"] = sys.modules[__name__]
-sys.modules["database.database"] = sys.modules[__name__]
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "database", "dynamohive.db")
