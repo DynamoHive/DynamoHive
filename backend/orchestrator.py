@@ -4,128 +4,83 @@ from concurrent.futures import ThreadPoolExecutor
 
 from backend.logger import logger
 
-from backend.ai_engine.multi_crawler import crawl
-from backend.ai_engine.data_pipeline import process_data
-from backend.ai_engine.topic_radar import detect_topics
-from backend.ai_engine.analytics_engine import analyse
-from backend.ai_engine.signal_detector import detect_signals
-from backend.ai_engine.global_intelligence_engine import generate_intelligence
-from backend.ai_engine.knowledge_graph import update_graph
-from backend.ai_engine.topic_learning_engine import learn_topics
-from backend.ai_engine.trend_scoring_engine import is_trending
-from backend.ai_engine.signal_ranking_engine import rank_signals
-from backend.ai_engine.memory_pattern_engine import MemoryPatternEngine
-
-from backend.newsroom.story_engine import build_story
-from backend.newsroom.editorial_engine import apply_editorial
-from backend.newsroom.article_engine import generate_article
-from backend.newsroom.publish_engine import publish_article
-
-
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 MAX_WORKERS = 4
 
-memory_engine = MemoryPatternEngine()
 
+def safe_imports():
+    modules = {}
 
-def parallel_crawl():
     try:
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            future = executor.submit(crawl)
-            data = future.result()
-        return data or []
+        from backend.ai_engine.multi_crawler import crawl
+        modules["crawl"] = crawl
     except Exception as e:
-        logger.error(f"Crawl failed: {e}")
-        return []
+        logger.error(f"crawler import failed: {e}")
 
-
-def newsroom_pipeline(intel):
     try:
-        if not is_trending(intel):
-            return False
-
-        story = build_story(intel)
-        story = apply_editorial(story)
-        article = generate_article(story)
-
-        if article:
-            publish_article(article)
-
-        return True
-
+        from backend.ai_engine.data_pipeline import process_data
+        modules["process_data"] = process_data
     except Exception as e:
-        logger.warning(f"Newsroom error: {e}")
-        return False
+        logger.error(f"pipeline import failed: {e}")
+
+    try:
+        from backend.ai_engine.topic_radar import detect_topics
+        modules["detect_topics"] = detect_topics
+    except Exception as e:
+        logger.error(f"topic radar import failed: {e}")
+
+    try:
+        from backend.ai_engine.analytics_engine import analyse
+        modules["analyse"] = analyse
+    except Exception as e:
+        logger.error(f"analytics import failed: {e}")
+
+    try:
+        from backend.ai_engine.signal_detector import detect_signals
+        modules["detect_signals"] = detect_signals
+    except Exception as e:
+        logger.error(f"signal detector import failed: {e}")
+
+    return modules
 
 
-def run_cycle():
+def run_cycle(modules):
+
     start_time = time.time()
     logger.info("DynamoHive cycle started")
 
     try:
-        raw_data = parallel_crawl()
+
+        if "crawl" not in modules:
+            logger.warning("Crawler missing")
+            return
+
+        raw_data = modules["crawl"]()
 
         if not raw_data:
             logger.warning("No crawl data")
             return
 
-        processed = process_data(raw_data) or []
+        if "process_data" in modules:
+            raw_data = modules["process_data"](raw_data)
 
-        if not processed:
-            logger.warning("No processed data")
-            return
+        if "detect_topics" in modules:
+            topics = modules["detect_topics"](raw_data)
+        else:
+            topics = raw_data
 
-        topics = detect_topics(processed) or []
+        if "analyse" in modules:
+            analytics = modules["analyse"](topics)
+        else:
+            analytics = topics
 
-        if not topics:
-            logger.warning("No topics detected")
-            return
+        if "detect_signals" in modules:
+            signals = modules["detect_signals"](analytics)
+        else:
+            signals = []
 
-        analytics = analyse(topics) or {}
-        signals = detect_signals(analytics) or []
-
-        if not signals:
-            logger.info("No signals detected")
-            return
-
-        signals = rank_signals(signals)
-
-        new_signals = []
-        for s in signals:
-            if not memory_engine.seen_before(s):
-                memory_engine.store(s)
-                new_signals.append(s)
-
-        if not new_signals:
-            logger.info("All signals filtered")
-            return
-
-        intelligence = generate_intelligence(new_signals)
-
-        if not intelligence:
-            logger.info("No intelligence generated")
-            return
-
-        if not isinstance(intelligence, list):
-            intelligence = [intelligence]
-
-        try:
-            update_graph(intelligence)
-        except Exception as e:
-            logger.warning(f"Graph update failed: {e}")
-
-        try:
-            learn_topics(intelligence)
-        except Exception as e:
-            logger.warning(f"Topic learning failed: {e}")
-
-        published = 0
-        for intel in intelligence:
-            if newsroom_pipeline(intel):
-                published += 1
-
-        logger.info(f"Articles published: {published}")
+        logger.info(f"Signals detected: {len(signals)}")
 
     except Exception as e:
         logger.error(f"Cycle error: {e}")
@@ -137,12 +92,21 @@ def run_cycle():
 
 
 def start():
+
     logger.info("DynamoHive system started")
 
+    modules = safe_imports()
+
     while True:
+
         try:
-            run_cycle()
+
+            run_cycle(modules)
+
             time.sleep(CYCLE_INTERVAL)
+
         except Exception as e:
+
             logger.error(f"System error: {e}")
+
             time.sleep(ERROR_SLEEP)
