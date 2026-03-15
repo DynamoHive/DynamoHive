@@ -1,3 +1,7 @@
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import sys import os
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
