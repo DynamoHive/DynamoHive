@@ -2,13 +2,15 @@ import sys
 import sqlite3
 import os
 
-# allow old imports like: from database.database import ...
+# allow imports like: from database.database import ...
 sys.modules["database"] = sys.modules[__name__]
 sys.modules["database.database"] = sys.modules[__name__]
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "..", "database", "dynamohive.db")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "database", "dynamohive.db")
 
 def get_connection():
-    return sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
