@@ -1,2 +1,1 @@
-import sys # make old imports work sys.modules["database"] = sys.modules[__name__] sys.modules["database.database"] = sys.modules[__name__]
-from backend.database import *
+import sys import sqlite3 import os # allow old imports like: from database.database import ... sys.modules["database"] = sys.modules[__name__] sys.modules["database.database"] = sys.modules[__name__] BASE_DIR = os.path.dirname(os.path.abspath(__file__)) DB_PATH = os.path.join(BASE_DIR, "..", "database", "dynamohive.db") def get_connection(): return sqlite3.connect(DB_PATH)
