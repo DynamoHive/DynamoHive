@@ -1,3 +1,8 @@
+import sys
+
+# allow old imports
+sys.modules["database"] = sys.modules[__name__]
+sys.modules["database.database"] = sys.modules[__name__]
 import sys # compatibility alias sys.modules["database"] = sys.modules[__name__] sys.modules["database.database"] = sys.modules[__name__]
 # compatibility fix
 sys.modules["database"] = sys.modules[__name__]
