@@ -1,3 +1,6 @@
+# compatibility fix
+sys.modules["database"] = sys.modules[__name__]
+sys.modules["database.database"] = sys.modules[__name__]
 import sqlite3
 
 conn = None
