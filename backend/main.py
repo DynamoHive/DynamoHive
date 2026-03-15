@@ -1,14 +1,14 @@
 import sys
 import os
 
+# make project root visible to Python (fix imports like database.database)
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-import sys import os
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
-import os
 import sqlite3
 from threading import Thread
 
@@ -92,7 +92,7 @@ def start_orchestrator():
         start()
 
     except Exception as e:
-        print("Orchestrator error:", e)
+        print("AI engine failed:", e)
 
 
 # -------------------------
@@ -102,7 +102,7 @@ def start_orchestrator():
 @app.on_event("startup")
 def startup():
 
-    print("DynamoHive starting...")
+    print("DynamoHive boot sequence")
 
     try:
         init_database()
@@ -182,4 +182,5 @@ def feed_api():
 
 @app.get("/health")
 def health():
-  return {"status": "ok"}
+
+    return {"status": "ok"
