@@ -1,8 +1,11 @@
 import sys
 import os
 
-# make project root visible to Python (fix imports like database.database)
+# make project root visible to Python
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+# preload database module (fix for database.database import)
+import database.database
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -183,4 +186,4 @@ def feed_api():
 @app.get("/health")
 def health():
 
-    return {"status": "ok"
+    return {"status": "ok"}
