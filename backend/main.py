@@ -1,5 +1,6 @@
 import sys
 import os
+from contextlib import asynccontextmanager
 
 # make project root visible to Python
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -15,11 +16,6 @@ from threading import Thread
 from backend.storage import get_posts
 
 
-app = FastAPI(
-    title="DynamoHive",
-    version="1.0"
-)
-
 # -------------------------
 # PATHS
 # -------------------------
@@ -31,26 +27,6 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 DATABASE_DIR = os.path.join(BASE_DIR, "..", "database")
 DB_PATH = os.path.join(DATABASE_DIR, "dynamohive.db")
-
-
-# -------------------------
-# TEMPLATES
-# -------------------------
-
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-
-
-# -------------------------
-# STATIC
-# -------------------------
-
-os.makedirs(STATIC_DIR, exist_ok=True)
-
-app.mount(
-    "/static",
-    StaticFiles(directory=STATIC_DIR),
-    name="static"
-)
 
 
 # -------------------------
@@ -96,11 +72,11 @@ def start_orchestrator():
 
 
 # -------------------------
-# STARTUP
+# LIFESPAN STARTUP
 # -------------------------
 
-@app.on_event("startup")
-def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
 
     print("DynamoHive boot sequence")
 
@@ -116,6 +92,35 @@ def startup():
         print("AI engine started")
     except Exception as e:
         print("AI engine failed:", e)
+
+    yield
+
+
+app = FastAPI(
+    title="DynamoHive",
+    version="1.0",
+    lifespan=lifespan
+)
+
+
+# -------------------------
+# TEMPLATES
+# -------------------------
+
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
+
+# -------------------------
+# STATIC
+# -------------------------
+
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+app.mount(
+    "/static",
+    StaticFiles(directory=STATIC_DIR),
+    name="static"
+)
 
 
 # -------------------------
