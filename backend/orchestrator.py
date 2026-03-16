@@ -1,5 +1,6 @@
 import time
 import gc
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from backend.logger import logger
@@ -17,36 +18,36 @@ def safe_imports():
         from backend.ai_engine.multi_crawler import crawl
         modules["crawl"] = crawl
         logger.info("crawler loaded")
-    except Exception as e:
-        logger.error(f"crawler import failed: {e}")
+    except Exception:
+        traceback.print_exc()
 
     try:
         from backend.ai_engine.data_pipeline import process_data
         modules["process_data"] = process_data
         logger.info("pipeline loaded")
-    except Exception as e:
-        logger.error(f"pipeline import failed: {e}")
+    except Exception:
+        traceback.print_exc()
 
     try:
         from backend.ai_engine.topic_radar import detect_topics
         modules["detect_topics"] = detect_topics
         logger.info("topic radar loaded")
-    except Exception as e:
-        logger.error(f"topic radar import failed: {e}")
+    except Exception:
+        traceback.print_exc()
 
     try:
         from backend.ai_engine.analytics_engine import analyse
         modules["analyse"] = analyse
         logger.info("analytics loaded")
-    except Exception as e:
-        logger.error(f"analytics import failed: {e}")
+    except Exception:
+        traceback.print_exc()
 
     try:
         from backend.ai_engine.signal_detector import detect_signals
         modules["detect_signals"] = detect_signals
         logger.info("signal detector loaded")
-    except Exception as e:
-        logger.error(f"signal detector import failed: {e}")
+    except Exception:
+        traceback.print_exc()
 
     return modules
 
@@ -88,8 +89,8 @@ def run_cycle(modules):
 
         logger.info(f"signals detected: {len(signals)}")
 
-    except Exception as e:
-        logger.error(f"cycle error: {e}")
+    except Exception:
+        traceback.print_exc()
 
     finally:
         gc.collect()
@@ -110,7 +111,6 @@ def start():
             run_cycle(modules)
             time.sleep(CYCLE_INTERVAL)
 
-        except Exception as e:
-
-            logger.error(f"system error: {e}")
+        except Exception:
+            traceback.print_exc()
             time.sleep(ERROR_SLEEP)
