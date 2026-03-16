@@ -1,4 +1,4 @@
-from database.database import save_post
+from database import save_post
 
 
 def publish(post):
