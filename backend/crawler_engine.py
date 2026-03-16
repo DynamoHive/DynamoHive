@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import threading
 
-from database.database import init_database
+from database import init_database
 from backend.posts import get_feed, get_post
 from backend.topic_api import get_topics
 from backend.orchestrator import start as start_orchestrator
