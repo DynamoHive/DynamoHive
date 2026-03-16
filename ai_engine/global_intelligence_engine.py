@@ -1,4 +1,4 @@
-from database.database import cursor
+from database import cursor
 
 
 def build_intelligence_index():
@@ -40,7 +40,7 @@ def get_top_topics(limit=10):
         FROM posts
         GROUP BY topic
         ORDER BY score DESC
-        LIMIT %s
+        LIMIT ?
         """,
         (limit,)
     )
