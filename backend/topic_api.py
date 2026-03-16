@@ -1,4 +1,4 @@
-from database.database import get_cursor
+from database import get_cursor
 
 
 def get_topics():
