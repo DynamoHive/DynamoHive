@@ -1,28 +1,62 @@
-from fastapi import APIRouter
+import time
+from collections import defaultdict
 
-from backend.data_pipeline import event_queue
-from backend.knowledge_graph import add_knowledge
+event_memory = defaultdict(list)
 
-router = APIRouter()
+WINDOW = 3600
+SPIKE_THRESHOLD = 2
 
 
-@router.post("/events")
-def collect_event(event: dict):
+def register_event(topic):
 
-    topic = event.get("topic")
-    post_id = event.get("post_id")
+    if not topic:
+        return
 
-    # 🔥 güvenli çağrı (post_id olmasa da çalışır)
-    if topic:
-        try:
-            add_knowledge(topic, post_id)
-        except Exception:
-            pass
+    topic = str(topic).lower().strip()
+    now = time.time()
 
-    # 🔥 queue güvenli
-    try:
-        event_queue.put(event)
-    except Exception:
-        pass
+    event_memory[topic].append(now)
 
-    return {"status": "event received"}
+
+def detect_event_spikes():
+
+    now = time.time()
+    spikes = []
+
+    for topic, times in list(event_memory.items()):
+
+        recent = [t for t in times if now - t < WINDOW]
+        event_memory[topic] = recent
+
+        count = len(recent)
+
+        if count >= SPIKE_THRESHOLD:
+
+            first = min(recent)
+            last = max(recent)
+            duration = max(last - first, 1)
+
+            velocity = count / duration
+
+            spikes.append({
+                "topic": topic,
+                "count": count,
+                "velocity": round(velocity, 4)
+            })
+
+    # fallback (boş kalmasın)
+    if not spikes and event_memory:
+        for topic, times in event_memory.items():
+            if times:
+                spikes.append({
+                    "topic": topic,
+                    "count": len(times),
+                    "velocity": 0.0
+                })
+                break
+
+    spikes.sort(key=lambda x: (x["count"], x["velocity"]), reverse=True)
+
+    print("events detected:", len(spikes))
+
+    return spikes
