@@ -8,15 +8,17 @@ from backend.storage import save_post, get_posts
 # ✅ EVENT ENGINE
 from ai_engine.event_engine import register_event, detect_event_spikes
 
-# ✅ CONTENT + DISTRIBUTION
-from ai_engine.auto_content_loop import generate_content
+# ✅ CONTENT (🔥 FIX: auto_content_loop ÇÖP → YENİ ENGINE)
+from ai_engine.narrative_engine import generate_narrative
+
+# ✅ DISTRIBUTION
 from backend.distribution_engine import distribute
 
 # ✅ SIGNAL
 import ai_engine.signal_detector as signal_module
 from ai_engine.signal_ranking_engine import rank_signals
 
-# ✅ REDIS CACHE (🔥 EKLENDİ)
+# ✅ CACHE (REDIS)
 from backend.cache import is_duplicate, mark_generated
 
 
@@ -24,6 +26,9 @@ CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 
 
+# -------------------------
+# SAFE IMPORTS
+# -------------------------
 def safe_imports():
 
     modules = {}
@@ -59,6 +64,9 @@ def safe_imports():
     return modules
 
 
+# -------------------------
+# MAIN CYCLE
+# -------------------------
 def run_cycle(modules):
 
     start_time = time.time()
@@ -140,26 +148,29 @@ def run_cycle(modules):
         logger.info(f"events detected: {len(events)}")
 
         # -------------------------
-        # 8. CONTENT + DISTRIBUTION (🔥 DUPLICATE FIX)
+        # 8. CONTENT + DISTRIBUTION
         # -------------------------
         for event in events:
 
             topic = event.get("topic")
 
-            # 🔥 REDIS DUPLICATE CONTROL
+            # 🔥 DUPLICATE CONTROL
             if is_duplicate(topic):
                 logger.info(f"duplicate skipped: {topic}")
                 continue
 
             try:
-                content = generate_content(event)
+                # 🔥 GERÇEK CONTENT ENGINE
+                content = generate_narrative(event)
 
                 if isinstance(content, dict):
 
                     title = content.get("title", f"Event: {topic}")
                     body = content.get("content", "")
 
+                    # 🔥 DB FIX (dict değil string gönderiyoruz)
                     save_post(title, body)
+
                     distribute(content)
 
                     # 🔥 CACHE MARK
@@ -195,6 +206,9 @@ def run_cycle(modules):
         logger.info(f"cycle finished in {elapsed}s")
 
 
+# -------------------------
+# START LOOP
+# -------------------------
 def start():
 
     logger.info("DynamoHive system started")
