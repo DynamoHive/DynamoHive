@@ -4,9 +4,6 @@ from backend.storage import get_posts
 router = APIRouter()
 
 
-# -------------------------
-# LIST POSTS
-# -------------------------
 @router.get("/posts")
 def get_posts_api():
 
@@ -23,9 +20,6 @@ def get_posts_api():
     }
 
 
-# -------------------------
-# SINGLE POST
-# -------------------------
 @router.get("/posts/{post_id}")
 def get_post(post_id: int):
 
