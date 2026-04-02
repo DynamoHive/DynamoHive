@@ -8,6 +8,10 @@ from backend.storage import save_post, get_posts
 # 🔥 EVENT ENGINE
 from ai_engine.events import register_event, detect_event_spikes
 
+# 🔥 CONTENT + DISTRIBUTION
+from ai_engine.auto_content_loop import generate_content
+from ai_engine.distribution_engine import distribute
+
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 
@@ -65,13 +69,10 @@ def run_cycle(modules):
             logger.warning("crawler missing")
             return
 
-        # 🔴 1. yeni veri
+        # 🔴 1. DATA
         raw_data = modules["crawl"]()
-
-        # 🔴 2. geçmiş veri
         previous_posts = get_posts()
 
-        # 🔴 3. fallback
         if not raw_data:
             if previous_posts:
                 logger.warning("no new crawl data, using stored data")
@@ -80,42 +81,49 @@ def run_cycle(modules):
                 logger.warning("no crawl data at all")
                 return
 
-        # 🔴 4. pipeline
+        # 🔴 2. PIPELINE
         if "process_data" in modules:
             raw_data = modules["process_data"](raw_data)
 
-        # 🔴 5. topics
-        if "detect_topics" in modules:
-            topics = modules["detect_topics"](raw_data)
-        else:
-            topics = raw_data
-
+        # 🔴 3. TOPICS
+        topics = modules["detect_topics"](raw_data) if "detect_topics" in modules else raw_data
         logger.info(f"topics detected: {topics}")
 
-        # 🔴 6. analytics
-        if "analyse" in modules:
-            analytics = modules["analyse"](topics)
-        else:
-            analytics = topics
+        # 🔴 4. ANALYTICS
+        analytics = modules["analyse"](topics) if "analyse" in modules else topics
 
-        # 🔴 7. signals
-        if "detect_signals" in modules:
-            signals = modules["detect_signals"](analytics)
-        else:
-            signals = []
-
+        # 🔴 5. SIGNALS
+        signals = modules["detect_signals"](analytics) if "detect_signals" in modules else []
         logger.info(f"signals detected: {len(signals)}")
 
-        # 🔴 8. EVENT MEMORY DOLDUR
+        # 🔴 6. EVENT MEMORY
         for signal in signals:
             for kw in signal.get("keywords", []):
                 register_event(kw)
 
-        # 🔴 9. EVENT DETECTION
+        # 🔴 7. EVENTS
         events = detect_event_spikes()
         logger.info(f"events detected: {len(events)}")
 
-        # 🔴 10. STORAGE
+        # 🔴 8. CONTENT + DISTRIBUTION
+        for event in events:
+            try:
+                content = generate_content(event)
+
+                if content:
+                    save_post(
+                        f"Event: {event.get('topic')}",
+                        content
+                    )
+
+                    distribute(content)
+
+                    logger.info(f"content generated + distributed: {event.get('topic')}")
+
+            except Exception as e:
+                logger.warning(f"content/distribution error: {e}")
+
+        # 🔴 9. RAW STORAGE
         try:
             for item in raw_data:
                 if isinstance(item, dict):
@@ -142,11 +150,9 @@ def start():
     modules = safe_imports()
 
     while True:
-
         try:
             run_cycle(modules)
             time.sleep(CYCLE_INTERVAL)
-
         except Exception:
             traceback.print_exc()
             time.sleep(ERROR_SLEEP)
