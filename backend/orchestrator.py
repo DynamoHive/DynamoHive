@@ -1,6 +1,7 @@
 import time
 import gc
 import traceback
+from collections import Counter
 
 from backend.logger import logger
 from backend.storage import save_post, get_posts
@@ -19,6 +20,40 @@ CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 
 
+# 🔥 YENİ: TOPIC CLUSTERING
+def extract_topics(raw_data):
+
+    texts = []
+
+    for item in raw_data:
+        if isinstance(item, dict):
+            text = item.get("title") or item.get("text") or ""
+        else:
+            text = str(item)
+
+        if text:
+            texts.append(text.lower())
+
+    words = []
+    for t in texts:
+        words.extend(t.split())
+
+    # basit filtre
+    stopwords = {"the", "and", "is", "to", "of", "in", "on", "for", "with"}
+    words = [w for w in words if w not in stopwords and len(w) > 3]
+
+    counts = Counter(words)
+
+    topics = []
+    for word, count in counts.most_common(5):
+        topics.append({
+            "text": word,
+            "score": count
+        })
+
+    return topics
+
+
 def synthesize_intelligence(signals, events):
 
     intelligence = []
@@ -28,8 +63,8 @@ def synthesize_intelligence(signals, events):
 
         intelligence.append({
             "topic": topic,
-            "summary": f"{topic} is gaining momentum based on detected signals.",
-            "trend": "surging" if s.get("score", 0) > 5 else "rising"
+            "summary": f"Recent developments around {topic} indicate structural shifts in global dynamics, supported by multiple emerging signals.",
+            "trend": "surging" if s.get("score", 0) > 3 else "rising"
         })
 
     return intelligence
@@ -51,18 +86,6 @@ def safe_imports():
     except:
         traceback.print_exc()
 
-    try:
-        from ai_engine.topic_radar import detect_topics
-        modules["detect_topics"] = detect_topics
-    except:
-        traceback.print_exc()
-
-    try:
-        from ai_engine.analytics_engine import analyse
-        modules["analyse"] = analyse
-    except:
-        traceback.print_exc()
-
     return modules
 
 
@@ -73,9 +96,9 @@ def run_cycle(modules):
 
     try:
 
-        # 🔥 GARANTİ BAŞLANGIÇ POSTU
+        # ilk post
         if not get_posts():
-            save_post("DynamoHive Activated", "System is live and generating signals")
+            save_post("DynamoHive Activated", "System is live and analyzing real-world signals")
 
         # DATA
         raw_data = modules.get("crawl", lambda: [])()
@@ -84,24 +107,17 @@ def run_cycle(modules):
         if not raw_data:
             raw_data = previous_posts or [{"text": "system bootstrap"}]
 
-        # PIPELINE
         if "process_data" in modules:
             raw_data = modules["process_data"](raw_data)
 
-        # TOPICS
-        topics = modules.get("detect_topics", lambda x: x)(raw_data)
+        # 🔥 YENİ: gerçek topic extraction
+        signals = extract_topics(raw_data)
 
-        # ANALYTICS
-        analytics = modules.get("analyse", lambda x: x)(topics)
-
-        # SIGNALS
-        signals = signal_module.detect_signals(analytics) if analytics else []
-
-        # 🔥 KRİTİK FIX → HER CYCLE UNIQUE SIGNAL
+        # fallback
         if not signals:
             signals = [{
-                "text": f"system activation {int(time.time())}",
-                "score": 10
+                "text": f"system {int(time.time())}",
+                "score": 1
             }]
 
         signals = rank_signals(signals)
@@ -127,27 +143,21 @@ def run_cycle(modules):
             content = generate_narrative(intel)
 
             if not content:
-                logger.warning("No content generated")
                 continue
 
-            if isinstance(content, dict):
+            title = content.get("title") or topic
+            body = content.get("content") or "No content"
 
-                title = content.get("title") or f"No Title {int(time.time())}"
-                body = content.get("content") or "No Content"
+            save_post(title, body)
 
-                save_post(title, body)
+            try:
+                distribute(content)
+            except:
+                logger.warning("Distribution failed")
 
-                try:
-                    distribute(content)
-                except:
-                    logger.warning("Distribution failed")
+            mark_generated(topic)
 
-                mark_generated(topic)
-
-                logger.info(f"GENERATED: {topic}")
-
-            else:
-                logger.warning("Invalid content format")
+            logger.info(f"GENERATED: {topic}")
 
     except:
         traceback.print_exc()
