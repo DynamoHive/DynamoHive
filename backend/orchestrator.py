@@ -5,14 +5,12 @@ import traceback
 from backend.logger import logger
 from backend.storage import save_post, get_posts
 
-# ✅ EVENT
-from backend.events import register_event, detect_event_spikes
-
-# ✅ CONTENT
+# ✅ DOĞRU IMPORTLAR (KRİTİK FIX)
+from ai_engine.event_engine import register_event, detect_event_spikes
+from backend.distribution_engine import distribute
 from ai_engine.auto_content_loop import generate_content
-from ai_engine.distribution_engine import distribute
 
-# ✅ SIGNAL + RANKING
+# ✅ SIGNAL
 import ai_engine.signal_detector as signal_module
 from ai_engine.signal_ranking_engine import rank_signals
 
@@ -92,7 +90,7 @@ def run_cycle(modules):
         # 🔥 SIGNALS
         signals = signal_module.detect_signals(analytics) if analytics else []
 
-        # 🔥 FALLBACK (topic → signal üret)
+        # 🔥 FALLBACK
         if not signals and topics:
             logger.warning("no signals → fallback to topics")
             signals = [
@@ -112,7 +110,7 @@ def run_cycle(modules):
 
         # 🔴 EVENT MEMORY
         for signal in signals:
-            keywords = signal.get("keywords") or [signal.get("topic")]
+            keywords = signal.get("keywords") or [signal.get("text")]
             for kw in keywords:
                 if kw:
                     register_event(kw)
@@ -121,7 +119,7 @@ def run_cycle(modules):
         events = detect_event_spikes()
         logger.info(f"events detected: {len(events)}")
 
-        # 🔴 CONTENT
+        # 🔴 CONTENT + DISTRIBUTION
         for event in events:
             try:
                 content = generate_content(event)
@@ -129,6 +127,7 @@ def run_cycle(modules):
                 if content:
                     save_post(f"Event: {event.get('topic')}", content)
                     distribute(content)
+
                     logger.info(f"content generated + distributed: {event.get('topic')}")
 
             except Exception as e:
