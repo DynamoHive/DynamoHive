@@ -73,7 +73,7 @@ def run_cycle(modules):
 
     try:
 
-        # 🔥 GARANTİ POST (SİSTEM BOŞSA)
+        # 🔥 GARANTİ BAŞLANGIÇ POSTU
         if not get_posts():
             save_post("DynamoHive Activated", "System is live and generating signals")
 
@@ -97,9 +97,10 @@ def run_cycle(modules):
         # SIGNALS
         signals = signal_module.detect_signals(analytics) if analytics else []
 
+        # 🔥 KRİTİK FIX → HER CYCLE UNIQUE SIGNAL
         if not signals:
             signals = [{
-                "text": "system activation",
+                "text": f"system activation {int(time.time())}",
                 "score": 10
             }]
 
@@ -117,9 +118,8 @@ def run_cycle(modules):
         # CONTENT
         for intel in intelligence:
 
-            topic = intel.get("topic") or "unknown"
+            topic = intel.get("topic") or f"unknown-{int(time.time())}"
 
-            # 🔥 FIX: duplicate sadece skip değil, logla
             if is_duplicate(topic):
                 logger.info(f"SKIPPED duplicate: {topic}")
                 continue
@@ -132,7 +132,7 @@ def run_cycle(modules):
 
             if isinstance(content, dict):
 
-                title = content.get("title") or "No Title"
+                title = content.get("title") or f"No Title {int(time.time())}"
                 body = content.get("content") or "No Content"
 
                 save_post(title, body)
