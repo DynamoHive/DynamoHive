@@ -13,6 +13,9 @@ from threading import Thread
 
 from backend.storage import get_posts
 
+# 🔥 ROUTER EKLENDİ
+from backend.api.routes.posts import router as posts_router
+
 
 # -------------------------
 # PATHS
@@ -98,6 +101,13 @@ app = FastAPI(
 
 
 # -------------------------
+# ROUTES (🔥 KRİTİK)
+# -------------------------
+
+app.include_router(posts_router)
+
+
+# -------------------------
 # STATIC
 # -------------------------
 
@@ -111,7 +121,7 @@ app.mount(
 
 
 # -------------------------
-# ROOT (🔥 FIX: TEMPLATE KALDIRILDI)
+# ROOT
 # -------------------------
 
 @app.get("/")
@@ -120,7 +130,7 @@ def home():
 
 
 # -------------------------
-# API FEED
+# API FEED (opsiyonel)
 # -------------------------
 
 @app.get("/api/feed")
