@@ -1,4 +1,3 @@
-FINAL — backend/main.py (DÜZELTİLMİŞ)
 import sys
 import os
 from contextlib import asynccontextmanager
@@ -8,14 +7,12 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse  # 🔥 EKLENDİ
+from fastapi.responses import FileResponse
 
 import sqlite3
 from threading import Thread
 
 from backend.storage import get_posts
-
-# ✅ DOĞRU ROUTER
 from backend.posts import router as posts_router
 
 
@@ -62,10 +59,8 @@ def start_orchestrator():
 
     try:
         from backend.orchestrator import start
-
         print("Starting DynamoHive AI engine")
         start()
-
     except Exception as e:
         print("AI engine failed:", e)
 
@@ -123,12 +118,21 @@ app.mount(
 
 
 # -------------------------
-# ROOT (🔥 BURASI DÜZELDİ)
+# ROOT
 # -------------------------
 
 @app.get("/")
 def home():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+
+# -------------------------
+# 🔥 DEBUG (EKLENDİ)
+# -------------------------
+
+@app.get("/debug/static")
+def debug_static():
+    return os.listdir(STATIC_DIR)
 
 
 # -------------------------
