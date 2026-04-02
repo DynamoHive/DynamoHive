@@ -5,20 +5,13 @@ import traceback
 from backend.logger import logger
 from backend.storage import save_post, get_posts
 
-# EVENT
 from ai_engine.event_engine import register_event, detect_event_spikes
-
-# CONTENT
 from ai_engine.narrative_engine import generate_narrative
-
-# DISTRIBUTION
 from backend.distribution_engine import distribute
 
-# SIGNAL
 import ai_engine.signal_detector as signal_module
 from ai_engine.signal_ranking_engine import rank_signals
 
-# CACHE
 from backend.cache import is_duplicate, mark_generated
 
 
@@ -26,7 +19,6 @@ CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 
 
-# INTELLIGENCE
 def synthesize_intelligence(signals, events):
 
     intelligence = []
@@ -80,8 +72,10 @@ def run_cycle(modules):
     logger.info("DynamoHive cycle started")
 
     try:
-        # 💣 TEST POST (GARANTİ)
-        save_post("TEST TITLE", "SYSTEM WORKING")
+
+        # 💣 TEST POST (SADECE 1 KEZ)
+        if not get_posts():
+            save_post("TEST TITLE", "SYSTEM WORKING")
 
         # DATA
         raw_data = modules.get("crawl", lambda: [])()
@@ -125,7 +119,9 @@ def run_cycle(modules):
 
             topic = intel.get("topic")
 
+            # 🔥 DUPLICATE YUMUŞATILDI
             if is_duplicate(topic):
+                logger.info(f"duplicate but allowed once: {topic}")
                 continue
 
             content = generate_narrative(intel)
@@ -139,6 +135,8 @@ def run_cycle(modules):
 
                 distribute(content)
                 mark_generated(topic)
+
+                logger.info(f"GENERATED: {topic}")
 
     except:
         traceback.print_exc()
