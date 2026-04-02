@@ -1,4 +1,4 @@
-     signals = [{
+        signals = [{
             "text": f"system {int(time.time())}",
             "score": 1
         }]
@@ -26,7 +26,7 @@
 
             topic = intel.get("topic") or f"unknown-{int(time.time())}"
 
-            # 🔥 FIX: duplicate kilitlemesin
+            # FIX: duplicate kilitlemesin
             if is_duplicate(topic):
                 topic = f"{topic}_{int(time.time())}"
 
@@ -42,14 +42,14 @@
 
             try:
                 distribute(content)
-            except:
+            except Exception:
                 logger.warning("Distribution failed")
 
             mark_generated(topic)
 
             logger.info(f"GENERATED: {topic}")
 
-    except:
+    except Exception:
         traceback.print_exc()
 
     finally:
@@ -68,6 +68,6 @@ def start():
         try:
             run_cycle(modules)
             time.sleep(CYCLE_INTERVAL)
-        except:
+        except Exception:
             traceback.print_exc()
             time.sleep(ERROR_SLEEP)
