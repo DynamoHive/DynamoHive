@@ -2,6 +2,8 @@ import feedparser
 import hashlib
 import time
 
+from backend.storage import save_post  # 🔥 KRİTİK
+
 RSS_SOURCES = [
 
     "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
@@ -15,7 +17,6 @@ RSS_SOURCES = [
     "https://techcrunch.com/feed/",
     "https://www.theverge.com/rss/index.xml",
 
-    # Reddit bazen bloklar → fallback gibi düşün
     "https://www.reddit.com/r/worldnews/.rss",
     "https://www.reddit.com/r/technology/.rss"
 ]
@@ -39,7 +40,6 @@ def get_feed(url):
         if now - cached_time < CACHE_TTL:
             return cached_feed
 
-    # 🔥 USER AGENT EKLE (çok önemli)
     feed = feedparser.parse(url, request_headers={
         "User-Agent": "Mozilla/5.0"
     })
@@ -58,7 +58,6 @@ def crawl():
         try:
             feed = get_feed(url)
 
-            # 🔥 DEBUG
             print(f"[CRAWL] {url} entries:", len(feed.entries))
 
             for entry in feed.entries[:5]:
@@ -66,9 +65,7 @@ def crawl():
                 title = entry.get("title", "").strip()
                 content = entry.get("summary", entry.get("description", "")).strip()
 
-                # 🔥 BOŞ VERİYİ ATLA AMA LOGLA
                 if not title:
-                    print("SKIP empty title")
                     continue
 
                 fingerprint = make_hash(title + content)
@@ -85,9 +82,15 @@ def crawl():
                     "timestamp": time.time()
                 }
 
-                print("ADD:", title[:60])  # debug
+                # 🔥 DB'YE YAZ (ASIL FIX)
+                try:
+                    save_post(item["title"], item["content"])
+                except Exception as db_error:
+                    print("DB write error:", db_error)
 
                 results.append(item)
+
+                print("ADD:", title[:60])
 
         except Exception as e:
             print("rss error:", url, e)
