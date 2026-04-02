@@ -1,6 +1,9 @@
 import sqlite3
+import os
 
-DB_PATH = "database/dynamohive.db"
+# 🔥 ABSOLUTE PATH (en kritik fix)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "database", "dynamohive.db")
 
 
 def get_posts():
@@ -9,7 +12,7 @@ def get_posts():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    # tablo yoksa oluştur
+    # tablo yoksa oluştur (safe fallback)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,7 +22,7 @@ def get_posts():
         )
     """)
 
-    # son 50 yazıyı al
+    # son 50 post
     cursor.execute("""
         SELECT id, title, content, created_at
         FROM posts
@@ -30,5 +33,4 @@ def get_posts():
     rows = cursor.fetchall()
     conn.close()
 
-    # JSON'a uygun format
     return [dict(row) for row in rows]
