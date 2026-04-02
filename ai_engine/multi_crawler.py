@@ -15,15 +15,14 @@ RSS_SOURCES = [
     "https://techcrunch.com/feed/",
     "https://www.theverge.com/rss/index.xml",
 
+    # Reddit bazen bloklar → fallback gibi düşün
     "https://www.reddit.com/r/worldnews/.rss",
     "https://www.reddit.com/r/technology/.rss"
 ]
 
 
 SEEN = set()
-
 CACHE = {}
-
 CACHE_TTL = 300
 
 
@@ -36,13 +35,14 @@ def get_feed(url):
     now = time.time()
 
     if url in CACHE:
-
         cached_time, cached_feed = CACHE[url]
-
         if now - cached_time < CACHE_TTL:
             return cached_feed
 
-    feed = feedparser.parse(url)
+    # 🔥 USER AGENT EKLE (çok önemli)
+    feed = feedparser.parse(url, request_headers={
+        "User-Agent": "Mozilla/5.0"
+    })
 
     CACHE[url] = (now, feed)
 
@@ -56,13 +56,20 @@ def crawl():
     for url in RSS_SOURCES:
 
         try:
-
             feed = get_feed(url)
+
+            # 🔥 DEBUG
+            print(f"[CRAWL] {url} entries:", len(feed.entries))
 
             for entry in feed.entries[:5]:
 
-                title = entry.get("title", "")
-                content = entry.get("summary", entry.get("description", ""))
+                title = entry.get("title", "").strip()
+                content = entry.get("summary", entry.get("description", "")).strip()
+
+                # 🔥 BOŞ VERİYİ ATLA AMA LOGLA
+                if not title:
+                    print("SKIP empty title")
+                    continue
 
                 fingerprint = make_hash(title + content)
 
@@ -71,18 +78,19 @@ def crawl():
 
                 SEEN.add(fingerprint)
 
-                results.append({
-
+                item = {
                     "title": title,
-                    "content": content,
+                    "content": content if content else title,
                     "source": url,
                     "timestamp": time.time()
+                }
 
-                })
+                print("ADD:", title[:60])  # debug
+
+                results.append(item)
 
         except Exception as e:
-
-            print("rss error:", e)
+            print("rss error:", url, e)
 
     print("crawler collected:", len(results))
 
