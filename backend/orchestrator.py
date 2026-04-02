@@ -15,35 +15,35 @@ def safe_imports():
     modules = {}
 
     try:
-        from backend.ai_engine.multi_crawler import crawl
+        from ai_engine.multi_crawler import crawl
         modules["crawl"] = crawl
         logger.info("crawler loaded")
     except Exception:
         traceback.print_exc()
 
     try:
-        from backend.ai_engine.data_pipeline import process_data
+        from ai_engine.data_pipeline import process_data
         modules["process_data"] = process_data
         logger.info("pipeline loaded")
     except Exception:
         traceback.print_exc()
 
     try:
-        from backend.ai_engine.topic_radar import detect_topics
+        from ai_engine.topic_radar import detect_topics
         modules["detect_topics"] = detect_topics
         logger.info("topic radar loaded")
     except Exception:
         traceback.print_exc()
 
     try:
-        from backend.ai_engine.analytics_engine import analyse
+        from ai_engine.analytics_engine import analyse
         modules["analyse"] = analyse
         logger.info("analytics loaded")
     except Exception:
         traceback.print_exc()
 
     try:
-        from backend.ai_engine.signal_detector import detect_signals
+        from ai_engine.signal_detector import detect_signals
         modules["detect_signals"] = detect_signals
         logger.info("signal detector loaded")
     except Exception:
