@@ -12,9 +12,17 @@ def collect_event(event: dict):
     topic = event.get("topic")
     post_id = event.get("post_id")
 
-    if topic and post_id:
-        add_knowledge(topic, post_id)
+    # 🔥 güvenli çağrı (post_id olmasa da çalışır)
+    if topic:
+        try:
+            add_knowledge(topic, post_id)
+        except Exception:
+            pass
 
-    event_queue.put(event)
+    # 🔥 queue güvenli
+    try:
+        event_queue.put(event)
+    except Exception:
+        pass
 
     return {"status": "event received"}
