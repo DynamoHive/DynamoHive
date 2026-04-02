@@ -5,10 +5,13 @@ import traceback
 from backend.logger import logger
 from backend.storage import save_post, get_posts
 
-# ✅ EVENT ENGINE
+# ✅ EVENT
 from ai_engine.event_engine import register_event, detect_event_spikes
 
-# ✅ CONTENT (🔥 FIX: auto_content_loop ÇÖP → YENİ ENGINE)
+# ✅ INTELLIGENCE (🔥 YENİ)
+from ai_engine.intelligence_engine import synthesize_intelligence
+
+# ✅ CONTENT
 from ai_engine.narrative_engine import generate_narrative
 
 # ✅ DISTRIBUTION
@@ -18,7 +21,7 @@ from backend.distribution_engine import distribute
 import ai_engine.signal_detector as signal_module
 from ai_engine.signal_ranking_engine import rank_signals
 
-# ✅ CACHE (REDIS)
+# ✅ CACHE
 from backend.cache import is_duplicate, mark_generated
 
 
@@ -26,9 +29,6 @@ CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 
 
-# -------------------------
-# SAFE IMPORTS
-# -------------------------
 def safe_imports():
 
     modules = {}
@@ -64,9 +64,6 @@ def safe_imports():
     return modules
 
 
-# -------------------------
-# MAIN CYCLE
-# -------------------------
 def run_cycle(modules):
 
     start_time = time.time()
@@ -114,7 +111,6 @@ def run_cycle(modules):
         # -------------------------
         signals = signal_module.detect_signals(analytics) if analytics else []
 
-        # 🔥 FALLBACK
         if not signals and topics:
             logger.warning("no signals → fallback to topics")
             signals = [
@@ -126,7 +122,6 @@ def run_cycle(modules):
                 for t in topics if isinstance(t, dict)
             ]
 
-        # 🔥 RANKING
         signals = rank_signals(signals)
 
         logger.info(f"signals detected: {len(signals)}")
@@ -148,41 +143,44 @@ def run_cycle(modules):
         logger.info(f"events detected: {len(events)}")
 
         # -------------------------
+        # 🔥 7.5 INTELLIGENCE (YENİ BEYİN)
+        # -------------------------
+        intelligence = synthesize_intelligence(signals, events)
+
+        logger.info(f"intelligence generated: {len(intelligence)}")
+        logger.info(f"INTEL SAMPLE: {intelligence[:1]}")
+
+        # -------------------------
         # 8. CONTENT + DISTRIBUTION
         # -------------------------
-        for event in events:
+        for intel in intelligence:
 
-            topic = event.get("topic")
+            topic = intel.get("topic")
 
-            # 🔥 DUPLICATE CONTROL
             if is_duplicate(topic):
                 logger.info(f"duplicate skipped: {topic}")
                 continue
 
             try:
-                # 🔥 GERÇEK CONTENT ENGINE
-                content = generate_narrative(event)
+                content = generate_narrative(intel)
 
                 if isinstance(content, dict):
 
-                    title = content.get("title", f"Event: {topic}")
+                    title = content.get("title", f"Intel: {topic}")
                     body = content.get("content", "")
 
-                    # 🔥 DB FIX (dict değil string gönderiyoruz)
                     save_post(title, body)
-
                     distribute(content)
 
-                    # 🔥 CACHE MARK
                     mark_generated(topic)
 
-                    logger.info(f"content generated + distributed: {topic}")
+                    logger.info(f"INTEL GENERATED: {topic}")
 
                 else:
                     logger.warning("invalid content format")
 
             except Exception as e:
-                logger.warning(f"content/distribution error: {e}")
+                logger.warning(f"intel error: {e}")
 
         # -------------------------
         # 9. RAW STORAGE
@@ -206,9 +204,6 @@ def run_cycle(modules):
         logger.info(f"cycle finished in {elapsed}s")
 
 
-# -------------------------
-# START LOOP
-# -------------------------
 def start():
 
     logger.info("DynamoHive system started")
