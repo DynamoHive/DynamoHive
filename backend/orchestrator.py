@@ -5,13 +5,17 @@ import traceback
 from backend.logger import logger
 from backend.storage import save_post, get_posts
 
-# ✅ DOĞRU IMPORTLAR
+# ✅ EVENT ENGINE
 from ai_engine.event_engine import register_event, detect_event_spikes
-from backend.distribution_engine import distribute
-from ai_engine.auto_content_loop import generate_content
 
+# ✅ CONTENT + DISTRIBUTION
+from ai_engine.auto_content_loop import generate_content
+from backend.distribution_engine import distribute
+
+# ✅ SIGNAL
 import ai_engine.signal_detector as signal_module
 from ai_engine.signal_ranking_engine import rank_signals
+
 
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
@@ -63,7 +67,9 @@ def run_cycle(modules):
             logger.warning("crawler missing")
             return
 
-        # 🔴 DATA
+        # -------------------------
+        # 1. DATA
+        # -------------------------
         raw_data = modules["crawl"]()
         previous_posts = get_posts()
 
@@ -75,21 +81,29 @@ def run_cycle(modules):
                 logger.warning("no crawl data at all")
                 return
 
-        # 🔴 PIPELINE
+        # -------------------------
+        # 2. PIPELINE
+        # -------------------------
         if "process_data" in modules:
             raw_data = modules["process_data"](raw_data)
 
-        # 🔴 TOPICS
+        # -------------------------
+        # 3. TOPICS
+        # -------------------------
         topics = modules["detect_topics"](raw_data) if "detect_topics" in modules else raw_data
         logger.info(f"topics detected: {topics}")
 
-        # 🔴 ANALYTICS
+        # -------------------------
+        # 4. ANALYTICS
+        # -------------------------
         analytics = modules["analyse"](topics) if "analyse" in modules else topics
 
-        # 🔥 SIGNALS
+        # -------------------------
+        # 5. SIGNALS
+        # -------------------------
         signals = signal_module.detect_signals(analytics) if analytics else []
 
-        # 🔥 FALLBACK
+        # 🔥 FALLBACK (çok önemli)
         if not signals and topics:
             logger.warning("no signals → fallback to topics")
             signals = [
@@ -107,48 +121,48 @@ def run_cycle(modules):
         logger.info(f"signals detected: {len(signals)}")
         logger.info(f"SIGNAL SAMPLE: {signals[:1]}")
 
-        # 🔴 EVENT MEMORY
+        # -------------------------
+        # 6. EVENT MEMORY
+        # -------------------------
         for signal in signals:
             keywords = signal.get("keywords") or [signal.get("text")]
             for kw in keywords:
                 if kw:
                     register_event(kw)
 
-        # 🔴 EVENTS
+        # -------------------------
+        # 7. EVENTS
+        # -------------------------
         events = detect_event_spikes()
         logger.info(f"events detected: {len(events)}")
 
-        # 🔴 CONTENT + DISTRIBUTION (🔥 TAM FIX)
+        # -------------------------
+        # 8. CONTENT + DISTRIBUTION (🔥 FIX BURADA)
+        # -------------------------
         for event in events:
             try:
                 content = generate_content(event)
 
-                if not content:
-                    continue
-
-                # 🔥 NORMALIZE
+                # ✅ KRİTİK FIX
                 if isinstance(content, dict):
+
                     title = content.get("title", f"Event: {event.get('topic')}")
                     body = content.get("content", "")
+
+                    save_post(title, body)
+                    distribute(content)
+
+                    logger.info(f"content generated + distributed: {event.get('topic')}")
+
                 else:
-                    title = f"Event: {event.get('topic')}"
-                    body = str(content)
-
-                # 🔴 DATABASE (STRING ONLY)
-                save_post(title, body)
-
-                # 🔴 DISTRIBUTION (STANDARD FORMAT)
-                distribute({
-                    "title": title,
-                    "content": body
-                })
-
-                logger.info(f"content generated + distributed: {event.get('topic')}")
+                    logger.warning("invalid content format")
 
             except Exception as e:
                 logger.warning(f"content/distribution error: {e}")
 
-        # 🔴 STORAGE (RAW DATA)
+        # -------------------------
+        # 9. RAW STORAGE
+        # -------------------------
         try:
             for item in raw_data:
                 if isinstance(item, dict):
