@@ -8,8 +8,8 @@ from backend.storage import save_post, get_posts
 # ✅ EVENT
 from ai_engine.event_engine import register_event, detect_event_spikes
 
-# ✅ INTELLIGENCE (🔥 YENİ)
-from ai_engine.intelligence_engine import synthesize_intelligence
+# ❌ ESKİYİ KALDIRDIK:
+# from ai_engine.intelligence_engine import synthesize_intelligence
 
 # ✅ CONTENT
 from ai_engine.narrative_engine import generate_narrative
@@ -27,6 +27,23 @@ from backend.cache import is_duplicate, mark_generated
 
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
+
+
+# 🔥 YERİNE BUNU KOYDUK (INTELLIGENCE)
+def synthesize_intelligence(signals, events):
+
+    intelligence = []
+
+    for s in signals:
+        topic = s.get("text") or "unknown"
+
+        intelligence.append({
+            "topic": topic,
+            "summary": f"{topic} is gaining momentum based on detected signals.",
+            "trend": "surging" if s.get("score", 0) > 5 else "rising"
+        })
+
+    return intelligence
 
 
 def safe_imports():
@@ -143,7 +160,7 @@ def run_cycle(modules):
         logger.info(f"events detected: {len(events)}")
 
         # -------------------------
-        # 🔥 7.5 INTELLIGENCE (YENİ BEYİN)
+        # 🔥 7.5 INTELLIGENCE (FIXED)
         # -------------------------
         intelligence = synthesize_intelligence(signals, events)
 
