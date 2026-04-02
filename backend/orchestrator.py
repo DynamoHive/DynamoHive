@@ -5,15 +5,16 @@ import traceback
 from backend.logger import logger
 from backend.storage import save_post, get_posts
 
-# 🔥 FIX: DOĞRU EVENT IMPORT
+# ✅ EVENT
 from backend.events import register_event, detect_event_spikes
 
-# 🔥 CONTENT + DISTRIBUTION
+# ✅ CONTENT
 from ai_engine.auto_content_loop import generate_content
 from ai_engine.distribution_engine import distribute
 
-# 🔥 SIGNAL IMPORT
+# ✅ SIGNAL + RANKING
 import ai_engine.signal_detector as signal_module
+from ai_engine.signal_ranking_engine import rank_signals
 
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
@@ -65,7 +66,7 @@ def run_cycle(modules):
             logger.warning("crawler missing")
             return
 
-        # DATA
+        # 🔴 DATA
         raw_data = modules["crawl"]()
         previous_posts = get_posts()
 
@@ -77,34 +78,50 @@ def run_cycle(modules):
                 logger.warning("no crawl data at all")
                 return
 
-        # PIPELINE
+        # 🔴 PIPELINE
         if "process_data" in modules:
             raw_data = modules["process_data"](raw_data)
 
-        # TOPICS
+        # 🔴 TOPICS
         topics = modules["detect_topics"](raw_data) if "detect_topics" in modules else raw_data
         logger.info(f"topics detected: {topics}")
 
-        # ANALYTICS
+        # 🔴 ANALYTICS
         analytics = modules["analyse"](topics) if "analyse" in modules else topics
 
-        # SIGNALS
+        # 🔥 SIGNALS
         signals = signal_module.detect_signals(analytics) if analytics else []
+
+        # 🔥 FALLBACK (topic → signal üret)
+        if not signals and topics:
+            logger.warning("no signals → fallback to topics")
+            signals = [
+                {
+                    "text": t.get("topic"),
+                    "keywords": [t.get("topic")],
+                    "score": t.get("score", 0)
+                }
+                for t in topics if isinstance(t, dict)
+            ]
+
+        # 🔥 RANKING
+        signals = rank_signals(signals)
+
         logger.info(f"signals detected: {len(signals)}")
         logger.info(f"SIGNAL SAMPLE: {signals[:1]}")
 
-        # EVENT MEMORY
+        # 🔴 EVENT MEMORY
         for signal in signals:
             keywords = signal.get("keywords") or [signal.get("topic")]
             for kw in keywords:
                 if kw:
                     register_event(kw)
 
-        # EVENTS
+        # 🔴 EVENTS
         events = detect_event_spikes()
         logger.info(f"events detected: {len(events)}")
 
-        # CONTENT
+        # 🔴 CONTENT
         for event in events:
             try:
                 content = generate_content(event)
@@ -117,7 +134,7 @@ def run_cycle(modules):
             except Exception as e:
                 logger.warning(f"content/distribution error: {e}")
 
-        # STORAGE
+        # 🔴 STORAGE
         try:
             for item in raw_data:
                 if isinstance(item, dict):
