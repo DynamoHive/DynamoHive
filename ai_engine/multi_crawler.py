@@ -2,7 +2,7 @@ import feedparser
 import hashlib
 import time
 
-from backend.storage import save_post  # 🔥 KRİTİK
+from backend.storage import save_post
 
 RSS_SOURCES = [
 
@@ -22,7 +22,6 @@ RSS_SOURCES = [
 ]
 
 
-SEEN = set()
 CACHE = {}
 CACHE_TTL = 300
 
@@ -60,6 +59,9 @@ def crawl():
 
             print(f"[CRAWL] {url} entries:", len(feed.entries))
 
+            if not feed.entries:
+                continue
+
             for entry in feed.entries[:5]:
 
                 title = entry.get("title", "").strip()
@@ -68,13 +70,6 @@ def crawl():
                 if not title:
                     continue
 
-                fingerprint = make_hash(title + content)
-
-                if fingerprint in SEEN:
-                    continue
-
-                SEEN.add(fingerprint)
-
                 item = {
                     "title": title,
                     "content": content if content else title,
@@ -82,7 +77,7 @@ def crawl():
                     "timestamp": time.time()
                 }
 
-                # 🔥 DB'YE YAZ (ASIL FIX)
+                # 🔥 DB WRITE (ASLI BURASI)
                 try:
                     save_post(item["title"], item["content"])
                 except Exception as db_error:
