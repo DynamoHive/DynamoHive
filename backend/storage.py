@@ -5,13 +5,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "database", "dynamohive.db")
 
 
-def get_posts():
+def get_connection():
+    return sqlite3.connect(DB_PATH)
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+
+def init_db():
+    conn = get_connection()
     cursor = conn.cursor()
 
-    # tablo yoksa oluştur
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +22,30 @@ def get_posts():
         )
     """)
 
-    # son 50 yazıyı al
+    conn.commit()
+    conn.close()
+
+
+def save_post(title, content):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO posts (title, content)
+        VALUES (?, ?)
+    """, (title, content))
+
+    conn.commit()
+    conn.close()
+
+
+def get_posts():
+
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
     cursor.execute("""
         SELECT id, title, content, created_at
         FROM posts
