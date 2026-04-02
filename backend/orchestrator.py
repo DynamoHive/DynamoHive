@@ -101,7 +101,7 @@ def run_cycle(modules):
         try:
             intelligence = intel_engine.process(raw_intel)
         except Exception as e:
-            print("INTEL ERROR:", e)
+            logger.warning(f"INTEL ERROR: {e}")
             intelligence = raw_intel
 
         # CONTENT
@@ -109,7 +109,7 @@ def run_cycle(modules):
 
             base_topic = intel.get("topic") or "unknown"
 
-            # duplicate sistemi kilitlemez
+            # 🔥 duplicate FIX (hem koru hem kilitleme)
             if is_duplicate(base_topic):
                 topic = f"{base_topic}_{int(time.time())}"
             else:
@@ -123,14 +123,21 @@ def run_cycle(modules):
             title = content.get("title") or topic
             body = content.get("content") or "No content"
 
-            save_post(title, body)
+            try:
+                save_post(title, body)
+            except Exception:
+                logger.warning("Save failed")
+                continue
 
             try:
                 distribute(content)
             except Exception:
                 logger.warning("Distribution failed")
 
-            mark_generated(topic)
+            try:
+                mark_generated(topic)
+            except Exception:
+                logger.warning("Cache mark failed")
 
             logger.info(f"GENERATED: {topic}")
 
@@ -156,4 +163,3 @@ def start():
         except Exception:
             traceback.print_exc()
             time.sleep(ERROR_SLEEP)
-🔥 BU VERSİYONDA     
