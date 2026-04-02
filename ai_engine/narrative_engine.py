@@ -17,7 +17,7 @@ class NarrativeEngine:
         # 5. TRAJECTORY
         trajectory = self._build_trajectory(intelligence)
 
-        # 6. ARTICLE (SENİN ESKİ SİSTEMİN YERİNE)
+        # 6. ARTICLE
         title = self._build_headline(intelligence.get("topic"), trajectory)
         content = self._build_article(
             reality,
@@ -91,3 +91,9 @@ class NarrativeEngine:
             f"Power dynamics reveal asymmetry. Winners: {winners}. Losers: {losers}.",
             trajectory
         ])
+
+
+# 🔥 KRİTİK FIX (BUNU EKLEMEZSEN ÇALIŞMAZ)
+def generate_narrative(intelligence):
+    engine = NarrativeEngine()
+    return engine.generate(intelligence)
