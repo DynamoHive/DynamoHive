@@ -16,6 +16,9 @@ from backend.distribution_engine import distribute
 import ai_engine.signal_detector as signal_module
 from ai_engine.signal_ranking_engine import rank_signals
 
+# ✅ REDIS CACHE (🔥 EKLENDİ)
+from backend.cache import is_duplicate, mark_generated
+
 
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
@@ -103,7 +106,7 @@ def run_cycle(modules):
         # -------------------------
         signals = signal_module.detect_signals(analytics) if analytics else []
 
-        # 🔥 FALLBACK (çok önemli)
+        # 🔥 FALLBACK
         if not signals and topics:
             logger.warning("no signals → fallback to topics")
             signals = [
@@ -137,22 +140,32 @@ def run_cycle(modules):
         logger.info(f"events detected: {len(events)}")
 
         # -------------------------
-        # 8. CONTENT + DISTRIBUTION (🔥 FIX BURADA)
+        # 8. CONTENT + DISTRIBUTION (🔥 DUPLICATE FIX)
         # -------------------------
         for event in events:
+
+            topic = event.get("topic")
+
+            # 🔥 REDIS DUPLICATE CONTROL
+            if is_duplicate(topic):
+                logger.info(f"duplicate skipped: {topic}")
+                continue
+
             try:
                 content = generate_content(event)
 
-                # ✅ KRİTİK FIX
                 if isinstance(content, dict):
 
-                    title = content.get("title", f"Event: {event.get('topic')}")
+                    title = content.get("title", f"Event: {topic}")
                     body = content.get("content", "")
 
                     save_post(title, body)
                     distribute(content)
 
-                    logger.info(f"content generated + distributed: {event.get('topic')}")
+                    # 🔥 CACHE MARK
+                    mark_generated(topic)
+
+                    logger.info(f"content generated + distributed: {topic}")
 
                 else:
                     logger.warning("invalid content format")
