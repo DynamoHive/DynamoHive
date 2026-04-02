@@ -1,14 +1,15 @@
 import time
 import gc
 import traceback
-from concurrent.futures import ThreadPoolExecutor
 
 from backend.logger import logger
 from backend.storage import save_post, get_posts
 
+# 🔥 EVENT ENGINE
+from ai_engine.events import register_event, detect_event_spikes
+
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
-MAX_WORKERS = 4
 
 
 def safe_imports():
@@ -64,13 +65,13 @@ def run_cycle(modules):
             logger.warning("crawler missing")
             return
 
-        # 🔴 1. yeni veri çek
+        # 🔴 1. yeni veri
         raw_data = modules["crawl"]()
 
-        # 🔴 2. geçmiş veriyi al
+        # 🔴 2. geçmiş veri
         previous_posts = get_posts()
 
-        # 🔴 3. fallback mekanizması
+        # 🔴 3. fallback
         if not raw_data:
             if previous_posts:
                 logger.warning("no new crawl data, using stored data")
@@ -83,7 +84,7 @@ def run_cycle(modules):
         if "process_data" in modules:
             raw_data = modules["process_data"](raw_data)
 
-        # 🔴 5. topic detection
+        # 🔴 5. topics
         if "detect_topics" in modules:
             topics = modules["detect_topics"](raw_data)
         else:
@@ -97,7 +98,7 @@ def run_cycle(modules):
         else:
             analytics = topics
 
-        # 🔴 7. signal detection
+        # 🔴 7. signals
         if "detect_signals" in modules:
             signals = modules["detect_signals"](analytics)
         else:
@@ -105,7 +106,16 @@ def run_cycle(modules):
 
         logger.info(f"signals detected: {len(signals)}")
 
-        # 🔴 8. veriyi kaydet (memory)
+        # 🔴 8. EVENT MEMORY DOLDUR
+        for signal in signals:
+            for kw in signal.get("keywords", []):
+                register_event(kw)
+
+        # 🔴 9. EVENT DETECTION
+        events = detect_event_spikes()
+        logger.info(f"events detected: {len(events)}")
+
+        # 🔴 10. STORAGE
         try:
             for item in raw_data:
                 if isinstance(item, dict):
