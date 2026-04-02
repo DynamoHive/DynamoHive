@@ -1,3 +1,4 @@
+FINAL — backend/main.py (DÜZELTİLMİŞ)
 import sys
 import os
 from contextlib import asynccontextmanager
@@ -7,13 +8,14 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse  # 🔥 EKLENDİ
 
 import sqlite3
 from threading import Thread
 
 from backend.storage import get_posts
 
-# ✅ DOĞRU ROUTER (SENİN YAPINA GÖRE)
+# ✅ DOĞRU ROUTER
 from backend.posts import router as posts_router
 
 
@@ -101,7 +103,7 @@ app = FastAPI(
 
 
 # -------------------------
-# ROUTES (KRİTİK)
+# ROUTES
 # -------------------------
 
 app.include_router(posts_router)
@@ -121,16 +123,16 @@ app.mount(
 
 
 # -------------------------
-# ROOT
+# ROOT (🔥 BURASI DÜZELDİ)
 # -------------------------
 
 @app.get("/")
 def home():
-    return {"status": "DynamoHive running"}
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
 # -------------------------
-# API FEED (opsiyonel)
+# API FEED
 # -------------------------
 
 @app.get("/api/feed")
