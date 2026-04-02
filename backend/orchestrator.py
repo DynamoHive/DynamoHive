@@ -5,23 +5,20 @@ import traceback
 from backend.logger import logger
 from backend.storage import save_post, get_posts
 
-# ✅ EVENT
+# EVENT
 from ai_engine.event_engine import register_event, detect_event_spikes
 
-# ❌ ESKİYİ KALDIRDIK:
-# from ai_engine.intelligence_engine import synthesize_intelligence
-
-# ✅ CONTENT
+# CONTENT
 from ai_engine.narrative_engine import generate_narrative
 
-# ✅ DISTRIBUTION
+# DISTRIBUTION
 from backend.distribution_engine import distribute
 
-# ✅ SIGNAL
+# SIGNAL
 import ai_engine.signal_detector as signal_module
 from ai_engine.signal_ranking_engine import rank_signals
 
-# ✅ CACHE
+# CACHE
 from backend.cache import is_duplicate, mark_generated
 
 
@@ -29,25 +26,20 @@ CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 
 
-# 🔥 YERİNE BUNU KOYDUK (INTELLIGENCE)
+# INTELLIGENCE (yerinde, basit ve çalışır)
 def synthesize_intelligence(signals, events):
-
     intelligence = []
-
     for s in signals:
         topic = s.get("text") or "unknown"
-
         intelligence.append({
             "topic": topic,
             "summary": f"{topic} is gaining momentum based on detected signals.",
             "trend": "surging" if s.get("score", 0) > 5 else "rising"
         })
-
     return intelligence
 
 
 def safe_imports():
-
     modules = {}
 
     try:
@@ -82,20 +74,12 @@ def safe_imports():
 
 
 def run_cycle(modules):
-
     start_time = time.time()
     logger.info("DynamoHive cycle started")
 
     try:
-
-        if "crawl" not in modules:
-            logger.warning("crawler missing")
-            return
-
-        # -------------------------
-        # 1. DATA
-        # -------------------------
-        raw_data = modules["crawl"]()
+        # 1) DATA
+        raw_data = modules.get("crawl", lambda: [])()
         previous_posts = get_posts()
 
         if not raw_data:
@@ -103,29 +87,19 @@ def run_cycle(modules):
                 logger.warning("no new crawl data, using stored data")
                 raw_data = previous_posts
             else:
-                logger.warning("no crawl data at all")
-                return
+                logger.warning("no crawl data at all → continue anyway")
 
-        # -------------------------
-        # 2. PIPELINE
-        # -------------------------
+        # 2) PIPELINE
         if "process_data" in modules:
             raw_data = modules["process_data"](raw_data)
 
-        # -------------------------
-        # 3. TOPICS
-        # -------------------------
-        topics = modules["detect_topics"](raw_data) if "detect_topics" in modules else raw_data
-        logger.info(f"topics detected: {topics}")
+        # 3) TOPICS
+        topics = modules.get("detect_topics", lambda x: x)(raw_data)
 
-        # -------------------------
-        # 4. ANALYTICS
-        # -------------------------
-        analytics = modules["analyse"](topics) if "analyse" in modules else topics
+        # 4) ANALYTICS
+        analytics = modules.get("analyse", lambda x: x)(topics)
 
-        # -------------------------
-        # 5. SIGNALS
-        # -------------------------
+        # 5) SIGNALS
         signals = signal_module.detect_signals(analytics) if analytics else []
 
         if not signals and topics:
@@ -141,37 +115,32 @@ def run_cycle(modules):
 
         signals = rank_signals(signals)
 
-        logger.info(f"signals detected: {len(signals)}")
-        logger.info(f"SIGNAL SAMPLE: {signals[:1]}")
+        # 💣 GARANTİ TETİKLEME (KRİTİK)
+        if not signals:
+            logger.warning("FORCE SIGNAL ACTIVATED")
+            signals = [{
+                "text": "system activation",
+                "keywords": ["system"],
+                "score": 10
+            }]
 
-        # -------------------------
-        # 6. EVENT MEMORY
-        # -------------------------
+        logger.info(f"signals detected: {len(signals)}")
+
+        # 6) EVENTS
         for signal in signals:
-            keywords = signal.get("keywords") or [signal.get("text")]
-            for kw in keywords:
+            kws = signal.get("keywords") or [signal.get("text")]
+            for kw in kws:
                 if kw:
                     register_event(kw)
 
-        # -------------------------
-        # 7. EVENTS
-        # -------------------------
         events = detect_event_spikes()
-        logger.info(f"events detected: {len(events)}")
 
-        # -------------------------
-        # 🔥 7.5 INTELLIGENCE (FIXED)
-        # -------------------------
+        # 7) INTELLIGENCE
         intelligence = synthesize_intelligence(signals, events)
-
         logger.info(f"intelligence generated: {len(intelligence)}")
-        logger.info(f"INTEL SAMPLE: {intelligence[:1]}")
 
-        # -------------------------
-        # 8. CONTENT + DISTRIBUTION
-        # -------------------------
+        # 8) CONTENT + DISTRIBUTION
         for intel in intelligence:
-
             topic = intel.get("topic")
 
             if is_duplicate(topic):
@@ -182,26 +151,21 @@ def run_cycle(modules):
                 content = generate_narrative(intel)
 
                 if isinstance(content, dict):
-
                     title = content.get("title", f"Intel: {topic}")
                     body = content.get("content", "")
 
                     save_post(title, body)
                     distribute(content)
-
                     mark_generated(topic)
 
-                    logger.info(f"INTEL GENERATED: {topic}")
-
+                    logger.info(f"GENERATED: {topic}")
                 else:
                     logger.warning("invalid content format")
 
             except Exception as e:
                 logger.warning(f"intel error: {e}")
 
-        # -------------------------
-        # 9. RAW STORAGE
-        # -------------------------
+        # 9) RAW STORAGE (opsiyonel)
         try:
             for item in raw_data:
                 if isinstance(item, dict):
@@ -222,7 +186,6 @@ def run_cycle(modules):
 
 
 def start():
-
     logger.info("DynamoHive system started")
 
     modules = safe_imports()
