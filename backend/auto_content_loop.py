@@ -1,34 +1,28 @@
 import time
 import random
 
-topics = [
-    "AI regulation in Europe",
-    "China technology strategy",
-    "Middle East power balance",
-    "Future of global energy",
-    "Digital surveillance economy",
-    "Geopolitics of artificial intelligence",
-]
 
+def generate_content(event):
 
-def generate_content():
+    if not event:
+        return None
 
-    topic = random.choice(topics)
+    topic = event.get("topic", "unknown")
 
     article = {
-        "title": topic,
-        "content": f"Analysis about {topic}",
-        "author": "DynamoHive AI"
+        "title": f"Signal Detected: {topic}",
+        "content": f"""
+DynamoHive detected a spike in '{topic}'.
+
+Signal intensity: {event.get("count", 0)}
+Velocity: {event.get("velocity", 0)}
+
+This indicates a potential emerging event in the global information space.
+""",
+        "author": "DynamoHive AI",
+        "timestamp": time.time()
     }
 
     print("Generated content:", article)
 
     return article
-
-
-def run():
-
-    article = generate_content()
-
-    print("Publishing:", article)
- 
