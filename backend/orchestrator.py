@@ -5,12 +5,11 @@ import traceback
 from backend.logger import logger
 from backend.storage import save_post, get_posts
 
-# ✅ DOĞRU IMPORTLAR (KRİTİK FIX)
+# ✅ DOĞRU IMPORTLAR
 from ai_engine.event_engine import register_event, detect_event_spikes
 from backend.distribution_engine import distribute
 from ai_engine.auto_content_loop import generate_content
 
-# ✅ SIGNAL
 import ai_engine.signal_detector as signal_module
 from ai_engine.signal_ranking_engine import rank_signals
 
@@ -119,21 +118,37 @@ def run_cycle(modules):
         events = detect_event_spikes()
         logger.info(f"events detected: {len(events)}")
 
-        # 🔴 CONTENT + DISTRIBUTION
+        # 🔴 CONTENT + DISTRIBUTION (🔥 TAM FIX)
         for event in events:
             try:
                 content = generate_content(event)
 
-                if content:
-                    save_post(f"Event: {event.get('topic')}", content)
-                    distribute(content)
+                if not content:
+                    continue
 
-                    logger.info(f"content generated + distributed: {event.get('topic')}")
+                # 🔥 NORMALIZE
+                if isinstance(content, dict):
+                    title = content.get("title", f"Event: {event.get('topic')}")
+                    body = content.get("content", "")
+                else:
+                    title = f"Event: {event.get('topic')}"
+                    body = str(content)
+
+                # 🔴 DATABASE (STRING ONLY)
+                save_post(title, body)
+
+                # 🔴 DISTRIBUTION (STANDARD FORMAT)
+                distribute({
+                    "title": title,
+                    "content": body
+                })
+
+                logger.info(f"content generated + distributed: {event.get('topic')}")
 
             except Exception as e:
                 logger.warning(f"content/distribution error: {e}")
 
-        # 🔴 STORAGE
+        # 🔴 STORAGE (RAW DATA)
         try:
             for item in raw_data:
                 if isinstance(item, dict):
