@@ -1,7 +1,7 @@
-        signals = [{
-                "text": f"system {int(time.time())}",
-                "score": 1
-            }]
+     signals = [{
+            "text": f"system {int(time.time())}",
+            "score": 1
+        }]
 
         signals = rank_signals(signals)
 
@@ -11,10 +11,10 @@
 
         events = detect_event_spikes()
 
-        # 🔥 BASE INTEL
+        # BASE INTEL
         raw_intel = synthesize_intelligence(signals, events)
 
-        # 🔥 GERÇEK INTELLIGENCE ENGINE
+        # INTELLIGENCE ENGINE
         try:
             intelligence = intel_engine.process(raw_intel)
         except Exception as e:
@@ -26,9 +26,9 @@
 
             topic = intel.get("topic") or f"unknown-{int(time.time())}"
 
+            # 🔥 FIX: duplicate kilitlemesin
             if is_duplicate(topic):
-                logger.info(f"SKIPPED duplicate: {topic}")
-                continue
+                topic = f"{topic}_{int(time.time())}"
 
             content = generate_narrative(intel)
 
