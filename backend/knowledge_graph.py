@@ -1,18 +1,19 @@
-graph = {}
+from fastapi import APIRouter
+from backend.data_pipeline import event_queue
+from backend.knowledge_graph import add_knowledge
+
+router = APIRouter()
 
 
-def add_knowledge(topic, post_id):
+@router.post("/events")
+def collect_event(event: dict):
 
-    if not topic or not post_id:
-        return
+    topic = event.get("topic")
+    post_id = event.get("post_id")
 
-    topic = str(topic).lower().strip()
+    if topic and post_id:
+        add_knowledge(topic, post_id)
 
-    if topic not in graph:
-        graph[topic] = []
+    event_queue.put(event)
 
-    graph[topic].append(post_id)
-
-
-def get_graph():
-    return graph
+    return {"status": "ok"}
