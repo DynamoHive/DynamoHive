@@ -1,53 +1,75 @@
-from collections import defaultdict
-import time
-
-narrative_db = defaultdict(list)
-
-KEYWORDS = [
-    "war",
-    "nato",
-    "sanction",
-    "ai regulation",
-    "cyber attack",
-    "economic crisis",
-    "propaganda",
-    "military"
-]
+import random
 
 
-def detect_narratives(text):
+def build_headline(topic, trend, category):
 
-    text_lower = text.lower()
+    if trend == "surging":
+        return f"{topic.capitalize()} rapidly escalates in global {category} landscape"
 
-    found = []
+    if trend == "rising":
+        return f"{topic.capitalize()} gains traction across {category} sectors"
 
-    for k in KEYWORDS:
-
-        if k in text_lower:
-            found.append(k)
-
-    return found
+    return f"Early signals emerge around {topic} in {category}"
 
 
-def update_narratives(text):
+def build_context(signal):
 
-    narratives = detect_narratives(text)
+    topic = signal.get("text")
+    category = signal.get("category")
+    count = signal.get("count", 0)
 
-    now = time.time()
-
-    for n in narratives:
-
-        narrative_db[n].append(now)
-
-    return narratives
+    return (
+        f"Recent data indicates that {topic} is becoming increasingly visible "
+        f"within the {category} domain, with {count} independent signals detected."
+    )
 
 
-def get_trending_narratives():
+def build_implication(signal):
 
-    result = {}
+    risk = signal.get("risk")
+    topic = signal.get("text")
 
-    for n, times in narrative_db.items():
+    if risk == "high":
+        return f"The acceleration of {topic} may lead to significant global consequences."
 
-        result[n] = len(times)
+    if risk == "medium":
+        return f"The development of {topic} suggests a potentially important shift."
 
-    return sorted(result.items(), key=lambda x: x[1], reverse=True)
+    return f"{topic} remains in an early stage but warrants monitoring."
+
+
+def build_forward(signal):
+
+    trend = signal.get("trend")
+    topic = signal.get("text")
+
+    if trend == "surging":
+        return f"If momentum continues, {topic} could dominate upcoming global narratives."
+
+    if trend == "rising":
+        return f"{topic} is expected to expand its influence in the near term."
+
+    return f"Further signals are required to confirm the trajectory of {topic}."
+
+
+def generate_narrative(signal):
+
+    topic = signal.get("text")
+    category = signal.get("category", "global")
+    trend = signal.get("trend", "emerging")
+
+    title = build_headline(topic, trend, category)
+
+    paragraphs = [
+        build_context(signal),
+        build_implication(signal),
+        build_forward(signal)
+    ]
+
+    content = " ".join(paragraphs)
+
+    return {
+        "title": title,
+        "content": content,
+        "topic": topic
+    }
