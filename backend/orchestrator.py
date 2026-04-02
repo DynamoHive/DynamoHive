@@ -73,16 +73,16 @@ def run_cycle(modules):
 
     try:
 
-        # 💣 TEST POST (SADECE 1 KEZ)
+        # 🔥 GARANTİ POST (SİSTEM BOŞSA)
         if not get_posts():
-            save_post("TEST TITLE", "SYSTEM WORKING")
+            save_post("DynamoHive Activated", "System is live and generating signals")
 
         # DATA
         raw_data = modules.get("crawl", lambda: [])()
         previous_posts = get_posts()
 
         if not raw_data:
-            raw_data = previous_posts or []
+            raw_data = previous_posts or [{"text": "system bootstrap"}]
 
         # PIPELINE
         if "process_data" in modules:
@@ -117,26 +117,37 @@ def run_cycle(modules):
         # CONTENT
         for intel in intelligence:
 
-            topic = intel.get("topic")
+            topic = intel.get("topic") or "unknown"
 
-            # 🔥 DUPLICATE YUMUŞATILDI
+            # 🔥 FIX: duplicate sadece skip değil, logla
             if is_duplicate(topic):
-                logger.info(f"duplicate but allowed once: {topic}")
+                logger.info(f"SKIPPED duplicate: {topic}")
                 continue
 
             content = generate_narrative(intel)
 
+            if not content:
+                logger.warning("No content generated")
+                continue
+
             if isinstance(content, dict):
 
-                save_post(
-                    content.get("title"),
-                    content.get("content")
-                )
+                title = content.get("title") or "No Title"
+                body = content.get("content") or "No Content"
 
-                distribute(content)
+                save_post(title, body)
+
+                try:
+                    distribute(content)
+                except:
+                    logger.warning("Distribution failed")
+
                 mark_generated(topic)
 
                 logger.info(f"GENERATED: {topic}")
+
+            else:
+                logger.warning("Invalid content format")
 
     except:
         traceback.print_exc()
