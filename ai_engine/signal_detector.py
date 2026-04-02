@@ -1,74 +1,70 @@
+import time
+from collections import defaultdict
+
+
+WINDOW = 3600        # 1 saat
+MIN_COUNT = 3        # minimum tekrar
+MIN_SCORE = 5        # minimum analiz skoru
+
+
 def detect_signals(analysis):
 
-    signals = []
-    keyword_counter = {}
-
-    # 🔴 0. güvenlik
     if not analysis:
-        print("signals detected: 0 (no analysis)")
+        print("signals detected: 0")
         return []
 
-    # 🔴 1. keyword frequency (GLOBAL PATTERN)
+    keyword_counter = defaultdict(int)
+    keyword_scores = defaultdict(float)
+    keyword_texts = defaultdict(list)
+
+    # -------------------------
+    # 1. TOPLA (GERÇEK AGGREGATION)
+    # -------------------------
     for item in analysis:
 
         if not isinstance(item, dict):
             continue
 
-        text = str(item.get("text", "")).lower()
         keywords = item.get("keywords") or []
 
-        # 🔥 fallback: keywords yoksa text'ten üret
-        if not keywords:
-            keywords = text.split()[:5]
+        if not keywords and item.get("topic"):
+            keywords = [item.get("topic")]
+
+        score = float(item.get("score", 0))
+        text = item.get("text", "")
 
         for kw in keywords:
+            kw = str(kw).lower().strip()
+
             if not kw:
                 continue
 
-            kw = str(kw).lower().strip()
+            keyword_counter[kw] += 1
+            keyword_scores[kw] += score
+            keyword_texts[kw].append(text)
 
-            # 🔴 çok kısa / anlamsızları filtrele
-            if len(kw) < 3:
-                continue
+    # -------------------------
+    # 2. SIGNAL ÜRET
+    # -------------------------
+    signals = []
 
-            keyword_counter[kw] = keyword_counter.get(kw, 0) + 1
+    for kw in keyword_counter:
 
-    # 🔴 2. signal üretimi
-    for item in analysis:
+        count = keyword_counter[kw]
+        total_score = keyword_scores[kw]
 
-        if not isinstance(item, dict):
-            continue
+        avg_score = total_score / count if count else 0
 
-        text = str(item.get("text", ""))
-        score = item.get("score", 0)
-
-        keywords = item.get("keywords") or []
-
-        # 🔥 fallback again
-        if not keywords:
-            keywords = text.lower().split()[:5]
-
-        # normalize
-        keywords = [
-            str(k).lower().strip()
-            for k in keywords
-            if k and len(str(k).strip()) >= 3
-        ]
-
-        keyword_boost = sum(keyword_counter.get(k, 0) for k in keywords)
-
-        # 🔥 GELİŞMİŞ KOŞUL (DAHA AKILLI)
-        if (
-            score >= 6
-            or keyword_boost >= 2
-            or (score >= 4 and keyword_boost >= 1)
-        ):
+        # 🔥 GERÇEK FİLTRE
+        if count >= MIN_COUNT or avg_score >= MIN_SCORE:
 
             signals.append({
-                "text": text,
-                "keywords": keywords,
-                "score": score,
-                "boost": keyword_boost
+                "text": kw,
+                "keywords": [kw],
+                "count": count,
+                "score": round(avg_score, 2),
+                "boost": count,
+                "samples": keyword_texts[kw][:3]
             })
 
     print("signals detected:", len(signals))
