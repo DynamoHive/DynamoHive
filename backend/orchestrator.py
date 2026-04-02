@@ -4,6 +4,7 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from backend.logger import logger
+from backend.storage import save_post, get_posts
 
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
@@ -63,31 +64,57 @@ def run_cycle(modules):
             logger.warning("crawler missing")
             return
 
+        # 🔴 1. yeni veri çek
         raw_data = modules["crawl"]()
 
-        if not raw_data:
-            logger.warning("no crawl data")
-            return
+        # 🔴 2. geçmiş veriyi al
+        previous_posts = get_posts()
 
+        # 🔴 3. fallback mekanizması
+        if not raw_data:
+            if previous_posts:
+                logger.warning("no new crawl data, using stored data")
+                raw_data = previous_posts
+            else:
+                logger.warning("no crawl data at all")
+                return
+
+        # 🔴 4. pipeline
         if "process_data" in modules:
             raw_data = modules["process_data"](raw_data)
 
+        # 🔴 5. topic detection
         if "detect_topics" in modules:
             topics = modules["detect_topics"](raw_data)
         else:
             topics = raw_data
 
+        logger.info(f"topics detected: {topics}")
+
+        # 🔴 6. analytics
         if "analyse" in modules:
             analytics = modules["analyse"](topics)
         else:
             analytics = topics
 
+        # 🔴 7. signal detection
         if "detect_signals" in modules:
             signals = modules["detect_signals"](analytics)
         else:
             signals = []
 
         logger.info(f"signals detected: {len(signals)}")
+
+        # 🔴 8. veriyi kaydet (memory)
+        try:
+            for item in raw_data:
+                if isinstance(item, dict):
+                    save_post(
+                        item.get("title", ""),
+                        item.get("content", "")
+                    )
+        except Exception as e:
+            logger.warning(f"storage error: {e}")
 
     except Exception:
         traceback.print_exc()
@@ -107,7 +134,6 @@ def start():
     while True:
 
         try:
-
             run_cycle(modules)
             time.sleep(CYCLE_INTERVAL)
 
