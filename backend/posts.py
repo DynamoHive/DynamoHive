@@ -1,28 +1,37 @@
+from fastapi import APIRouter
 from backend.storage import get_posts
 
-
-def get_feed():
-
-    posts = get_posts()
-
-    feed = []
-
-    for p in posts:
-
-        feed.append({
-            "id": p["id"],
-            "title": p["title"]
-        })
-
-    return feed
+router = APIRouter()
 
 
-def get_post_by_id(post_id):
+# -------------------------
+# LIST POSTS
+# -------------------------
+@router.get("/posts")
+def get_posts_api():
 
     posts = get_posts()
 
-    for p in posts:
+    return {
+        "posts": [
+            {
+                "id": p["id"],
+                "title": p["title"]
+            }
+            for p in posts
+        ]
+    }
 
+
+# -------------------------
+# SINGLE POST
+# -------------------------
+@router.get("/posts/{post_id}")
+def get_post(post_id: int):
+
+    posts = get_posts()
+
+    for p in posts:
         if p["id"] == post_id:
             return {
                 "id": p["id"],
@@ -31,4 +40,4 @@ def get_post_by_id(post_id):
                 "created_at": p["created_at"]
             }
 
-    return None
+    return {"error": "post not found"}
