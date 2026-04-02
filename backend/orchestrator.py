@@ -12,6 +12,9 @@ from ai_engine.events import register_event, detect_event_spikes
 from ai_engine.auto_content_loop import generate_content
 from ai_engine.distribution_engine import distribute
 
+# 🔥 SIGNAL IMPORT (ZORLAMA — EN KRİTİK FIX)
+import ai_engine.signal_detector as signal_module
+
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 
@@ -45,13 +48,6 @@ def safe_imports():
         from ai_engine.analytics_engine import analyse
         modules["analyse"] = analyse
         logger.info("analytics loaded")
-    except Exception:
-        traceback.print_exc()
-
-    try:
-        from ai_engine.signal_detector import detect_signals
-        modules["detect_signals"] = detect_signals
-        logger.info("signal detector loaded")
     except Exception:
         traceback.print_exc()
 
@@ -92,14 +88,18 @@ def run_cycle(modules):
         # 🔴 4. ANALYTICS
         analytics = modules["analyse"](topics) if "analyse" in modules else topics
 
-        # 🔴 5. SIGNALS
-        signals = modules["detect_signals"](analytics) if "detect_signals" in modules else []
-        logger.info(f"signals detected: {len(signals)}")
+        # 🔥 5. SIGNALS (ZORLA DOĞRU MODÜL)
+        signals = signal_module.detect_signals(analytics) if analytics else []
 
-        # 🔴 6. EVENT MEMORY
+        logger.info(f"signals detected: {len(signals)}")
+        logger.info(f"SIGNAL SAMPLE: {signals[:1]}")  # 🔥 DEBUG
+
+        # 🔴 6. EVENT MEMORY (SAFE VERSION)
         for signal in signals:
-            for kw in signal.get("keywords", []):
-                register_event(kw)
+            keywords = signal.get("keywords") or [signal.get("topic")]
+            for kw in keywords:
+                if kw:
+                    register_event(kw)
 
         # 🔴 7. EVENTS
         events = detect_event_spikes()
