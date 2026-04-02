@@ -22,6 +22,7 @@ from backend.storage import get_posts
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# 🔥 FIX: direkt path kullan
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
@@ -107,6 +108,7 @@ app = FastAPI(
 # TEMPLATES
 # -------------------------
 
+# 🔥 FIX: absolute path ver
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
