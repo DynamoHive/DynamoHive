@@ -1,11 +1,7 @@
-import redis
 import time
 
-redis_client = redis.Redis(
-    host="localhost",
-    port=6379,
-    decode_responses=True
-)
+# 🔥 MEMORY CACHE (REDIS YOK)
+_cache = {}
 
 COOLDOWN = 300  # 5 dakika
 
@@ -15,13 +11,9 @@ def is_duplicate(topic):
     if not topic:
         return False
 
-    key = f"topic:{topic}"
-
-    last_time = redis_client.get(key)
+    last_time = _cache.get(topic)
 
     if last_time:
-        last_time = float(last_time)
-
         if time.time() - last_time < COOLDOWN:
             return True
 
@@ -33,6 +25,4 @@ def mark_generated(topic):
     if not topic:
         return
 
-    key = f"topic:{topic}"
-
-    redis_client.set(key, time.time())
+    _cache[topic] = time.time()
