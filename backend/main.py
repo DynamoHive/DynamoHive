@@ -5,9 +5,7 @@ from contextlib import asynccontextmanager
 # make project root visible to Python
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 import sqlite3
@@ -22,10 +20,7 @@ from backend.storage import get_posts
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# 🔥 FIX: direkt path kullan
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
-
 DATABASE_DIR = os.path.join(BASE_DIR, "..", "database")
 DB_PATH = os.path.join(DATABASE_DIR, "dynamohive.db")
 
@@ -39,7 +34,6 @@ def init_database():
     os.makedirs(DATABASE_DIR, exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
-
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -65,7 +59,6 @@ def start_orchestrator():
         from backend.orchestrator import start
 
         print("Starting DynamoHive AI engine")
-
         start()
 
     except Exception as e:
@@ -105,14 +98,6 @@ app = FastAPI(
 
 
 # -------------------------
-# TEMPLATES
-# -------------------------
-
-# 🔥 FIX: absolute path ver
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-
-
-# -------------------------
 # STATIC
 # -------------------------
 
@@ -126,42 +111,12 @@ app.mount(
 
 
 # -------------------------
-# LANDING PAGE
+# ROOT (🔥 FIX: TEMPLATE KALDIRILDI)
 # -------------------------
 
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-
-    return templates.TemplateResponse(
-        "index.html",
-        {"request": request}
-    )
-
-
-# -------------------------
-# DASHBOARD
-# -------------------------
-
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request):
-
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request}
-    )
-
-
-# -------------------------
-# FEED PAGE
-# -------------------------
-
-@app.get("/feed", response_class=HTMLResponse)
-def feed_page(request: Request):
-
-    return templates.TemplateResponse(
-        "feed.html",
-        {"request": request}
-    )
+@app.get("/")
+def home():
+    return {"status": "DynamoHive running"}
 
 
 # -------------------------
@@ -189,5 +144,4 @@ def feed_api():
 
 @app.get("/health")
 def health():
-
     return {"status": "ok"}
