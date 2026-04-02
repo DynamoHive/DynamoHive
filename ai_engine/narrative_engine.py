@@ -1,75 +1,93 @@
-import random
+class NarrativeEngine:
 
+    def generate(self, intelligence):
 
-def build_headline(topic, trend, category):
+        # 1. REALITY
+        reality = intelligence.get("summary", "")
 
-    if trend == "surging":
-        return f"{topic.capitalize()} rapidly escalates in global {category} landscape"
+        # 2. CONTEXT
+        context = self._build_context(intelligence)
 
-    if trend == "rising":
-        return f"{topic.capitalize()} gains traction across {category} sectors"
+        # 3. CONTRADICTIONS
+        contradictions = self._detect_contradictions(intelligence)
 
-    return f"Early signals emerge around {topic} in {category}"
+        # 4. POWER
+        power = self._analyze_power(intelligence)
 
+        # 5. TRAJECTORY
+        trajectory = self._build_trajectory(intelligence)
 
-def build_context(signal):
+        # 6. ARTICLE (SENİN ESKİ SİSTEMİN YERİNE)
+        title = self._build_headline(intelligence.get("topic"), trajectory)
+        content = self._build_article(
+            reality,
+            context,
+            contradictions,
+            power,
+            trajectory
+        )
 
-    topic = signal.get("text")
-    category = signal.get("category")
-    count = signal.get("count", 0)
+        return {
+            "title": title,
+            "content": content,
+            "topic": intelligence.get("topic")
+        }
 
-    return (
-        f"Recent data indicates that {topic} is becoming increasingly visible "
-        f"within the {category} domain, with {count} independent signals detected."
-    )
+    # -------------------------
+    # INTERNAL METHODS
+    # -------------------------
 
+    def _build_context(self, data):
+        topic = data.get("topic")
+        return (
+            f"{topic} is embedded within broader systemic transformations, "
+            f"shaped by economic pressure, political realignment, and structural shifts."
+        )
 
-def build_implication(signal):
+    def _detect_contradictions(self, data):
+        topic = data.get("topic")
+        return [
+            f"Public narratives around {topic} diverge from actual policy outcomes.",
+            f"Institutional actions contradict declared intentions regarding {topic}."
+        ]
 
-    risk = signal.get("risk")
-    topic = signal.get("text")
+    def _analyze_power(self, data):
+        return {
+            "winners": ["state actors", "dominant institutions"],
+            "losers": ["marginalized groups", "independent actors"]
+        }
 
-    if risk == "high":
-        return f"The acceleration of {topic} may lead to significant global consequences."
+    def _build_trajectory(self, data):
+        trend = data.get("trend", "emerging")
 
-    if risk == "medium":
-        return f"The development of {topic} suggests a potentially important shift."
+        if trend == "surging":
+            return "This development is accelerating and becoming systemic."
+        elif trend == "rising":
+            return "This trend is expanding and stabilizing."
+        else:
+            return "The trajectory remains uncertain but structurally relevant."
 
-    return f"{topic} remains in an early stage but warrants monitoring."
+    def _build_headline(self, topic, trajectory):
 
+        if "accelerating" in trajectory:
+            return f"{topic.capitalize()} rapidly escalates across global systems"
 
-def build_forward(signal):
+        if "stabilizing" in trajectory:
+            return f"{topic.capitalize()} expands its structural influence"
 
-    trend = signal.get("trend")
-    topic = signal.get("text")
+        return f"Emerging dynamics reshape narratives around {topic}"
 
-    if trend == "surging":
-        return f"If momentum continues, {topic} could dominate upcoming global narratives."
+    def _build_article(self, reality, context, contradictions, power, trajectory):
 
-    if trend == "rising":
-        return f"{topic} is expected to expand its influence in the near term."
+        contradictions_text = " ".join(contradictions)
 
-    return f"Further signals are required to confirm the trajectory of {topic}."
+        winners = ", ".join(power.get("winners", []))
+        losers = ", ".join(power.get("losers", []))
 
-
-def generate_narrative(signal):
-
-    topic = signal.get("text")
-    category = signal.get("category", "global")
-    trend = signal.get("trend", "emerging")
-
-    title = build_headline(topic, trend, category)
-
-    paragraphs = [
-        build_context(signal),
-        build_implication(signal),
-        build_forward(signal)
-    ]
-
-    content = " ".join(paragraphs)
-
-    return {
-        "title": title,
-        "content": content,
-        "topic": topic
-    }
+        return " ".join([
+            reality,
+            context,
+            contradictions_text,
+            f"Power dynamics reveal asymmetry. Winners: {winners}. Losers: {losers}.",
+            trajectory
+        ])
