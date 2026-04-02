@@ -5,14 +5,14 @@ import traceback
 from backend.logger import logger
 from backend.storage import save_post, get_posts
 
-# 🔥 EVENT ENGINE
-from ai_engine.events import register_event, detect_event_spikes
+# 🔥 FIX: DOĞRU EVENT IMPORT
+from backend.events import register_event, detect_event_spikes
 
 # 🔥 CONTENT + DISTRIBUTION
 from ai_engine.auto_content_loop import generate_content
 from ai_engine.distribution_engine import distribute
 
-# 🔥 SIGNAL IMPORT (ZORLAMA — EN KRİTİK FIX)
+# 🔥 SIGNAL IMPORT
 import ai_engine.signal_detector as signal_module
 
 CYCLE_INTERVAL = 30
@@ -65,7 +65,7 @@ def run_cycle(modules):
             logger.warning("crawler missing")
             return
 
-        # 🔴 1. DATA
+        # DATA
         raw_data = modules["crawl"]()
         previous_posts = get_posts()
 
@@ -77,53 +77,47 @@ def run_cycle(modules):
                 logger.warning("no crawl data at all")
                 return
 
-        # 🔴 2. PIPELINE
+        # PIPELINE
         if "process_data" in modules:
             raw_data = modules["process_data"](raw_data)
 
-        # 🔴 3. TOPICS
+        # TOPICS
         topics = modules["detect_topics"](raw_data) if "detect_topics" in modules else raw_data
         logger.info(f"topics detected: {topics}")
 
-        # 🔴 4. ANALYTICS
+        # ANALYTICS
         analytics = modules["analyse"](topics) if "analyse" in modules else topics
 
-        # 🔥 5. SIGNALS (ZORLA DOĞRU MODÜL)
+        # SIGNALS
         signals = signal_module.detect_signals(analytics) if analytics else []
-
         logger.info(f"signals detected: {len(signals)}")
-        logger.info(f"SIGNAL SAMPLE: {signals[:1]}")  # 🔥 DEBUG
+        logger.info(f"SIGNAL SAMPLE: {signals[:1]}")
 
-        # 🔴 6. EVENT MEMORY (SAFE VERSION)
+        # EVENT MEMORY
         for signal in signals:
             keywords = signal.get("keywords") or [signal.get("topic")]
             for kw in keywords:
                 if kw:
                     register_event(kw)
 
-        # 🔴 7. EVENTS
+        # EVENTS
         events = detect_event_spikes()
         logger.info(f"events detected: {len(events)}")
 
-        # 🔴 8. CONTENT + DISTRIBUTION
+        # CONTENT
         for event in events:
             try:
                 content = generate_content(event)
 
                 if content:
-                    save_post(
-                        f"Event: {event.get('topic')}",
-                        content
-                    )
-
+                    save_post(f"Event: {event.get('topic')}", content)
                     distribute(content)
-
                     logger.info(f"content generated + distributed: {event.get('topic')}")
 
             except Exception as e:
                 logger.warning(f"content/distribution error: {e}")
 
-        # 🔴 9. RAW STORAGE
+        # STORAGE
         try:
             for item in raw_data:
                 if isinstance(item, dict):
