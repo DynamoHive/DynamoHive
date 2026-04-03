@@ -25,7 +25,7 @@ def normalize(text):
 
 
 # -------------------------
-# CORE SCORING BLOCKS
+# CORE SCORING
 # -------------------------
 
 def source_score(source):
@@ -95,7 +95,7 @@ def event_boost_score(text, boost_map):
         if match_count > 0:
             ratio = match_count / len(words)
 
-            # 🔥 AGGRESSIVE + SAFE BOOST
+            # 🔥 güçlü ama kontrolü boost
             total += boost * ratio * 2.5
 
     return total
@@ -108,7 +108,12 @@ def event_boost_score(text, boost_map):
 def score_signal(signal, boost_map):
 
     try:
-        text = normalize(signal.get("text", ""))
+        # 🔥 KRİTİK: topic + text birleşti
+        text = normalize(
+            safe_str(signal.get("text", "")) + " " +
+            safe_str(signal.get("topic", ""))
+        )
+
         source = signal.get("source", "")
         timestamp = signal.get("timestamp", 0)
 
@@ -137,7 +142,7 @@ def rank_signals(signals):
     if not signals or not isinstance(signals, list):
         return []
 
-    # 🔥 BOOST SAFE LOAD
+    # 🔥 boost güvenli yükleme
     try:
         boost_map = get_topic_boost()
         if not isinstance(boost_map, dict):
