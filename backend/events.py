@@ -1,5 +1,15 @@
+# backend/events.py
+
 import time
 from collections import defaultdict
+
+# 🔥 KOD-8 bağlantısı
+from backend.user_profile_engine import process_event
+
+
+# -------------------------
+# EVENT MEMORY (SPIKE ENGINE)
+# -------------------------
 
 event_memory = defaultdict(list)
 
@@ -22,6 +32,7 @@ def detect_event_spikes():
 
     for topic, times in list(event_memory.items()):
 
+        # sadece son WINDOW içindeki eventleri tut
         recent = [t for t in times if now - t < WINDOW]
         event_memory[topic] = recent
 
@@ -44,3 +55,32 @@ def detect_event_spikes():
     spikes.sort(key=lambda x: (x["count"], x["velocity"]), reverse=True)
 
     return spikes
+
+
+# -------------------------
+# 🔥 USER EVENT HANDLER (KOD-8)
+# -------------------------
+
+def handle_event(user_id, event):
+    """
+    event = {
+        "type": "click" | "like" | "skip",
+        "topic": "ai"
+    }
+    """
+
+    if not event:
+        return
+
+    topic = event.get("topic")
+
+    # 1️⃣ spike sistemi beslenir
+    register_event(topic)
+
+    # 2️⃣ user learning sistemi beslenir
+    profile = process_event(user_id, event)
+
+    return {
+        "status": "ok",
+        "user_profile": profile
+    }
