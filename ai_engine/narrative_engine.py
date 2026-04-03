@@ -10,22 +10,13 @@ class NarrativeEngine:
         if not topic or len(topic) < 3:
             return None
 
-        # 1. REALITY
         reality = intelligence.get("summary", "") or f"{topic} is showing emerging systemic signals."
 
-        # 2. CONTEXT
         context = self._build_context(intelligence)
-
-        # 3. CONTRADICTIONS
         contradictions = self._detect_contradictions(intelligence)
-
-        # 4. POWER
         power = self._analyze_power(intelligence)
-
-        # 5. TRAJECTORY
         trajectory = self._build_trajectory(intelligence)
 
-        # 6. BUILD
         title = self._build_headline(topic, trajectory)
         content = self._build_article(
             reality,
@@ -35,7 +26,6 @@ class NarrativeEngine:
             trajectory
         )
 
-        # FINAL SAFETY
         if not title or not content or len(content) < 120:
             return None
 
@@ -45,9 +35,6 @@ class NarrativeEngine:
             "topic": topic
         }
 
-    # -------------------------
-    # CONTEXT
-    # -------------------------
     def _build_context(self, data):
         topic = data.get("topic", "This issue")
         return (
@@ -55,22 +42,14 @@ class NarrativeEngine:
             f"shaped by economic pressure, political realignment, and structural shifts."
         )
 
-    # -------------------------
-    # CONTRADICTIONS
-    # -------------------------
     def _detect_contradictions(self, data):
         topic = data.get("topic", "this issue")
-
         return [
             f"Public narratives around {topic} diverge from observable outcomes.",
             f"Institutional responses often conflict with stated objectives regarding {topic}."
         ]
 
-    # -------------------------
-    # POWER ANALYSIS
-    # -------------------------
     def _analyze_power(self, data):
-
         score = data.get("score", 1.0)
 
         if score > 4:
@@ -84,11 +63,7 @@ class NarrativeEngine:
             "losers": ["emerging or vulnerable groups"]
         }
 
-    # -------------------------
-    # TRAJECTORY
-    # -------------------------
     def _build_trajectory(self, data):
-
         trend = data.get("trend", "emerging")
 
         if trend == "surging":
@@ -99,9 +74,6 @@ class NarrativeEngine:
 
         return "The trajectory remains uncertain but structurally relevant."
 
-    # -------------------------
-    # HEADLINE
-    # -------------------------
     def _build_headline(self, topic, trajectory):
 
         topic = topic.capitalize()
@@ -114,9 +86,6 @@ class NarrativeEngine:
 
         return f"Emerging dynamics reshape narratives around {topic}"
 
-    # -------------------------
-    # ARTICLE
-    # -------------------------
     def _build_article(self, reality, context, contradictions, power, trajectory):
 
         contradictions_text = " ".join(contradictions)
@@ -133,9 +102,6 @@ class NarrativeEngine:
         ])
 
 
-# -------------------------
-# 🔥 GLOBAL FUNCTION (CRITICAL)
-# -------------------------
 _engine_instance = NarrativeEngine()
 
 def generate_narrative(intelligence):
