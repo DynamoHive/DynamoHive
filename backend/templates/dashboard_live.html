@@ -17,10 +17,15 @@
             color:#00F0FF;
         }
 
+        .grid {
+            display:grid;
+            grid-template-columns: 1fr 1fr;
+            gap:20px;
+        }
+
         .card {
             background:#111827;
             padding:20px;
-            margin-bottom:20px;
             border-radius:10px;
         }
 
@@ -31,33 +36,54 @@
 
         canvas {
             background:#0f172a;
-            padding:10px;
             border-radius:10px;
+            padding:10px;
         }
     </style>
 </head>
 <body>
 
-<h1>🧠 DynamoHive Intelligence Panel</h1>
+<h1>🧠 DynamoHive Intelligence OPS</h1>
 
 <div class="card">
     <div class="title">SYSTEM</div>
     <div id="system"></div>
 </div>
 
-<div class="card">
-    <div class="title">DOMINANCE GRAPH</div>
-    <canvas id="dominanceChart"></canvas>
+<div class="grid">
+
+    <div class="card">
+        <div class="title">DOMINANCE</div>
+        <canvas id="dominanceChart"></canvas>
+    </div>
+
+    <div class="card">
+        <div class="title">TREND (CYCLES)</div>
+        <canvas id="trendChart"></canvas>
+    </div>
+
 </div>
 
-<div class="card">
-    <div class="title">ANOMALIES</div>
-    <div id="anomalies"></div>
+<div class="grid">
+
+    <div class="card">
+        <div class="title">ANOMALIES</div>
+        <div id="anomalies"></div>
+    </div>
+
+    <div class="card">
+        <div class="title">LIVE SIGNAL FLOW</div>
+        <div id="flow"></div>
+    </div>
+
 </div>
 
 <script>
 
-let chart;
+let dominanceChart;
+let trendChart;
+
+let trendData = [];
 
 async function load() {
 
@@ -67,52 +93,87 @@ async function load() {
         const data = await res.json();
         const o = data.orchestrator || {};
 
-        // SYSTEM
+        // ---------------- SYSTEM
         document.getElementById("system").innerHTML = `
             cycles: ${o.cycle_count || 0} <br>
+            duration: ${o.last_duration || 0}s <br>
             signals: ${o.last_signal_count || 0} <br>
             events: ${o.last_event_count || 0}
         `;
 
-        // DOMINANCE GRAPH
+        // ---------------- DOMINANCE
         const labels = (o.dominance || []).map(d => d.topic);
         const values = (o.dominance || []).map(d => d.dominance);
 
-        if (!chart) {
-            const ctx = document.getElementById("dominanceChart");
+        if (!dominanceChart) {
 
-            chart = new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: "Dominance",
-                        data: values
-                    }]
+            dominanceChart = new Chart(
+                document.getElementById("dominanceChart"),
+                {
+                    type: "bar",
+                    data: {
+                        labels: labels,
+                        datasets: [{ data: values }]
+                    }
                 }
-            });
+            );
 
         } else {
-            chart.data.labels = labels;
-            chart.data.datasets[0].data = values;
-            chart.update();
+            dominanceChart.data.labels = labels;
+            dominanceChart.data.datasets[0].data = values;
+            dominanceChart.update();
         }
 
-        // ANOMALIES
+        // ---------------- TREND GRAPH
+        trendData.push(o.last_signal_count || 0);
+
+        if (trendData.length > 20) {
+            trendData.shift();
+        }
+
+        if (!trendChart) {
+
+            trendChart = new Chart(
+                document.getElementById("trendChart"),
+                {
+                    type: "line",
+                    data: {
+                        labels: trendData.map((_, i) => i),
+                        datasets: [{
+                            label: "Signal Count",
+                            data: trendData
+                        }]
+                    }
+                }
+            );
+
+        } else {
+            trendChart.data.labels = trendData.map((_, i) => i);
+            trendChart.data.datasets[0].data = trendData;
+            trendChart.update();
+        }
+
+        // ---------------- ANOMALIES
         document.getElementById("anomalies").innerHTML =
             (o.anomalies || []).map(a =>
-                `${a.type} → ${a.topic}`
+                `⚠ ${a.type} → ${a.topic}`
             ).join("<br>") || "no anomalies";
 
+        // ---------------- LIVE FLOW
+        document.getElementById("flow").innerHTML =
+            (o.dominance || []).map(d =>
+                `→ ${d.topic} (${d.dominance})`
+            ).join("<br>");
+
     } catch (e) {
-        console.error(e);
+        console.log("error", e);
     }
 }
 
 // first load
 load()
 
-// live refresh
+// live update
 setInterval(load, 2000);
 
 </script>
