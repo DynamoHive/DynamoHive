@@ -9,6 +9,8 @@ from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 import ai_engine.signal_detector as signal_module
 
+from ai_engine.global_intelligence import merge_signals  # 🔥 EKLENDİ
+
 from backend.events import register_event, detect_event_spikes
 from backend.user_profile_engine import get_user_profile, compute_final_score
 
@@ -21,18 +23,18 @@ from backend.distribution_engine import distribute
 from ai_engine.anomaly_engine import detect_anomalies
 from ai_engine.dominance_engine import compute_dominance
 
-# ✅ GERÇEK SİSTEM
 from ai_engine.memory_pattern_engine import MemoryPatternEngine
 from ai_engine.content_filter import is_low_quality
 from ai_engine.vector_memory import search_similar, store_vector
 
+# 🔥 MAIN GLOBAL DATA (CRITICAL FIX)
+from backend.main import GLOBAL_DATA
+
 
 intel_engine = GlobalIntelligenceEngine()
 
-# -------------------------
-# DUPLICATE CACHE
-# -------------------------
 duplicate_cache = {}
+
 
 def is_duplicate_local(topic):
     try:
@@ -62,7 +64,6 @@ class Orchestrator:
         self.last_anomalies = []
         self.last_dominance = []
 
-        # ✅ TEK MEMORY
         self.pattern_memory = MemoryPatternEngine()
 
     # -------------------------
@@ -78,7 +79,9 @@ class Orchestrator:
 
         try:
 
+            # -------------------------
             # DATA
+            # -------------------------
             raw_data = crawl()
 
             if not raw_data:
@@ -86,7 +89,13 @@ class Orchestrator:
 
             raw_data = process_data(raw_data)
 
+            # 🔥 GLOBAL DATA FILL (CRITICAL)
+            GLOBAL_DATA.clear()
+            GLOBAL_DATA.extend(raw_data[:100])
+
+            # -------------------------
             # SIGNAL
+            # -------------------------
             signals = signal_module.detect_signals(raw_data)
 
             if not signals:
@@ -99,7 +108,12 @@ class Orchestrator:
                             "score": 1.0
                         })
 
+            # 🔥 MERGE (CRITICAL FIX)
+            signals = merge_signals(signals)
+
+            # -------------------------
             # NORMALIZE
+            # -------------------------
             normalized = []
             for s in signals:
 
@@ -123,14 +137,18 @@ class Orchestrator:
             signals = normalized
             self.last_signal_count = len(signals)
 
+            # -------------------------
             # EVENTS
+            # -------------------------
             for s in signals:
                 register_event(s["topic"])
 
             events = detect_event_spikes()
             self.last_event_count = len(events)
 
+            # -------------------------
             # PERSONALIZATION
+            # -------------------------
             profile = get_user_profile("global_user")
 
             for s in signals:
@@ -139,7 +157,9 @@ class Orchestrator:
                 except:
                     pass
 
+            # -------------------------
             # ANOMALY + DOMINANCE
+            # -------------------------
             try:
                 self.last_anomalies = detect_anomalies(signals, events)
             except Exception as e:
@@ -152,7 +172,9 @@ class Orchestrator:
                 logger.warning(f"[DOMINANCE ERROR] {e}")
                 self.last_dominance = []
 
-            # INTELLIGENCE (senin engine)
+            # -------------------------
+            # INTELLIGENCE
+            # -------------------------
             intelligence = signals
 
             try:
@@ -160,7 +182,9 @@ class Orchestrator:
             except Exception as e:
                 logger.warning(f"[INTEL ERROR] {e}")
 
+            # -------------------------
             # CONTENT
+            # -------------------------
             self._generate_content(intelligence)
 
         except Exception:
@@ -183,15 +207,12 @@ class Orchestrator:
             if not topic or len(topic) < 5:
                 continue
 
-            # LOCAL DUPLICATE
             if is_duplicate_local(topic):
                 continue
 
-            # PATTERN MEMORY (GERÇEK)
             if self.pattern_memory.seen_before(topic):
                 continue
 
-            # VECTOR CHECK
             similar = search_similar(topic)
             if similar:
                 try:
@@ -200,7 +221,6 @@ class Orchestrator:
                 except:
                     pass
 
-            # GENERATE
             content = generate_narrative(intel)
 
             if not content:
@@ -212,21 +232,18 @@ class Orchestrator:
             if not title or not body:
                 continue
 
-            # FILTER
             if is_low_quality(body):
                 continue
 
             if len(body) < 80:
                 continue
 
-            # SAVE
             try:
                 save_post(title, body)
             except Exception:
                 logger.warning("[SAVE ERROR]")
                 continue
 
-            # MEMORY STORE
             self.pattern_memory.store(topic)
 
             try:
