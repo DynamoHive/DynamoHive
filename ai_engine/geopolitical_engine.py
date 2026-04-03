@@ -1,5 +1,11 @@
 # ai_engine/geopolitical_engine.py
 
+from ai_engine.geopolitical_signals import detect_geopolitical_signal
+
+
+# -------------------------
+# REGION MAP
+# -------------------------
 KEYWORD_MAP = {
     "iran": "middle_east",
     "israel": "middle_east",
@@ -14,6 +20,9 @@ KEYWORD_MAP = {
 }
 
 
+# -------------------------
+# REGION DETECTOR
+# -------------------------
 def map_region(topic):
 
     topic = str(topic).lower()
@@ -25,6 +34,9 @@ def map_region(topic):
     return "global"
 
 
+# -------------------------
+# MAIN ENGINE
+# -------------------------
 def build_geopolitical_map(signals):
 
     regions = {}
@@ -32,20 +44,30 @@ def build_geopolitical_map(signals):
     for s in signals:
 
         topic = s.get("text") or "unknown"
-        score = s.get("score", 0)
+        base_score = s.get("score", 0)
+
+        # 🔥 GEOPOLITICAL INTENSITY
+        geo = detect_geopolitical_signal(topic)
+        geo_score = geo.get("geopolitical_score", 0)
+
+        # 🔥 FINAL SCORE (INTELLIGENCE BOOST)
+        final_score = base_score + (geo_score * 2)
 
         region = map_region(topic)
 
-        regions[region] = regions.get(region, 0) + score
+        regions[region] = regions.get(region, 0) + final_score
+
+    # -------------------------
+    # NORMALIZATION
+    # -------------------------
+    total = sum(regions.values()) or 1
 
     result = []
-
-    total = sum(regions.values()) or 1
 
     for r, val in regions.items():
         result.append({
             "region": r,
-            "score": val,
+            "score": round(val, 2),
             "ratio": round(val / total, 3)
         })
 
