@@ -25,12 +25,11 @@ from ai_engine.dominance_engine import compute_dominance
 intel_engine = GlobalIntelligenceEngine()
 
 # -------------------------
-# 🔥 DUPLICATE CACHE (GÜÇLENDİRİLDİ)
+# 🔥 DUPLICATE CACHE
 # -------------------------
 duplicate_cache = {}
 
 def is_duplicate_local(topic):
-
     try:
         topic = str(topic).lower().strip()
         h = hashlib.md5(topic.encode()).hexdigest()
@@ -39,7 +38,6 @@ def is_duplicate_local(topic):
 
     now = time.time()
 
-    # 🔥 2 SAAT BLOK (daha güçlü)
     if h in duplicate_cache:
         if now - duplicate_cache[h] < 7200:
             return True
@@ -78,7 +76,7 @@ class Orchestrator:
             raw_data = crawl()
 
             if not raw_data:
-                raw_data = get_posts() or [{"text": "bootstrap"}]
+                raw_data = get_posts() or [{"text": "bootstrap signal"}]
 
             raw_data = process_data(raw_data)
 
@@ -87,29 +85,46 @@ class Orchestrator:
             # -------------------------
             signals = signal_module.detect_signals(raw_data)
 
-            # 🔥 fallback → sistem kör kalmasın
-            if not signals or len(signals) <= 2:
+            # 🔥 HARD FALLBACK
+            if not signals:
                 signals = []
-
-                for item in raw_data:
+                for item in raw_data[:20]:
                     text = item.get("title") or item.get("text")
-                    if not text:
-                        continue
+                    if text:
+                        signals.append({
+                            "topic": text,
+                            "score": 1.0
+                        })
 
-                    signals.append({
-                        "text": text,
-                        "score": 1.0
-                    })
+            # 🔥 NORMALIZE (CRITICAL)
+            normalized = []
+            for s in signals:
 
+                topic = (
+                    s.get("topic")
+                    or s.get("text")
+                    or s.get("title")
+                    or ""
+                )
+
+                topic = str(topic).strip()
+
+                if len(topic) < 5:
+                    continue
+
+                normalized.append({
+                    "topic": topic,
+                    "score": float(s.get("score", 1.0))
+                })
+
+            signals = normalized
             self.last_signal_count = len(signals)
 
             # -------------------------
             # 3. EVENTS
             # -------------------------
             for s in signals:
-                topic = s.get("text") or s.get("topic")
-                if topic:
-                    register_event(topic)
+                register_event(s["topic"])
 
             events = detect_event_spikes()
             self.last_event_count = len(events)
@@ -120,24 +135,10 @@ class Orchestrator:
             profile = get_user_profile("global_user")
 
             for s in signals:
-                topic = (
-                    s.get("text")
-                    or s.get("topic")
-                    or s.get("title")
-                    or "unknown"
-                )
-
-                base_score = s.get("score", 0)
-
                 try:
-                    s["score"] = compute_final_score(
-                        {"topic": topic, "score": base_score},
-                        profile
-                    )
+                    s["score"] = compute_final_score(s, profile)
                 except:
                     pass
-
-                s["text"] = topic
 
             # -------------------------
             # 5. ANOMALY + DOMINANCE
@@ -175,37 +176,40 @@ class Orchestrator:
         finally:
             duration = round(time.time() - start, 2)
             self.last_duration = duration
-
             logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
     # -------------------------
-    # 🧠 INTELLIGENCE BUILDER
+    # 🧠 INTELLIGENCE
     # -------------------------
     def _build_intelligence(self, signals):
 
         intelligence = []
 
         for s in signals:
-            topic = s.get("text") or "unknown"
+            topic = s["topic"]
 
             intelligence.append({
                 "topic": topic,
                 "summary": f"{topic} shows emerging structural signals in global systems.",
-                "trend": "surging" if s.get("score", 0) > 3 else "rising"
+                "trend": "surging" if s.get("score", 0) > 3 else "rising",
+                "score": s.get("score", 1.0)
             })
 
         return intelligence
 
     # -------------------------
-    # 📰 CONTENT ENGINE
+    # 📰 CONTENT
     # -------------------------
     def _generate_content(self, intelligence):
 
         for intel in intelligence:
 
-            topic = intel.get("topic") or "unknown"
+            topic = intel.get("topic", "").strip()
 
-            # 🔥 CRITICAL → DUPLICATE KES
+            if not topic or len(topic) < 5:
+                continue
+
+            # 🔥 DUPLICATE FILTER
             if is_duplicate_local(topic):
                 continue
 
@@ -217,8 +221,14 @@ class Orchestrator:
             if not content:
                 continue
 
-            title = content.get("title") or topic
-            body = content.get("content") or "No content"
+            title = content.get("title")
+            body = content.get("content")
+
+            if not title or not body:
+                continue
+
+            if len(body) < 50:
+                continue
 
             try:
                 save_post(title, body)
