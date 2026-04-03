@@ -89,9 +89,7 @@ class Orchestrator:
 
             raw_data = process_data(raw_data)
 
-            # 🔥 GLOBAL DATA FILL (CRITICAL)
-            GLOBAL_DATA.clear()
-            GLOBAL_DATA.extend(raw_data[:100])
+        
 
             # -------------------------
             # SIGNAL
