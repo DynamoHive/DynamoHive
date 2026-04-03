@@ -19,7 +19,7 @@ BAD_PATTERNS = {
 
 MIN_COUNT = 2
 MIN_SCORE = 1.5
-SIM_THRESHOLD = 0.6
+SIM_THRESHOLD = 0.65
 
 
 # -------------------------
@@ -29,7 +29,17 @@ SIM_THRESHOLD = 0.6
 def normalize(text):
     try:
         text = str(text).lower()
-        text = re.sub(r"[^\w\s]", "", text)   # punctuation temizle
+
+        # html/artifacts temizle
+        text = text.replace("…", " ")
+        text = text.replace("8230", " ")
+
+        # punctuation temizle
+        text = re.sub(r"[^\w\s]", " ", text)
+
+        # fazla boşluk temizle
+        text = re.sub(r"\s+", " ", text)
+
         return text.strip()
     except:
         return ""
@@ -43,23 +53,28 @@ def safe_float(x, default=0.0):
 
 
 # -------------------------
-# 🔥 MEANING FILTER
+# 🔥 MEANING FILTER (GÜÇLÜ)
 # -------------------------
 
 def is_meaningful(phrase):
 
     words = phrase.split()
 
-    if len(words) < 2:
+    if len(words) < 3:
         return False
 
-    if any(w in BAD_PATTERNS for w in words):
-        return False
-
+    # çok kısa kelime varsa direkt çöpe
     if any(len(w) <= 3 for w in words):
         return False
 
-    if sum(len(w) >= 5 for w in words) < 2:
+    # kötü pattern varsa çöpe
+    if any(w in BAD_PATTERNS for w in words):
+        return False
+
+    # en az 2 güçlü kelime şart
+    strong = [w for w in words if len(w) >= 5]
+
+    if len(strong) < 2:
         return False
 
     return True
@@ -81,19 +96,18 @@ def similarity(a, b):
 
 
 # -------------------------
-# 🔥 SMART PHRASE EXTRACTION
+# 🔥 SMART PHRASE EXTRACTION (DAHA TEMİZ)
 # -------------------------
 
 def extract_phrases(words):
 
     phrases = []
 
-    # Sliding window (3-5 words)
+    # sadece 3 ve 4 kelimelik phrase kullan (noise azaltıldı)
     for i in range(len(words)):
 
         chunk3 = words[i:i+3]
         chunk4 = words[i:i+4]
-        chunk5 = words[i:i+5]
 
         if len(chunk3) == 3:
             phrases.append(" ".join(chunk3))
@@ -101,14 +115,11 @@ def extract_phrases(words):
         if len(chunk4) == 4:
             phrases.append(" ".join(chunk4))
 
-        if len(chunk5) == 5:
-            phrases.append(" ".join(chunk5))
-
     return phrases
 
 
 # -------------------------
-# 🔥 CLUSTER MERGE
+# 🔥 CLUSTER MERGE (DAHA AGRESİF)
 # -------------------------
 
 def merge_topics(counter, scores, texts):
@@ -132,8 +143,8 @@ def merge_topics(counter, scores, texts):
             best["score"] += scores[kw]
             best["samples"].extend(texts[kw])
 
-            # daha uzun olanı topic yap
-            if len(kw) > len(best["topic"]):
+            # daha temiz ve uzun olanı seç
+            if len(kw.split()) > len(best["topic"].split()):
                 best["topic"] = kw
 
         else:
@@ -148,7 +159,7 @@ def merge_topics(counter, scores, texts):
 
 
 # -------------------------
-# 🔥 MAIN ENGINE
+# 🔥 MAIN ENGINE (TEMİZ AKIŞ)
 # -------------------------
 
 def detect_signals(analysis):
@@ -181,14 +192,16 @@ def detect_signals(analysis):
             if len(w) > 3 and w not in STOPWORDS
         ]
 
-        if len(words) < 3:
+        # 🔥 minimum kalite
+        if len(words) < 4:
             continue
 
         phrases = extract_phrases(words)
 
         for kw in phrases:
 
-            if len(kw) < 8:
+            # 🔥 çok kısa phrase yok
+            if len(kw.split()) < 3:
                 continue
 
             if not is_meaningful(kw):
@@ -224,7 +237,6 @@ def detect_signals(analysis):
 
         avg_score = total_score / count
 
-        # nonlinear boost
         boost = int(math.log1p(count) * 6)
 
         signals.append({
@@ -237,7 +249,7 @@ def detect_signals(analysis):
         })
 
     # -------------------------
-    # FALLBACK (SAFE)
+    # FALLBACK (TEMİZ)
     # -------------------------
 
     if len(signals) == 0:
@@ -249,9 +261,16 @@ def detect_signals(analysis):
             if not text:
                 continue
 
+            words = [w for w in text.split() if len(w) > 4]
+
+            if len(words) < 3:
+                continue
+
+            topic = " ".join(words[:6])
+
             signals.append({
-                "topic": text,
-                "keywords": text.split()[:5],
+                "topic": topic,
+                "keywords": topic.split(),
                 "count": 1,
                 "score": 1.0,
                 "boost": 1,
