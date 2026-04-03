@@ -1,5 +1,6 @@
 from collections import defaultdict
 import math
+import re
 
 # -------------------------
 # CONFIG
@@ -13,12 +14,12 @@ STOPWORDS = {
 
 BAD_PATTERNS = {
     "more","there","first","time","very","just",
-    "some","many","such","than","also"
+    "some","many","such","than","also","new"
 }
 
 MIN_COUNT = 2
 MIN_SCORE = 1.5
-SIM_THRESHOLD = 0.55
+SIM_THRESHOLD = 0.6
 
 
 # -------------------------
@@ -27,7 +28,9 @@ SIM_THRESHOLD = 0.55
 
 def normalize(text):
     try:
-        return str(text).lower().strip()
+        text = str(text).lower()
+        text = re.sub(r"[^\w\s]", "", text)   # punctuation temizle
+        return text.strip()
     except:
         return ""
 
@@ -40,7 +43,7 @@ def safe_float(x, default=0.0):
 
 
 # -------------------------
-# 🔥 STRONG MEANING FILTER
+# 🔥 MEANING FILTER
 # -------------------------
 
 def is_meaningful(phrase):
@@ -50,20 +53,13 @@ def is_meaningful(phrase):
     if len(words) < 2:
         return False
 
-    # stopword yoğunluğu
-    if sum(w in STOPWORDS for w in words) > len(words) / 2:
+    if any(w in BAD_PATTERNS for w in words):
         return False
 
-    # kısa kelime spam
     if any(len(w) <= 3 for w in words):
         return False
 
-    # en az 2 güçlü kelime
     if sum(len(w) >= 5 for w in words) < 2:
-        return False
-
-    # kötü pattern
-    if any(w in BAD_PATTERNS for w in words):
         return False
 
     return True
@@ -82,6 +78,33 @@ def similarity(a, b):
         return 0
 
     return len(a_words & b_words) / len(a_words | b_words)
+
+
+# -------------------------
+# 🔥 SMART PHRASE EXTRACTION
+# -------------------------
+
+def extract_phrases(words):
+
+    phrases = []
+
+    # Sliding window (3-5 words)
+    for i in range(len(words)):
+
+        chunk3 = words[i:i+3]
+        chunk4 = words[i:i+4]
+        chunk5 = words[i:i+5]
+
+        if len(chunk3) == 3:
+            phrases.append(" ".join(chunk3))
+
+        if len(chunk4) == 4:
+            phrases.append(" ".join(chunk4))
+
+        if len(chunk5) == 5:
+            phrases.append(" ".join(chunk5))
+
+    return phrases
 
 
 # -------------------------
@@ -108,6 +131,11 @@ def merge_topics(counter, scores, texts):
             best["count"] += counter[kw]
             best["score"] += scores[kw]
             best["samples"].extend(texts[kw])
+
+            # daha uzun olanı topic yap
+            if len(kw) > len(best["topic"]):
+                best["topic"] = kw
+
         else:
             clusters.append({
                 "topic": kw,
@@ -117,29 +145,6 @@ def merge_topics(counter, scores, texts):
             })
 
     return clusters
-
-
-# -------------------------
-# 🔥 CONTEXT EXTRACTION (CRITICAL)
-# -------------------------
-
-def extract_phrases(words):
-
-    phrases = []
-
-    # 3 kelimelik çekirdek
-    if len(words) >= 3:
-        phrases.append(" ".join(words[:3]))
-
-    # 5 kelimelik geniş context
-    if len(words) >= 5:
-        phrases.append(" ".join(words[:5]))
-
-    # fallback
-    if not phrases:
-        phrases = [" ".join(words[:3])]
-
-    return phrases
 
 
 # -------------------------
@@ -176,20 +181,14 @@ def detect_signals(analysis):
             if len(w) > 3 and w not in STOPWORDS
         ]
 
-        if not words:
+        if len(words) < 3:
             continue
 
         phrases = extract_phrases(words)
 
         for kw in phrases:
 
-            kw = normalize(kw)
-
-            if len(kw) < 6:
-                continue
-
-            # HARD spam kes
-            if kw.startswith(("there","more","first","new")):
+            if len(kw) < 8:
                 continue
 
             if not is_meaningful(kw):
@@ -224,7 +223,9 @@ def detect_signals(analysis):
             continue
 
         avg_score = total_score / count
-        boost = int(math.log1p(count) * 5)
+
+        # nonlinear boost
+        boost = int(math.log1p(count) * 6)
 
         signals.append({
             "topic": c["topic"],
@@ -236,7 +237,7 @@ def detect_signals(analysis):
         })
 
     # -------------------------
-    # FALLBACK
+    # FALLBACK (SAFE)
     # -------------------------
 
     if len(signals) == 0:
