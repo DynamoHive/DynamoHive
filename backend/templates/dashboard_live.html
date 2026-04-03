@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DynamoHive Intelligence</title>
+
+    <style>
+        body {
+            background:#0B0F19;
+            color:white;
+            font-family:Arial;
+            padding:20px;
+        }
+
+        h1 {
+            color:#00F0FF;
+        }
+
+        .card {
+            background:#111827;
+            padding:20px;
+            margin-bottom:20px;
+            border-radius:10px;
+        }
+
+        .title {
+            color:#00FF9C;
+            margin-bottom:10px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🧠 DynamoHive Intelligence Panel</h1>
+
+<div class="card">
+    <div class="title">SYSTEM</div>
+    <div id="system"></div>
+</div>
+
+<div class="card">
+    <div class="title">DOMINANCE</div>
+    <div id="dominance"></div>
+</div>
+
+<div class="card">
+    <div class="title">ANOMALIES</div>
+    <div id="anomalies"></div>
+</div>
+
+<script>
+
+async function load() {
+
+    const res = await fetch("/metrics");
+    const data = await res.json();
+
+    const o = data.orchestrator;
+
+    document.getElementById("system").innerHTML = `
+        cycles: ${o.cycle_count} <br>
+        duration: ${o.last_duration}s <br>
+        signals: ${o.last_signal_count} <br>
+        events: ${o.last_event_count}
+    `;
+
+    document.getElementById("dominance").innerHTML =
+        o.dominance.map(d =>
+            `${d.topic} → ${d.dominance}`
+        ).join("<br>");
+
+    document.getElementById("anomalies").innerHTML =
+        o.anomalies.map(a =>
+            `${a.type} → ${a.topic}`
+        ).join("<br>");
+}
+
+setInterval(load, 2000);
+
+</script>
+
+</body>
+</html>
