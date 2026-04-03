@@ -9,7 +9,7 @@ from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 import ai_engine.signal_detector as signal_module
 
-from ai_engine.global_intelligence import merge_signals  # 🔥 EKLENDİ
+from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
 
 from backend.events import register_event, detect_event_spikes
 from backend.user_profile_engine import get_user_profile, compute_final_score
