@@ -1,4 +1,3 @@
-✅ 📁 backend/storage.py (FINAL — FIXED & STABLE)
 import sqlite3
 import os
 import time
@@ -8,13 +7,8 @@ DB_DIR = os.path.join(BASE_DIR, "database")
 DB_PATH = os.path.join(DB_DIR, "dynamohive.db")
 
 
-# -------------------------
-# 🔥 DB INIT (KRİTİK)
-# -------------------------
-
 def init_db():
 
-    # klasör yoksa oluştur
     if not os.path.exists(DB_DIR):
         os.makedirs(DB_DIR)
 
@@ -34,18 +28,10 @@ def init_db():
     conn.close()
 
 
-# -------------------------
-# CONNECTION
-# -------------------------
-
 def get_connection():
-    init_db()  # 🔥 HER BAĞLANTIDA GARANTİ
+    init_db()
     return sqlite3.connect(DB_PATH)
 
-
-# -------------------------
-# SAVE POST
-# -------------------------
 
 def save_post(title, content):
 
@@ -64,10 +50,6 @@ def save_post(title, content):
     except Exception as e:
         print("DB write error:", e)
 
-
-# -------------------------
-# GET POSTS
-# -------------------------
 
 def get_posts():
 
@@ -91,7 +73,6 @@ def get_posts():
         for row in rows:
             post = dict(row)
 
-            # timestamp üret
             try:
                 post["timestamp"] = time.mktime(
                     time.strptime(post["created_at"], "%Y-%m-%d %H:%M:%S")
@@ -99,7 +80,6 @@ def get_posts():
             except:
                 post["timestamp"] = time.time()
 
-            # AI alanları
             post["keywords"] = []
             post["source"] = "internal"
 
