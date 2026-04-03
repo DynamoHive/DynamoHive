@@ -5,7 +5,9 @@ import traceback
 from backend.logger import logger
 from backend.storage import save_post, get_posts
 
-from ai_engine.event_engine import register_event, detect_event_spikes
+# 🔥 EVENT + PERSONALIZATION
+from backend.events import register_event, detect_event_spikes
+
 from ai_engine.narrative_engine import generate_narrative
 from backend.distribution_engine import distribute
 
@@ -15,12 +17,19 @@ from ai_engine.signal_ranking_engine import rank_signals
 from backend.cache import is_duplicate, mark_generated
 from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
 
+# 🔥 KOD-8 FEED / USER HOOK
+from backend.user_profile_engine import get_user_profile, compute_final_score
+
 
 intel_engine = GlobalIntelligenceEngine()
 
 CYCLE_INTERVAL = 30
 ERROR_SLEEP = 30
 
+
+# -------------------------
+# 🔥 INTELLIGENCE SYNTHESIS
+# -------------------------
 
 def synthesize_intelligence(signals, events):
 
@@ -37,6 +46,10 @@ def synthesize_intelligence(signals, events):
 
     return intelligence
 
+
+# -------------------------
+# SAFE IMPORTS
+# -------------------------
 
 def safe_imports():
 
@@ -57,6 +70,10 @@ def safe_imports():
     return modules
 
 
+# -------------------------
+# 🔥 MAIN CYCLE
+# -------------------------
+
 def run_cycle(modules):
 
     start_time = time.time()
@@ -64,7 +81,7 @@ def run_cycle(modules):
 
     try:
 
-        # ilk post garanti
+        # garanti başlangıç
         if not get_posts():
             save_post("DynamoHive Activated", "System is live")
 
@@ -77,7 +94,9 @@ def run_cycle(modules):
         if "process_data" in modules:
             raw_data = modules["process_data"](raw_data)
 
-        # SIGNAL
+        # -------------------------
+        # 🔥 SIGNAL
+        # -------------------------
         signals = signal_module.detect_signals(raw_data) if raw_data else []
 
         if not signals:
@@ -88,28 +107,52 @@ def run_cycle(modules):
 
         signals = rank_signals(signals)
 
-        # EVENTS
+        # -------------------------
+        # 🔥 EVENT SPIKE SYSTEM
+        # -------------------------
         for signal in signals:
             register_event(signal.get("text"))
 
         events = detect_event_spikes()
 
-        # BASE INTEL
+        # -------------------------
+        # 🔥 PERSONALIZATION HOOK (KOD-8)
+        # -------------------------
+        try:
+            # test user (ileride gerçek user sistemi gelecek)
+            profile = get_user_profile("global_user")
+
+            for s in signals:
+                topic = s.get("text")
+                base_score = s.get("score", 0)
+
+                # 🔥 user + signal birleşimi
+                s["score"] = compute_final_score(
+                    {"topic": topic, "score": base_score},
+                    profile
+                )
+
+        except Exception as e:
+            logger.warning(f"PERSONALIZATION ERROR: {e}")
+
+        # -------------------------
+        # 🔥 INTELLIGENCE
+        # -------------------------
         raw_intel = synthesize_intelligence(signals, events)
 
-        # INTELLIGENCE
         try:
             intelligence = intel_engine.process(raw_intel)
         except Exception as e:
             logger.warning(f"INTEL ERROR: {e}")
             intelligence = raw_intel
 
-        # CONTENT
+        # -------------------------
+        # 🔥 CONTENT GENERATION
+        # -------------------------
         for intel in intelligence:
 
             base_topic = intel.get("topic") or "unknown"
 
-            # 🔥 duplicate FIX (hem koru hem kilitleme)
             if is_duplicate(base_topic):
                 topic = f"{base_topic}_{int(time.time())}"
             else:
@@ -149,6 +192,10 @@ def run_cycle(modules):
         elapsed = round(time.time() - start_time, 2)
         logger.info(f"cycle finished in {elapsed}s")
 
+
+# -------------------------
+# 🔥 SYSTEM START
+# -------------------------
 
 def start():
 
