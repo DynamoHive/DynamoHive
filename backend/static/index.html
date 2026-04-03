@@ -3,7 +3,7 @@
 <head>
     <title>DynamoHive</title>
 </head>
-<body style="background:black; color:white; text-align:center;">
+<body style="background:black; color:white; text-align:center; font-family:Arial;">
 
 <h1>DynamoHive</h1>
 
@@ -18,24 +18,49 @@
 <div id="feed">Loading...</div>
 
 <script>
-fetch("/posts")
-.then(res => res.json())
-.then(data => {
-
+async function loadFeed() {
     const feed = document.getElementById("feed");
-    feed.innerHTML = "";
 
-    data.posts.forEach(p => {
-        const div = document.createElement("div");
-        div.style.margin = "20px";
-        div.innerHTML = "<h3>" + p.title + "</h3>";
-        feed.appendChild(div);
-    });
+    try {
+        const res = await fetch("http://localhost:8000/posts");
 
-})
-.catch(() => {
-    document.getElementById("feed").innerHTML = "Feed yüklenemedi";
-});
+        if (!res.ok) {
+            throw new Error("API error");
+        }
+
+        const data = await res.json();
+
+        if (!data.posts || data.posts.length === 0) {
+            feed.innerHTML = "No content yet";
+            return;
+        }
+
+        feed.innerHTML = "";
+
+        data.posts.forEach(p => {
+            const div = document.createElement("div");
+            div.style.margin = "20px";
+            div.style.padding = "10px";
+            div.style.borderBottom = "1px solid #333";
+
+            div.innerHTML = `
+                <h3>${p.title || "No title"}</h3>
+                <p style="color:gray; font-size:14px;">
+                    ${p.content ? p.content.substring(0, 150) : ""}
+                </p>
+            `;
+
+            feed.appendChild(div);
+        });
+
+    } catch (err) {
+        console.error(err);
+        feed.innerHTML = "Feed yüklenemedi (API bağlantı hatası)";
+    }
+}
+
+// sayfa açılınca çalış
+loadFeed();
 </script>
 
 </body>
