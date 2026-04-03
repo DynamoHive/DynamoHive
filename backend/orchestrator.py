@@ -24,11 +24,16 @@ from ai_engine.dominance_engine import compute_dominance
 
 intel_engine = GlobalIntelligenceEngine()
 
+# -------------------------
 # 🔥 DUPLICATE CACHE
+# -------------------------
 duplicate_cache = {}
 
 def is_duplicate_local(topic):
-    h = hashlib.md5(topic.encode()).hexdigest()
+    try:
+        h = hashlib.md5(topic.encode()).hexdigest()
+    except:
+        return False
 
     if h in duplicate_cache:
         if time.time() - duplicate_cache[h] < 3600:
@@ -49,6 +54,9 @@ class Orchestrator:
         self.last_anomalies = []
         self.last_dominance = []
 
+    # -------------------------
+    # 🚀 MAIN LOOP
+    # -------------------------
     def run_cycle(self):
 
         start = time.time()
@@ -70,20 +78,23 @@ class Orchestrator:
             raw_data = process_data(raw_data)
 
             # -------------------------
-            # 2. SIGNAL (🔥 TEMİZ HAL)
+            # 2. SIGNAL
             # -------------------------
             signals = signal_module.detect_signals(raw_data)
 
-            # 🔥 fallback → detector bozulursa
-            if not signals or len(signals) <= 1:
+            # 🔥 fallback → sistem kör kalmasın
+            if not signals or len(signals) <= 2:
                 signals = []
+
                 for item in raw_data:
                     text = item.get("title") or item.get("text")
-                    if text:
-                        signals.append({
-                            "text": text,
-                            "score": 1.0
-                        })
+                    if not text:
+                        continue
+
+                    signals.append({
+                        "text": text,
+                        "score": 1.0
+                    })
 
             self.last_signal_count = len(signals)
 
@@ -91,7 +102,9 @@ class Orchestrator:
             # 3. EVENTS
             # -------------------------
             for s in signals:
-                register_event(s.get("text"))
+                topic = s.get("text") or s.get("topic")
+                if topic:
+                    register_event(topic)
 
             events = detect_event_spikes()
             self.last_event_count = len(events)
@@ -111,17 +124,24 @@ class Orchestrator:
 
                 base_score = s.get("score", 0)
 
-                s["score"] = compute_final_score(
-                    {"topic": topic, "score": base_score},
-                    profile
-                )
+                try:
+                    s["score"] = compute_final_score(
+                        {"topic": topic, "score": base_score},
+                        profile
+                    )
+                except:
+                    pass
 
                 s["text"] = topic
 
             # -------------------------
             # 5. ANOMALY + DOMINANCE
             # -------------------------
-            self.last_anomalies = detect_anomalies(signals, events)
+            try:
+                self.last_anomalies = detect_anomalies(signals, events)
+            except Exception as e:
+                logger.warning(f"[ANOMALY ERROR] {e}")
+                self.last_anomalies = []
 
             try:
                 self.last_dominance = compute_dominance(signals)
@@ -154,9 +174,8 @@ class Orchestrator:
             logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
     # -------------------------
-    # 🧠 INTELLIGENCE
+    # 🧠 INTELLIGENCE BUILDER
     # -------------------------
-
     def _build_intelligence(self, signals):
 
         intelligence = []
@@ -173,20 +192,22 @@ class Orchestrator:
         return intelligence
 
     # -------------------------
-    # 📰 CONTENT
+    # 📰 CONTENT ENGINE
     # -------------------------
-
     def _generate_content(self, intelligence):
 
         for intel in intelligence:
 
             topic = intel.get("topic") or "unknown"
 
-            # 🔥 duplicate kes
+            # 🔥 DUPLICATE KES
             if is_duplicate_local(topic):
                 continue
 
-            content = generate_narrative(intel)
+            try:
+                content = generate_narrative(intel)
+            except Exception:
+                continue
 
             if not content:
                 continue
@@ -210,7 +231,6 @@ class Orchestrator:
     # -------------------------
     # 📊 STATUS
     # -------------------------
-
     def get_status(self):
         return {
             "cycle_count": self.cycle_count,
