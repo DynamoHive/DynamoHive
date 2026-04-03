@@ -28,6 +28,9 @@ class Orchestrator:
     def __init__(self):
         self.cycle_count = 0
         self.last_run = None
+        self.last_duration = 0
+        self.last_signal_count = 0
+        self.last_event_count = 0
 
     # -------------------------
     # 🔥 CORE FLOW
@@ -37,6 +40,7 @@ class Orchestrator:
 
         start = time.time()
         self.cycle_count += 1
+        self.last_run = start
 
         logger.info(f"[ORCHESTRATOR] Cycle {self.cycle_count} started")
 
@@ -65,6 +69,8 @@ class Orchestrator:
 
             signals = rank_signals(signals)
 
+            self.last_signal_count = len(signals)
+
             # -------------------------
             # 3. EVENTS
             # -------------------------
@@ -72,6 +78,7 @@ class Orchestrator:
                 register_event(s.get("text"))
 
             events = detect_event_spikes()
+            self.last_event_count = len(events)
 
             # -------------------------
             # 4. PERSONALIZATION
@@ -107,6 +114,8 @@ class Orchestrator:
 
         finally:
             duration = round(time.time() - start, 2)
+            self.last_duration = duration
+
             logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
     # -------------------------
@@ -168,3 +177,16 @@ class Orchestrator:
                 logger.warning("[CACHE ERROR]")
 
             logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
+
+    # -------------------------
+    # 🔥 STATUS (KOD-9)
+    # -------------------------
+
+    def get_status(self):
+        return {
+            "cycle_count": self.cycle_count,
+            "last_run": self.last_run,
+            "last_duration": self.last_duration,
+            "last_signal_count": self.last_signal_count,
+            "last_event_count": self.last_event_count
+        }
