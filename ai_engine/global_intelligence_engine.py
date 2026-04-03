@@ -1,63 +1,55 @@
-class GlobalIntelligenceEngine:
-
-    def process(self, intelligence_list):
-
-        if not intelligence_list:
-            return []
-
-        enhanced = []
-
-        for intel in intelligence_list:
-
-            topic = intel.get("topic", "unknown")
-            summary = intel.get("summary", "")
-            trend = intel.get("trend", "emerging")
-
-            # 🔥 BASİT AMA STABİL ANALİZ KATMANI
-            enriched = {
-                "topic": topic,
-                "summary": summary,
-                "trend": trend,
-                "confidence": self._score_confidence(trend),
-                "risk_level": self._estimate_risk(topic),
-                "category": self._classify(topic)
-            }
-
-            enhanced.append(enriched)
-
-        return enhanced
+import random
 
 
-    def _score_confidence(self, trend):
+def build_headline(topic):
 
-        if trend == "surging":
-            return 0.9
-        if trend == "rising":
-            return 0.7
-        return 0.5
+    base = topic.title()
 
+    variations = [
+        f"{base}: What is happening?",
+        f"{base}: Strategic shift detected",
+        f"{base}: Why this matters now",
+        f"{base}: Emerging global signal",
+        f"{base}: Hidden dynamics revealed",
+    ]
 
-    def _estimate_risk(self, topic):
-
-        topic = topic.lower()
-
-        if any(x in topic for x in ["war", "conflict", "crisis", "attack"]):
-            return "high"
-
-        if any(x in topic for x in ["economy", "market", "inflation"]):
-            return "medium"
-
-        return "low"
+    return random.choice(variations)
 
 
-    def _classify(self, topic):
+def build_summary(signal):
 
-        topic = topic.lower()
+    samples = signal.get("samples", [])
 
-        if any(x in topic for x in ["ai", "tech", "robot"]):
-            return "technology"
+    if samples:
+        return samples[0]
 
-        if any(x in topic for x in ["war", "politics", "government"]):
-            return "geopolitics"
+    return signal.get("topic", "")
 
-        return "general"
+
+def generate_intelligence(signals):
+
+    if not signals:
+        return []
+
+    stories = []
+
+    for s in signals[:10]:
+
+        topic = s.get("topic", "")
+        keywords = s.get("keywords", [])
+        strength = s.get("boost", 1)
+
+        headline = build_headline(topic)
+        summary = build_summary(s)
+
+        stories.append({
+            "type": "intelligence",
+            "headline": headline,
+            "summary": summary,
+            "keywords": keywords,
+            "strength": strength
+        })
+
+    print("[INTELLIGENCE]", len(stories))
+
+    return stories
