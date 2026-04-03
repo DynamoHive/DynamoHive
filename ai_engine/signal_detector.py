@@ -13,7 +13,8 @@ def detect_signals(analysis):
     STOPWORDS = {
         "the", "and", "for", "with", "that", "this",
         "from", "are", "was", "were", "has", "have",
-        "had", "but", "not", "you", "your", "about"
+        "had", "but", "not", "you", "your", "about",
+        "into", "over", "after", "before", "between"
     }
 
     def safe_float(x, default=0.0):
@@ -29,7 +30,7 @@ def detect_signals(analysis):
             return ""
 
     # -------------------------
-    # 1. COLLECT
+    # 1. COLLECT (PHRASE MODE 🔥)
     # -------------------------
     for item in analysis:
 
@@ -41,13 +42,19 @@ def detect_signals(analysis):
 
         keywords = item.get("keywords") or []
 
-        # 🔥 KEYWORD YOKSA TEXT'TEN ÜRET
         if not keywords:
-            words = text.split()
-            keywords = [
-                w for w in words
+            words = [
+                w for w in text.split()
                 if len(w) > 3 and w not in STOPWORDS
             ]
+
+            # 🔥 BIGRAM (2 kelimelik)
+            phrases = []
+            for i in range(len(words) - 1):
+                phrases.append(words[i] + " " + words[i+1])
+
+            # 🔥 hem tek hem phrase
+            keywords = words[:10] + phrases[:10]
 
         for kw in keywords:
 
@@ -69,10 +76,9 @@ def detect_signals(analysis):
 
         count = keyword_counter[kw]
         total_score = keyword_scores[kw]
-
         avg_score = total_score / count if count else 0
 
-        # 🔥 YUMUŞAK THRESHOLD
+        # 🔥 dengeli threshold
         if count < 2 and avg_score < 1:
             continue
 
