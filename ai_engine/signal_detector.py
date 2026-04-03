@@ -1,9 +1,4 @@
 from collections import defaultdict
-import time
-
-
-WINDOW = 3600
-
 
 STOPWORDS = {
     "the","and","for","with","that","this","from","are","was","were",
@@ -11,15 +6,15 @@ STOPWORDS = {
     "after","before","between","will","would","could","should"
 }
 
+BAD_PATTERNS = {
+    "more", "there", "first", "time", "very", "just",
+    "some", "many", "such", "than", "also"
+}
+
 
 def normalize(text):
     try:
-        text = str(text).lower().strip()
-
-        # 🔥 EXTRA CLEAN
-        text = text.replace("’", "").replace("'", "")
-
-        return text
+        return str(text).lower().strip()
     except:
         return ""
 
@@ -32,7 +27,28 @@ def safe_float(x, default=0.0):
 
 
 # -------------------------
-# 🔥 SIMILARITY (CLUSTER CORE)
+# 🔥 SEMANTIC FILTER
+# -------------------------
+def is_meaningful(phrase):
+
+    words = phrase.split()
+
+    if len(words) < 2:
+        return False
+
+    bad_hits = sum(1 for w in words if w in BAD_PATTERNS)
+
+    if bad_hits >= 1:
+        return False
+
+    if all(len(w) < 4 for w in words):
+        return False
+
+    return True
+
+
+# -------------------------
+# 🔥 SIMILARITY
 # -------------------------
 def similarity(a, b):
 
@@ -61,8 +77,7 @@ def merge_topics(keyword_counter, keyword_scores, keyword_texts):
 
         for cluster in clusters:
 
-            # 🔥 FIXED THRESHOLD
-            if similarity(cluster["topic"], kw) > 0.45:
+            if similarity(cluster["topic"], kw) > 0.6:
                 cluster["count"] += keyword_counter[kw]
                 cluster["score"] += keyword_scores[kw]
                 cluster["samples"].extend(keyword_texts[kw])
@@ -125,9 +140,14 @@ def detect_signals(analysis):
         keywords = phrases[:20] if phrases else words[:10]
 
         for kw in keywords:
+
             kw = normalize(kw)
 
             if not kw or len(kw) < 4:
+                continue
+
+            # 🔥 FILTER BURADA
+            if not is_meaningful(kw):
                 continue
 
             keyword_counter[kw] += 1
@@ -149,7 +169,7 @@ def detect_signals(analysis):
         count = c["count"]
         total_score = c["score"]
 
-        # 🔥 SOFT THRESHOLD
+        # 🔥 güçlendirilmiş threshold
         if count < 2 and total_score < 2:
             continue
 
