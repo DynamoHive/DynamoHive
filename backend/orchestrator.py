@@ -10,11 +10,11 @@ from ai_engine.data_pipeline import process_data
 import ai_engine.signal_detector as signal_module
 
 from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
+from ai_engine.predictive_engine import update_trends  # 🔥 NEW
 
 from backend.events import register_event, detect_event_spikes
 from backend.user_profile_engine import get_user_profile, compute_final_score
 
-from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
 from ai_engine.narrative_engine import generate_narrative
 
 from backend.storage import save_post, get_posts
@@ -27,15 +27,17 @@ from ai_engine.memory_pattern_engine import MemoryPatternEngine
 from ai_engine.content_filter import is_low_quality
 from ai_engine.vector_memory import search_similar, store_vector
 
-# 🔥 MAIN GLOBAL DATA (CRITICAL FIX)
-
-
+# 🔥 GLOBAL DATA FIX
+GLOBAL_DATA = []
 
 intel_engine = GlobalIntelligenceEngine()
 
 duplicate_cache = {}
 
 
+# -------------------------
+# DUPLICATE
+# -------------------------
 def is_duplicate_local(topic):
     try:
         topic = str(topic).lower().strip()
@@ -53,6 +55,27 @@ def is_duplicate_local(topic):
     return False
 
 
+# -------------------------
+# 🔥 SIGNAL MERGE (FIX)
+# -------------------------
+def merge_signals(signals):
+
+    merged = {}
+
+    for s in signals:
+        topic = s["topic"]
+
+        if topic not in merged:
+            merged[topic] = s
+        else:
+            merged[topic]["score"] += s["score"]
+
+    return list(merged.values())
+
+
+# -------------------------
+# ORCHESTRATOR
+# -------------------------
 class Orchestrator:
 
     def __init__(self):
@@ -89,7 +112,9 @@ class Orchestrator:
 
             raw_data = process_data(raw_data)
 
-        
+            # 🔥 GLOBAL DATA FILL
+            GLOBAL_DATA.clear()
+            GLOBAL_DATA.extend(raw_data[:100])
 
             # -------------------------
             # SIGNAL
@@ -106,8 +131,8 @@ class Orchestrator:
                             "score": 1.0
                         })
 
-            # 🔥 MERGE (CRITICAL FIX)
-            
+            # 🔥 MERGE FIX
+            signals = merge_signals(signals)
 
             # -------------------------
             # NORMALIZE
@@ -179,6 +204,12 @@ class Orchestrator:
                 intelligence = intel_engine.process(intelligence)
             except Exception as e:
                 logger.warning(f"[INTEL ERROR] {e}")
+
+            # 🔥 PREDICTIVE UPDATE
+            try:
+                update_trends(intelligence)
+            except Exception as e:
+                logger.warning(f"[PREDICT ERROR] {e}")
 
             # -------------------------
             # CONTENT
