@@ -1,4 +1,9 @@
 from collections import defaultdict
+import math
+
+# -------------------------
+# CONFIG
+# -------------------------
 
 STOPWORDS = {
     "the","and","for","with","that","this","from","are","was","were",
@@ -11,6 +16,14 @@ BAD_PATTERNS = {
     "some", "many", "such", "than", "also"
 }
 
+MIN_COUNT = 2
+MIN_SCORE = 1.5
+SIM_THRESHOLD = 0.55
+
+
+# -------------------------
+# HELPERS
+# -------------------------
 
 def normalize(text):
     try:
@@ -29,6 +42,7 @@ def safe_float(x, default=0.0):
 # -------------------------
 # 🔥 SEMANTIC FILTER
 # -------------------------
+
 def is_meaningful(phrase):
 
     words = phrase.split()
@@ -36,12 +50,10 @@ def is_meaningful(phrase):
     if len(words) < 2:
         return False
 
-    bad_hits = sum(1 for w in words if w in BAD_PATTERNS)
-
-    if bad_hits >= 1:
+    if any(w in BAD_PATTERNS for w in words):
         return False
 
-    if all(len(w) < 4 for w in words):
+    if sum(len(w) >= 5 for w in words) < 1:
         return False
 
     return True
@@ -50,6 +62,7 @@ def is_meaningful(phrase):
 # -------------------------
 # 🔥 SIMILARITY
 # -------------------------
+
 def similarity(a, b):
 
     a_words = set(a.split())
@@ -58,46 +71,48 @@ def similarity(a, b):
     if not a_words or not b_words:
         return 0
 
-    inter = len(a_words & b_words)
-    union = len(a_words | b_words)
-
-    return inter / union
+    return len(a_words & b_words) / len(a_words | b_words)
 
 
 # -------------------------
-# 🔥 CLUSTER MERGE
+# 🔥 CLUSTER MERGE (OPTIMIZED)
 # -------------------------
-def merge_topics(keyword_counter, keyword_scores, keyword_texts):
+
+def merge_topics(counter, scores, texts):
 
     clusters = []
 
-    for kw in keyword_counter:
+    for kw in counter:
 
-        added = False
+        best_match = None
+        best_score = 0
 
         for cluster in clusters:
+            sim = similarity(cluster["topic"], kw)
 
-            if similarity(cluster["topic"], kw) > 0.6:
-                cluster["count"] += keyword_counter[kw]
-                cluster["score"] += keyword_scores[kw]
-                cluster["samples"].extend(keyword_texts[kw])
-                added = True
-                break
+            if sim > SIM_THRESHOLD and sim > best_score:
+                best_match = cluster
+                best_score = sim
 
-        if not added:
+        if best_match:
+            best_match["count"] += counter[kw]
+            best_match["score"] += scores[kw]
+            best_match["samples"].extend(texts[kw])
+        else:
             clusters.append({
                 "topic": kw,
-                "count": keyword_counter[kw],
-                "score": keyword_scores[kw],
-                "samples": keyword_texts[kw][:]
+                "count": counter[kw],
+                "score": scores[kw],
+                "samples": texts[kw][:]
             })
 
     return clusters
 
 
 # -------------------------
-# 🔥 MAIN
+# 🔥 MAIN ENGINE
 # -------------------------
+
 def detect_signals(analysis):
 
     if not analysis or not isinstance(analysis, list):
@@ -111,6 +126,7 @@ def detect_signals(analysis):
     # -------------------------
     # 1. COLLECT
     # -------------------------
+
     for item in analysis:
 
         if not isinstance(item, dict):
@@ -127,6 +143,9 @@ def detect_signals(analysis):
             if len(w) > 3 and w not in STOPWORDS
         ]
 
+        if not words:
+            continue
+
         phrases = []
 
         # BIGRAM
@@ -137,16 +156,15 @@ def detect_signals(analysis):
         for i in range(len(words) - 2):
             phrases.append(words[i] + " " + words[i+1] + " " + words[i+2])
 
-        keywords = phrases[:20] if phrases else words[:10]
+        keywords = phrases[:25] if phrases else words[:12]
 
         for kw in keywords:
 
             kw = normalize(kw)
 
-            if not kw or len(kw) < 4:
+            if len(kw) < 5:
                 continue
 
-            # 🔥 FILTER BURADA
             if not is_meaningful(kw):
                 continue
 
@@ -155,13 +173,19 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. CLUSTERING
+    # 2. CLUSTER
     # -------------------------
-    clusters = merge_topics(keyword_counter, keyword_scores, keyword_texts)
+
+    clusters = merge_topics(
+        keyword_counter,
+        keyword_scores,
+        keyword_texts
+    )
 
     # -------------------------
     # 3. BUILD SIGNALS
     # -------------------------
+
     signals = []
 
     for c in clusters:
@@ -169,29 +193,30 @@ def detect_signals(analysis):
         count = c["count"]
         total_score = c["score"]
 
-        # 🔥 güçlendirilmiş threshold
-        if count < 2 and total_score < 2:
+        if count < MIN_COUNT and total_score < MIN_SCORE:
             continue
 
         avg_score = total_score / count
+
+        # 🔥 SMART BOOST (non-linear)
+        boost = int(math.log1p(count) * 5)
 
         signals.append({
             "topic": c["topic"],
             "keywords": c["topic"].split(),
             "count": count,
             "score": round(avg_score, 2),
-            "boost": max(1, count * 2),
-            "samples": c["samples"][:3]
+            "boost": max(1, boost),
+            "samples": list(set(c["samples"]))[:3]
         })
 
     # -------------------------
-    # 4. FALLBACK
+    # 4. HARD FALLBACK
     # -------------------------
-    if len(signals) <= 2:
 
-        signals = []
+    if len(signals) == 0:
 
-        for item in analysis:
+        for item in analysis[:10]:
 
             text = normalize(item.get("text") or item.get("title") or "")
 
@@ -208,10 +233,11 @@ def detect_signals(analysis):
             })
 
     # -------------------------
-    # 5. SORT
+    # 5. FINAL SORT
     # -------------------------
+
     signals.sort(
-        key=lambda x: (x.get("count", 0), x.get("score", 0)),
+        key=lambda x: (x["boost"], x["score"], x["count"]),
         reverse=True
     )
 
