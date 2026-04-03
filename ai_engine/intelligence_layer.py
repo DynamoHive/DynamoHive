@@ -1,51 +1,94 @@
+import math
 from collections import defaultdict
 
+class IntelligenceLayer:
 
-def normalize(x):
-    try:
-        return str(x).lower()
-    except:
-        return ""
+    def __init__(self):
+        self.topic_memory = defaultdict(list)
 
+    def process(self, signals):
 
-def build_intelligence(signals):
+        enriched = []
 
-    if not signals:
-        return {}
+        # -------------------------
+        # GROUP SIMILAR TOPICS
+        # -------------------------
+        clusters = self._cluster(signals)
 
-    topic_strength = defaultdict(float)
-    topic_count = defaultdict(int)
+        for cluster in clusters:
+
+            topics = [s["topic"] for s in cluster]
+            scores = [s.get("score", 1.0) for s in cluster]
+
+            main_topic = self._select_main(topics)
+
+            enriched.append({
+                "topic": main_topic,
+                "cluster_size": len(cluster),
+                "score": sum(scores) / len(scores),
+                "momentum": self._momentum(main_topic, scores)
+            })
+
+        return enriched
 
     # -------------------------
-    # 1. TOPLA
+    # CLUSTER
     # -------------------------
-    for s in signals:
+    def _cluster(self, signals):
 
-        topic = normalize(s.get("topic") or s.get("text"))
-        score = float(s.get("score", 0))
-        count = int(s.get("count", 1))
+        clusters = []
+        used = set()
 
-        topic_strength[topic] += score * count
-        topic_count[topic] += count
+        for i, s1 in enumerate(signals):
+
+            if i in used:
+                continue
+
+            group = [s1]
+            used.add(i)
+
+            for j, s2 in enumerate(signals):
+                if j in used:
+                    continue
+
+                if self._similar(s1["topic"], s2["topic"]):
+                    group.append(s2)
+                    used.add(j)
+
+            clusters.append(group)
+
+        return clusters
+
+    def _similar(self, a, b):
+
+        a = a.lower().split()
+        b = b.lower().split()
+
+        common = set(a) & set(b)
+
+        return len(common) >= 2
 
     # -------------------------
-    # 2. DOMINANCE
+    # SELECT MAIN TOPIC
     # -------------------------
-    intelligence = {}
+    def _select_main(self, topics):
+        return max(topics, key=len)
 
-    total = sum(topic_strength.values()) or 1
+    # -------------------------
+    # MOMENTUM (LEARNING BASE)
+    # -------------------------
+    def _momentum(self, topic, scores):
 
-    for topic in topic_strength:
+        history = self.topic_memory[topic]
 
-        strength = topic_strength[topic]
-        count = topic_count[topic]
+        current = sum(scores)
 
-        dominance = strength / total
+        if history:
+            prev = history[-1]
+            delta = current - prev
+        else:
+            delta = current
 
-        intelligence[topic] = {
-            "strength": round(strength, 2),
-            "count": count,
-            "dominance": round(dominance, 4)
-        }
+        history.append(current)
 
-    return intelligence
+        return round(delta, 2)
