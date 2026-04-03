@@ -7,11 +7,7 @@
 
 <h1>DynamoHive</h1>
 
-<img src="/static/dynamohive-logo.png" width="120">
-
 <p>System is running</p>
-
-<hr style="margin:40px; border-color:#333;">
 
 <h2>Live Feed</h2>
 
@@ -22,42 +18,38 @@ async function loadFeed() {
     const feed = document.getElementById("feed");
 
     try {
-        // 🔥 DOĞRU ENDPOINT
-        const res = await fetch(window.location.origin + "/api/feed");
-
-        if (!res.ok) {
-            throw new Error("API error");
-        }
-
+        const res = await fetch("/api/feed");
         const data = await res.json();
-
-        if (!data.feed || data.feed.length === 0) {
-            feed.innerHTML = "No content yet";
-            return;
-        }
 
         feed.innerHTML = "";
 
         data.feed.forEach(p => {
+
             const div = document.createElement("div");
             div.style.margin = "20px";
-            div.style.padding = "10px";
-            div.style.borderBottom = "1px solid #333";
 
             div.innerHTML = `
-                <h3>${p.title || "No title"}</h3>
-                <p style="color:gray; font-size:14px;">
-                    ${p.content ? p.content.substring(0, 150) : ""}
-                </p>
+                <h3 onclick="sendEvent('${p.title}')">${p.title}</h3>
+                <p>${p.content.substring(0,150)}</p>
             `;
 
             feed.appendChild(div);
         });
 
-    } catch (err) {
-        console.error("FETCH ERROR:", err);
+    } catch {
         feed.innerHTML = "Feed yüklenemedi";
     }
+}
+
+function sendEvent(topic) {
+
+    console.log("EVENT SENT:", topic);
+
+    fetch("/api/event", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({topic: topic})
+    });
 }
 
 loadFeed();
