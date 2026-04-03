@@ -14,7 +14,12 @@ STOPWORDS = {
 
 def normalize(text):
     try:
-        return str(text).lower().strip()
+        text = str(text).lower().strip()
+
+        # 🔥 EXTRA CLEAN
+        text = text.replace("’", "").replace("'", "")
+
+        return text
     except:
         return ""
 
@@ -56,7 +61,8 @@ def merge_topics(keyword_counter, keyword_scores, keyword_texts):
 
         for cluster in clusters:
 
-            if similarity(cluster["topic"], kw) > 0.6:
+            # 🔥 FIXED THRESHOLD
+            if similarity(cluster["topic"], kw) > 0.45:
                 cluster["count"] += keyword_counter[kw]
                 cluster["score"] += keyword_scores[kw]
                 cluster["samples"].extend(keyword_texts[kw])
@@ -106,12 +112,13 @@ def detect_signals(analysis):
             if len(w) > 3 and w not in STOPWORDS
         ]
 
-        # 🔥 PHRASES
         phrases = []
 
+        # BIGRAM
         for i in range(len(words) - 1):
             phrases.append(words[i] + " " + words[i+1])
 
+        # TRIGRAM
         for i in range(len(words) - 2):
             phrases.append(words[i] + " " + words[i+1] + " " + words[i+2])
 
@@ -128,7 +135,7 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. 🔥 CLUSTERING
+    # 2. CLUSTERING
     # -------------------------
     clusters = merge_topics(keyword_counter, keyword_scores, keyword_texts)
 
