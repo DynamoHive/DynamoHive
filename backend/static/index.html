@@ -22,7 +22,8 @@ async function loadFeed() {
     const feed = document.getElementById("feed");
 
     try {
-        const res = await fetch("http://localhost:8000/posts");
+        // 🔴 FIX: bulunduğun host + port'u kullanır
+        const res = await fetch(window.location.origin + "/posts");
 
         if (!res.ok) {
             throw new Error("API error");
@@ -54,12 +55,11 @@ async function loadFeed() {
         });
 
     } catch (err) {
-        console.error(err);
+        console.error("FETCH ERROR:", err);
         feed.innerHTML = "Feed yüklenemedi (API bağlantı hatası)";
     }
 }
 
-// sayfa açılınca çalış
 loadFeed();
 </script>
 
