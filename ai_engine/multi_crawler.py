@@ -4,30 +4,52 @@ import time
 
 from backend.storage import save_post
 
-RSS_SOURCES = [
 
+# -------------------------
+# 🔥 SOURCES
+# -------------------------
+RSS_SOURCES = [
     "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
     "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
-
     "https://feeds.bbci.co.uk/news/world/rss.xml",
     "https://feeds.bbci.co.uk/news/technology/rss.xml",
-
     "https://www.aljazeera.com/xml/rss/all.xml",
-
     "https://techcrunch.com/feed/",
     "https://www.theverge.com/rss/index.xml",
-
-    "https://www.reddit.com/r/worldnews/.rss",
-    "https://www.reddit.com/r/technology/.rss"
 ]
 
 
+# -------------------------
+# 🔥 CACHE (FEED)
+# -------------------------
 CACHE = {}
-CACHE_TTL = 300
+CACHE_TTL = 300  # 5 min
 
 
+# -------------------------
+# 🔥 DUPLICATE CACHE
+# -------------------------
+SEEN_HASHES = {}
+DUP_TTL = 1800  # 30 min
+
+
+# -------------------------
+# 🔧 HELPERS
+# -------------------------
 def make_hash(text):
     return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+
+def is_duplicate(text):
+    h = make_hash(text)
+    now = time.time()
+
+    if h in SEEN_HASHES:
+        if now - SEEN_HASHES[h] < DUP_TTL:
+            return True
+
+    SEEN_HASHES[h] = now
+    return False
 
 
 def get_feed(url):
@@ -48,6 +70,9 @@ def get_feed(url):
     return feed
 
 
+# -------------------------
+# 🚀 MAIN CRAWLER
+# -------------------------
 def crawl():
 
     results = []
@@ -65,19 +90,25 @@ def crawl():
             for entry in feed.entries[:5]:
 
                 title = entry.get("title", "").strip()
-                content = entry.get("summary", entry.get("description", "")).strip()
+                content = entry.get("summary") or entry.get("description") or ""
 
                 if not title:
                     continue
 
+                text = f"{title} {content}"
+
+                # 🔥 DUPLICATE FILTER
+                if is_duplicate(text):
+                    continue
+
                 item = {
                     "title": title,
-                    "content": content if content else title,
+                    "content": content.strip() if content else title,
                     "source": url,
                     "timestamp": time.time()
                 }
 
-                # 🔥 DB WRITE (ASLI BURASI)
+                # 🔥 DB WRITE
                 try:
                     save_post(item["title"], item["content"])
                 except Exception as db_error:
