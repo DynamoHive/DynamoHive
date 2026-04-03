@@ -12,8 +12,8 @@ STOPWORDS = {
 }
 
 BAD_PATTERNS = {
-    "more", "there", "first", "time", "very", "just",
-    "some", "many", "such", "than", "also"
+    "more","there","first","time","very","just",
+    "some","many","such","than","also"
 }
 
 MIN_COUNT = 2
@@ -40,7 +40,7 @@ def safe_float(x, default=0.0):
 
 
 # -------------------------
-# 🔥 SEMANTIC FILTER
+# 🔥 STRONG FILTER
 # -------------------------
 
 def is_meaningful(phrase):
@@ -50,10 +50,20 @@ def is_meaningful(phrase):
     if len(words) < 2:
         return False
 
-    if any(w in BAD_PATTERNS for w in words):
+    # stopword yoğunluğu
+    if sum(w in STOPWORDS for w in words) > len(words) / 2:
         return False
 
-    if sum(len(w) >= 5 for w in words) < 1:
+    # kısa kelime spam
+    if any(len(w) <= 3 for w in words):
+        return False
+
+    # en az 2 güçlü kelime
+    if sum(len(w) >= 5 for w in words) < 2:
+        return False
+
+    # bad pattern
+    if any(w in BAD_PATTERNS for w in words):
         return False
 
     return True
@@ -75,7 +85,7 @@ def similarity(a, b):
 
 
 # -------------------------
-# 🔥 CLUSTER MERGE (OPTIMIZED)
+# 🔥 CLUSTER
 # -------------------------
 
 def merge_topics(counter, scores, texts):
@@ -84,20 +94,20 @@ def merge_topics(counter, scores, texts):
 
     for kw in counter:
 
-        best_match = None
+        best = None
         best_score = 0
 
-        for cluster in clusters:
-            sim = similarity(cluster["topic"], kw)
+        for c in clusters:
+            sim = similarity(c["topic"], kw)
 
             if sim > SIM_THRESHOLD and sim > best_score:
-                best_match = cluster
+                best = c
                 best_score = sim
 
-        if best_match:
-            best_match["count"] += counter[kw]
-            best_match["score"] += scores[kw]
-            best_match["samples"].extend(texts[kw])
+        if best:
+            best["count"] += counter[kw]
+            best["score"] += scores[kw]
+            best["samples"].extend(texts[kw])
         else:
             clusters.append({
                 "topic": kw,
@@ -110,7 +120,30 @@ def merge_topics(counter, scores, texts):
 
 
 # -------------------------
-# 🔥 MAIN ENGINE
+# 🔥 CONTEXT EXTRACTION (CRITICAL FIX)
+# -------------------------
+
+def extract_phrases(words):
+
+    phrases = []
+
+    # 🔥 anlam çekirdeği
+    if len(words) >= 3:
+        phrases.append(" ".join(words[:3]))
+
+    # 🔥 geniş context
+    if len(words) >= 5:
+        phrases.append(" ".join(words[:5]))
+
+    # fallback
+    if not phrases:
+        phrases = [" ".join(words[:3])]
+
+    return phrases
+
+
+# -------------------------
+# 🔥 MAIN
 # -------------------------
 
 def detect_signals(analysis):
@@ -124,7 +157,7 @@ def detect_signals(analysis):
     keyword_texts = defaultdict(list)
 
     # -------------------------
-    # 1. COLLECT
+    # COLLECT
     # -------------------------
 
     for item in analysis:
@@ -146,23 +179,17 @@ def detect_signals(analysis):
         if not words:
             continue
 
-        phrases = []
+        phrases = extract_phrases(words)
 
-        # BIGRAM
-        for i in range(len(words) - 1):
-            phrases.append(words[i] + " " + words[i+1])
-
-        # TRIGRAM
-        for i in range(len(words) - 2):
-            phrases.append(words[i] + " " + words[i+1] + " " + words[i+2])
-
-        keywords = phrases[:25] if phrases else words[:12]
-
-        for kw in keywords:
+        for kw in phrases:
 
             kw = normalize(kw)
 
-            if len(kw) < 5:
+            if len(kw) < 6:
+                continue
+
+            # 🔥 HARD SPAM CUT
+            if kw.startswith(("there","more","first","new")):
                 continue
 
             if not is_meaningful(kw):
@@ -173,7 +200,7 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. CLUSTER
+    # CLUSTER
     # -------------------------
 
     clusters = merge_topics(
@@ -183,7 +210,7 @@ def detect_signals(analysis):
     )
 
     # -------------------------
-    # 3. BUILD SIGNALS
+    # BUILD
     # -------------------------
 
     signals = []
@@ -197,8 +224,6 @@ def detect_signals(analysis):
             continue
 
         avg_score = total_score / count
-
-        # 🔥 SMART BOOST (non-linear)
         boost = int(math.log1p(count) * 5)
 
         signals.append({
@@ -211,7 +236,7 @@ def detect_signals(analysis):
         })
 
     # -------------------------
-    # 4. HARD FALLBACK
+    # FALLBACK
     # -------------------------
 
     if len(signals) == 0:
@@ -233,7 +258,7 @@ def detect_signals(analysis):
             })
 
     # -------------------------
-    # 5. FINAL SORT
+    # SORT
     # -------------------------
 
     signals.sort(
