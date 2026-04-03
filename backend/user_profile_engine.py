@@ -13,6 +13,10 @@ def get_user_profile(user_id):
     return user_profiles[user_id]
 
 
+# -------------------------
+# UPDATE FUNCTIONS
+# -------------------------
+
 def update_interest(profile, topic, value):
     profile["interests"][topic] = profile["interests"].get(topic, 0) + value
 
@@ -26,31 +30,46 @@ def update_engagement(profile, event):
         profile["engagement"] += 1
 
 
+# -------------------------
+# EVENT PROCESSING
+# -------------------------
+
 def process_event(user_id, event):
     profile = get_user_profile(user_id)
 
     profile["history"].append(event)
 
+    topic = event.get("topic")
+
     if event["type"] == "click":
-        update_interest(profile, event["topic"], 1)
+        update_interest(profile, topic, 2)     # 🔥 artırıldı
 
     elif event["type"] == "like":
-        update_affinity(profile, event["topic"], 2)
+        update_affinity(profile, topic, 3)     # 🔥 artırıldı
 
     elif event["type"] == "skip":
-        update_affinity(profile, event["topic"], -1)
+        update_affinity(profile, topic, -2)
 
     update_engagement(profile, event)
 
     return profile
 
 
+# -------------------------
+# 🔥 STRONG USER BOOST
+# -------------------------
+
 def get_user_boost(profile, topic):
     interest = profile["interests"].get(topic, 0)
     affinity = profile["affinity"].get(topic, 0)
 
-    return interest * 0.5 + affinity * 1.5
+    # 🔥 çok daha güçlü etki
+    return interest * 3 + affinity * 6
 
+
+# -------------------------
+# FINAL SCORE
+# -------------------------
 
 def compute_final_score(signal, profile):
     base = signal.get("score", 0)
@@ -58,6 +77,10 @@ def compute_final_score(signal, profile):
 
     return base + user_boost
 
+
+# -------------------------
+# FEED GENERATION
+# -------------------------
 
 def generate_feed(user_id, signals):
     profile = get_user_profile(user_id)
