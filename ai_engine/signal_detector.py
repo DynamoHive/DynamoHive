@@ -8,6 +8,12 @@ def detect_signals(analysis):
     keyword_scores = defaultdict(float)
     keyword_texts = defaultdict(list)
 
+    STOPWORDS = {
+        "the", "and", "for", "with", "that", "this",
+        "from", "are", "was", "were", "has", "have",
+        "had", "but", "not", "you", "your", "about"
+    }
+
     # -------------------------
     # 1. COLLECT (🔥 FIXED)
     # -------------------------
@@ -21,16 +27,19 @@ def detect_signals(analysis):
 
         keywords = item.get("keywords") or []
 
-        # 🔥 CRITICAL FIX → keyword yoksa TEXT PARÇALA
+        # 🔥 TEXT → KEYWORD (FILTRELİ)
         if not keywords:
-            keywords = text.split()
+            words = text.split()
+            keywords = [
+                w for w in words
+                if len(w) > 3 and w not in STOPWORDS
+            ]
 
         for kw in keywords:
 
             kw = normalize(kw)
 
-            # filtre
-            if not kw or len(kw) < 4:
+            if not kw:
                 continue
 
             keyword_counter[kw] += 1
@@ -38,7 +47,7 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. BUILD SIGNALS
+    # 2. BUILD SIGNALS (🔥 DAHA AKILLI)
     # -------------------------
     signals = []
 
@@ -49,8 +58,8 @@ def detect_signals(analysis):
 
         avg_score = total_score / count if count else 0
 
-        # 🔥 threshold düşürüldü
-        if count < 2:
+        # 🔥 threshold YUMUŞATILDI
+        if count < 2 and avg_score < 1:
             continue
 
         signals.append({
@@ -63,7 +72,7 @@ def detect_signals(analysis):
         })
 
     # -------------------------
-    # 3. FALLBACK (🔥 GÜÇLÜ)
+    # 3. FALLBACK (🔥 GÜVENLİ)
     # -------------------------
     if len(signals) <= 1:
 
