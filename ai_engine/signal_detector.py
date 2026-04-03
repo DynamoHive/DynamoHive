@@ -45,7 +45,7 @@ def safe_float(x, default=0.0):
 
 
 # -------------------------
-# 🔥 MEANING FILTER
+# MEANING FILTER
 # -------------------------
 
 def is_meaningful(phrase):
@@ -70,16 +70,16 @@ def is_meaningful(phrase):
 
 
 # -------------------------
-# 🔥 FIX: LOW NOISE EXTRACTION
+# LOW NOISE PHRASE EXTRACTION
 # -------------------------
 
 def extract_phrases(words):
 
     phrases = []
 
-    # 🔥 TEK ANA PHRASE (SPAM BİTER)
     if len(words) >= 6:
         phrases.append(" ".join(words[:6]))
+        phrases.append(" ".join(words[:5]))
 
     elif len(words) >= 5:
         phrases.append(" ".join(words[:5]))
@@ -91,7 +91,7 @@ def extract_phrases(words):
 
 
 # -------------------------
-# 🔥 FIXED CLUSTER MERGE
+# CLUSTER MERGE (OVERLAP BASED)
 # -------------------------
 
 def merge_topics(counter, scores, texts):
@@ -110,7 +110,6 @@ def merge_topics(counter, scores, texts):
             words_c = set(c["topic"].split())
             overlap = len(words_kw & words_c)
 
-            # 🔥 overlap threshold
             if overlap >= 2 and overlap > best_overlap:
                 best = c
                 best_overlap = overlap
@@ -135,7 +134,7 @@ def merge_topics(counter, scores, texts):
 
 
 # -------------------------
-# 🔥 MAIN ENGINE
+# MAIN ENGINE
 # -------------------------
 
 def detect_signals(analysis):
@@ -148,7 +147,7 @@ def detect_signals(analysis):
     keyword_scores = defaultdict(float)
     keyword_texts = defaultdict(list)
 
-    seen_phrases = set()  # 🔥 DUPLICATE CUT
+    seen_texts = set()  # ✅ DOĞRU YERDE DUPLICATE
 
     for item in analysis:
 
@@ -161,6 +160,11 @@ def detect_signals(analysis):
         if not text:
             continue
 
+        # 🔥 TEXT duplicate engelle
+        if text in seen_texts:
+            continue
+        seen_texts.add(text)
+
         words = [
             w for w in text.split()
             if len(w) > 3 and w not in STOPWORDS
@@ -172,11 +176,6 @@ def detect_signals(analysis):
         phrases = extract_phrases(words)
 
         for kw in phrases:
-
-            # 🔥 DUPLICATE BLOCK
-            if kw in seen_phrases:
-                continue
-            seen_phrases.add(kw)
 
             if not is_meaningful(kw):
                 continue
