@@ -1,73 +1,42 @@
-from collections import defaultdict
+# =========================
+# NARRATIVE ENGINE
+# =========================
 
-# -------------------------
-# 🔥 GLOBAL STORAGE
-# -------------------------
-NARRATIVE_MEMORY = defaultdict(int)
-ACTOR_MEMORY = defaultdict(int)
+def generate_narrative(intel):
 
+    topic = str(intel.get("topic", "")).strip()
 
-# -------------------------
-# 🚀 MAIN ENGINE
-# -------------------------
-def update_global_map(intelligence):
+    if not topic:
+        return None
 
-    global NARRATIVE_MEMORY, ACTOR_MEMORY
+    # -------------------------
+    # POWER INFO (VARSA)
+    # -------------------------
+    power = intel.get("power", {})
+    dominant = power.get("dominant")
+    winners = power.get("winners", [])
+    losers = power.get("losers", [])
 
-    for intel in intelligence:
+    # -------------------------
+    # CONTENT BUILD
+    # -------------------------
+    title = topic
 
-        # -------------------------
-        # NARRATIVES
-        # -------------------------
-        iw = intel.get("information_warfare", {})
-        narratives = iw.get("narratives", [])
+    content = f"{topic} is emerging as a significant global signal."
 
-        for n in narratives:
-            NARRATIVE_MEMORY[n] += 1
+    if dominant:
+        content += f" {dominant} appears to be gaining strategic advantage."
 
-        # -------------------------
-        # ACTORS
-        # -------------------------
-        power = intel.get("power", {})
-        actors = power.get("actors", [])
+    if winners:
+        content += f" Key winners include: {', '.join(winners)}."
 
-        for a in actors:
-            ACTOR_MEMORY[a] += 1
+    if losers:
+        content += f" Under pressure: {', '.join(losers)}."
 
-
-# -------------------------
-# 📊 GET MAP
-# -------------------------
-def get_global_map():
-
-    top_narratives = sorted(
-        NARRATIVE_MEMORY.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )[:5]
-
-    top_actors = sorted(
-        ACTOR_MEMORY.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )[:5]
+    content += " This may indicate a broader systemic shift."
 
     return {
-        "top_narratives": [
-            {"name": n, "strength": c}
-            for n, c in top_narratives
-        ],
-        "top_actors": [
-            {"name": a, "presence": c}
-            for a, c in top_actors
-        ]
+        "title": title,
+        "content": content
     }
-
-
-# -------------------------
-# 🔥 RESET (opsiyonel)
-# -------------------------
-def reset_map():
-    global NARRATIVE_MEMORY, ACTOR_MEMORY
-    NARRATIVE_MEMORY.clear()
-    ACTOR_MEMORY.clear()
+⚠️ ÇOK ÖNEMLİ
