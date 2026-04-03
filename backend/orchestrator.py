@@ -64,7 +64,7 @@ class Orchestrator:
         self.last_anomalies = []
         self.last_dominance = []
 
-        # 🔥 NEW ENGINES
+        # 🔥 AI LAYERS
         self.intel_layer = IntelligenceLayer()
         self.memory = MemoryEngine()
         self.dominance_core = DominanceCore()
@@ -167,10 +167,9 @@ class Orchestrator:
                 self.last_dominance = []
 
             # -------------------------
-            # 🔥 ADVANCED INTELLIGENCE
+            # 🔥 INTELLIGENCE
             # -------------------------
             intelligence = self.intel_layer.process(signals)
-
             intelligence = self.memory.boost(intelligence)
             intelligence = self.dominance_core.rank(intelligence)
 
@@ -210,11 +209,11 @@ class Orchestrator:
             if is_duplicate_local(topic):
                 continue
 
-            # 🔥 VECTOR DUPLICATE
+            # 🔥 VECTOR CHECK (YUMUŞATILDI)
             similar = search_similar(topic)
             if similar:
                 try:
-                    if similar[0]["score"] > 0.85:
+                    if similar[0]["score"] > 0.92:
                         continue
                 except:
                     pass
@@ -231,11 +230,12 @@ class Orchestrator:
             if not title or not body:
                 continue
 
-            # 🔥 QUALITY FILTER
+            # 🔥 FILTER (YUMUŞAK)
             if is_low_quality(body):
                 continue
 
-            if len(body) < 120:
+            # 🔥 LENGTH (DÜŞÜRÜLDÜ)
+            if len(body) < 80:
                 continue
 
             # SAVE
@@ -257,6 +257,8 @@ class Orchestrator:
             except Exception:
                 logger.warning("[DISTRIBUTION ERROR]")
 
+            # 🔥 DEBUG + SUCCESS
+            print("DEBUG PASSED:", topic)
             logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
 
     # -------------------------
