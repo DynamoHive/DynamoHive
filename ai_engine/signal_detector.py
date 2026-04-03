@@ -1,24 +1,3 @@
-import time
-from collections import defaultdict
-
-
-WINDOW = 3600  # 1 saat
-
-
-def safe_float(x, default=0.0):
-    try:
-        return float(x)
-    except:
-        return default
-
-
-def normalize(text):
-    try:
-        return str(text).lower().strip()
-    except:
-        return ""
-
-
 def detect_signals(analysis):
 
     if not analysis or not isinstance(analysis, list):
@@ -30,26 +9,28 @@ def detect_signals(analysis):
     keyword_texts = defaultdict(list)
 
     # -------------------------
-    # 1. COLLECT
+    # 1. COLLECT (🔥 FIXED)
     # -------------------------
     for item in analysis:
 
         if not isinstance(item, dict):
             continue
 
+        text = normalize(item.get("text") or item.get("title") or "")
+        score = safe_float(item.get("score", 1))
+
         keywords = item.get("keywords") or []
 
-        if not keywords and item.get("topic"):
-            keywords = [item.get("topic")]
-
-        text = normalize(item.get("text", ""))
-        score = safe_float(item.get("score", 0))
+        # 🔥 CRITICAL FIX → keyword yoksa TEXT PARÇALA
+        if not keywords:
+            keywords = text.split()
 
         for kw in keywords:
 
             kw = normalize(kw)
 
-            if not kw or len(kw) < 3:
+            # filtre
+            if not kw or len(kw) < 4:
                 continue
 
             keyword_counter[kw] += 1
@@ -57,7 +38,7 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. BUILD SIGNALS (CLEAN)
+    # 2. BUILD SIGNALS
     # -------------------------
     signals = []
 
@@ -68,8 +49,11 @@ def detect_signals(analysis):
 
         avg_score = total_score / count if count else 0
 
+        # 🔥 threshold düşürüldü
+        if count < 2:
+            continue
+
         signals.append({
-            # 🔥 ARTIK TEXT YOK (kirlenmeyi engeller)
             "topic": kw,
             "keywords": [kw],
             "count": count,
@@ -79,23 +63,27 @@ def detect_signals(analysis):
         })
 
     # -------------------------
-    # 3. FALLBACK (SAFE)
+    # 3. FALLBACK (🔥 GÜÇLÜ)
     # -------------------------
-    if not signals:
+    if len(signals) <= 1:
+
+        signals = []
 
         for item in analysis:
-            text = normalize(item.get("text", ""))
 
-            if text:
-                signals.append({
-                    "topic": text[:30],
-                    "keywords": [text[:10]],
-                    "count": 1,
-                    "score": 1,
-                    "boost": 1,
-                    "samples": [text]
-                })
-                break
+            text = normalize(item.get("text") or item.get("title") or "")
+
+            if not text:
+                continue
+
+            signals.append({
+                "topic": text,
+                "keywords": text.split()[:5],
+                "count": 1,
+                "score": 1.0,
+                "boost": 1,
+                "samples": [text]
+            })
 
     # -------------------------
     # 4. SORT
