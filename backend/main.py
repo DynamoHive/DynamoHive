@@ -31,7 +31,7 @@ def feed(user_id: str = "global_user"):
             "detail": str(e)
         }
 
-
+GLOBAL_DATA = []
 # -------------------------
 # EVENT
 # -------------------------
