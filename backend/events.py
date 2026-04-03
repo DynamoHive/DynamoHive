@@ -8,18 +8,15 @@ SPIKE_THRESHOLD = 2
 
 
 def register_event(topic):
-
     if not topic:
         return
 
     topic = str(topic).lower().strip()
     now = time.time()
-
     event_memory[topic].append(now)
 
 
 def detect_event_spikes():
-
     now = time.time()
     spikes = []
 
@@ -44,19 +41,6 @@ def detect_event_spikes():
                 "velocity": round(velocity, 4)
             })
 
-    # fallback (boş kalmasın)
-    if not spikes and event_memory:
-        for topic, times in event_memory.items():
-            if times:
-                spikes.append({
-                    "topic": topic,
-                    "count": len(times),
-                    "velocity": 0.0
-                })
-                break
-
     spikes.sort(key=lambda x: (x["count"], x["velocity"]), reverse=True)
-
-    print("events detected:", len(spikes))
 
     return spikes
