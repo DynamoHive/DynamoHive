@@ -8,9 +8,6 @@ class MemoryEngine:
         self.path = path
         self.memory = self._load()
 
-    # -------------------------
-    # LOAD
-    # -------------------------
     def _load(self):
         if not os.path.exists(self.path):
             return {}
@@ -21,9 +18,6 @@ class MemoryEngine:
         except:
             return {}
 
-    # -------------------------
-    # SAVE
-    # -------------------------
     def _save(self):
         try:
             with open(self.path, "w") as f:
@@ -31,9 +25,6 @@ class MemoryEngine:
         except:
             pass
 
-    # -------------------------
-    # LEARN
-    # -------------------------
     def learn(self, items):
 
         for item in items:
@@ -54,9 +45,6 @@ class MemoryEngine:
 
         self._save()
 
-    # -------------------------
-    # BOOST
-    # -------------------------
     def boost(self, items):
 
         for item in items:
