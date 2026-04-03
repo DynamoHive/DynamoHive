@@ -11,10 +11,9 @@ def detect_signals(analysis):
     keyword_texts = defaultdict(list)
 
     STOPWORDS = {
-        "the", "and", "for", "with", "that", "this",
-        "from", "are", "was", "were", "has", "have",
-        "had", "but", "not", "you", "your", "about",
-        "into", "over", "after", "before", "between"
+        "the","and","for","with","that","this","from","are","was","were",
+        "has","have","had","but","not","you","your","about","into","over",
+        "after","before","between","will","would","could","should"
     }
 
     def safe_float(x, default=0.0):
@@ -40,20 +39,24 @@ def detect_signals(analysis):
         text = normalize(item.get("text") or item.get("title") or "")
         score = safe_float(item.get("score", 1))
 
-        keywords = item.get("keywords") or []
+        if not text:
+            continue
 
-        if not keywords:
-            words = [
-                w for w in text.split()
-                if len(w) > 3 and w not in STOPWORDS
-            ]
+        words = [
+            w for w in text.split()
+            if len(w) > 3 and w not in STOPWORDS
+        ]
 
-            # 🔥 sadece BIGRAM (tek kelimeyi azalt)
-            phrases = []
-            for i in range(len(words) - 1):
-                phrases.append(words[i] + " " + words[i+1])
+        # 🔥 BIGRAM + TRIGRAM
+        phrases = []
 
-            keywords = phrases[:15] if phrases else words[:10]
+        for i in range(len(words) - 1):
+            phrases.append(words[i] + " " + words[i+1])
+
+        for i in range(len(words) - 2):
+            phrases.append(words[i] + " " + words[i+1] + " " + words[i+2])
+
+        keywords = phrases[:20] if phrases else words[:10]
 
         for kw in keywords:
 
@@ -67,13 +70,13 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. MERGE (🔥 DUPLICATE FIX)
+    # 2. MERGE DUPLICATES
     # -------------------------
     merged = {}
 
     for kw in keyword_counter:
 
-        base = kw[:40]  # 🔥 aynı topic varyasyonlarını yakalar
+        base = kw[:50]
 
         count = keyword_counter[kw]
         total_score = keyword_scores[kw]
@@ -101,7 +104,6 @@ def detect_signals(analysis):
 
         avg_score = total_score / count if count else 0
 
-        # 🔥 daha stabil threshold
         if count < 2:
             continue
 
@@ -115,7 +117,7 @@ def detect_signals(analysis):
         })
 
     # -------------------------
-    # 4. FALLBACK (kritik)
+    # 4. FALLBACK (KRİTİK)
     # -------------------------
     if len(signals) <= 2:
 
