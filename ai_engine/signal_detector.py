@@ -2,14 +2,26 @@ import time
 from collections import defaultdict
 
 
-WINDOW = 3600        # 1 saat
-MIN_COUNT = 3        # minimum tekrar
-MIN_SCORE = 5        # minimum analiz skoru
+WINDOW = 3600  # 1 saat
+
+
+def safe_float(x, default=0.0):
+    try:
+        return float(x)
+    except:
+        return default
+
+
+def normalize(text):
+    try:
+        return str(text).lower().strip()
+    except:
+        return ""
 
 
 def detect_signals(analysis):
 
-    if not analysis:
+    if not analysis or not isinstance(analysis, list):
         print("signals detected: 0")
         return []
 
@@ -18,7 +30,7 @@ def detect_signals(analysis):
     keyword_texts = defaultdict(list)
 
     # -------------------------
-    # 1. TOPLA (GERÇEK AGGREGATION)
+    # 1. COLLECT (SAFE)
     # -------------------------
     for item in analysis:
 
@@ -30,13 +42,15 @@ def detect_signals(analysis):
         if not keywords and item.get("topic"):
             keywords = [item.get("topic")]
 
-        score = float(item.get("score", 0))
-        text = item.get("text", "")
+        text = normalize(item.get("text", ""))
+        score = safe_float(item.get("score", 0))
 
         for kw in keywords:
-            kw = str(kw).lower().strip()
 
-            if not kw:
+            kw = normalize(kw)
+
+            # 🔴 çöp filtre
+            if not kw or len(kw) < 3:
                 continue
 
             keyword_counter[kw] += 1
@@ -44,7 +58,7 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. SIGNAL ÜRET
+    # 2. BUILD SIGNALS (NO DEAD ZONE)
     # -------------------------
     signals = []
 
@@ -55,17 +69,45 @@ def detect_signals(analysis):
 
         avg_score = total_score / count if count else 0
 
-        # 🔥 GERÇEK FİLTRE
-        if count >= MIN_COUNT or avg_score >= MIN_SCORE:
+        # 🔥 HER ZAMAN SIGNAL ÜRET (kritik)
+        signals.append({
+            "text": kw,
+            "keywords": [kw],
+            "count": count,
+            "score": round(avg_score, 2),
+            "boost": max(1, count * 2),  # 🔥 agresif boost
+            "samples": keyword_texts[kw][:3]
+        })
 
-            signals.append({
-                "text": kw,
-                "keywords": [kw],
-                "count": count,
-                "score": round(avg_score, 2),
-                "boost": count,
-                "samples": keyword_texts[kw][:3]
-            })
+    # -------------------------
+    # 3. FALLBACK (ASLA BOŞ YOK)
+    # -------------------------
+    if not signals:
+
+        for item in analysis:
+            text = normalize(item.get("text", ""))
+
+            if text:
+                signals.append({
+                    "text": text[:50],
+                    "keywords": [text[:10]],
+                    "count": 1,
+                    "score": 1,
+                    "boost": 1,
+                    "samples": [text]
+                })
+                break
+
+    # -------------------------
+    # 4. SORT (STABLE)
+    # -------------------------
+    try:
+        signals.sort(
+            key=lambda x: (x.get("count", 0), x.get("score", 0)),
+            reverse=True
+        )
+    except Exception as e:
+        print("SIGNAL SORT ERROR:", e)
 
     print("signals detected:", len(signals))
 
