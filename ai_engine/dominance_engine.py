@@ -1,23 +1,20 @@
-# ai_engine/dominance_engine.py
-
-def compute_dominance(signals):
-
-    total = sum([s.get("score", 0) for s in signals]) or 1
-
-    dominance = []
-
-    for s in signals:
-        topic = s.get("text")
-        score = s.get("score", 0)
-
-        ratio = round(score / total, 3)
-
-        dominance.append({
-            "topic": topic,
-            "score": score,
-            "dominance": ratio
+        enriched.append({
+            "topic": s.get("text"),
+            "raw_score": score,
+            "mentions": mentions,
+            "velocity": velocity,
+            "spread": spread,
+            "sentiment": sentiment,
+            "dominance_score": dominance_score
         })
 
-    dominance.sort(key=lambda x: x["dominance"], reverse=True)
+    # normalize
+    total = sum([x["dominance_score"] for x in enriched]) or 1
 
-    return dominance
+    for x in enriched:
+        x["dominance"] = round(x["dominance_score"] / total, 4)
+
+    # sort
+    enriched.sort(key=lambda x: x["dominance"], reverse=True)
+
+    return enriched
