@@ -4,6 +4,8 @@ def detect_signals(analysis):
         print("signals detected: 0")
         return []
 
+    from collections import defaultdict
+
     keyword_counter = defaultdict(int)
     keyword_scores = defaultdict(float)
     keyword_texts = defaultdict(list)
@@ -14,8 +16,20 @@ def detect_signals(analysis):
         "had", "but", "not", "you", "your", "about"
     }
 
+    def safe_float(x, default=0.0):
+        try:
+            return float(x)
+        except:
+            return default
+
+    def normalize(text):
+        try:
+            return str(text).lower().strip()
+        except:
+            return ""
+
     # -------------------------
-    # 1. COLLECT (🔥 FIXED)
+    # 1. COLLECT
     # -------------------------
     for item in analysis:
 
@@ -27,7 +41,7 @@ def detect_signals(analysis):
 
         keywords = item.get("keywords") or []
 
-        # 🔥 TEXT → KEYWORD (FILTRELİ)
+        # 🔥 KEYWORD YOKSA TEXT'TEN ÜRET
         if not keywords:
             words = text.split()
             keywords = [
@@ -47,7 +61,7 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. BUILD SIGNALS (🔥 DAHA AKILLI)
+    # 2. BUILD SIGNALS
     # -------------------------
     signals = []
 
@@ -58,7 +72,7 @@ def detect_signals(analysis):
 
         avg_score = total_score / count if count else 0
 
-        # 🔥 threshold YUMUŞATILDI
+        # 🔥 YUMUŞAK THRESHOLD
         if count < 2 and avg_score < 1:
             continue
 
@@ -72,7 +86,7 @@ def detect_signals(analysis):
         })
 
     # -------------------------
-    # 3. FALLBACK (🔥 GÜVENLİ)
+    # 3. FALLBACK
     # -------------------------
     if len(signals) <= 1:
 
