@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 # make project root visible to Python
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
@@ -14,6 +14,7 @@ from threading import Thread
 
 from backend.storage import get_posts
 from backend.posts import router as posts_router
+from backend.events import register_event   # 🔥 EKLENDİ
 
 
 # -------------------------
@@ -127,7 +128,7 @@ def home():
 
 
 # -------------------------
-# 🔥 DEBUG (EKLENDİ)
+# DEBUG
 # -------------------------
 
 @app.get("/debug/static")
@@ -152,6 +153,27 @@ def feed_api():
         "platform": "DynamoHive",
         "feed": posts
     }
+
+
+# -------------------------
+# 🔥 EVENT ENDPOINT (KRİTİK)
+# -------------------------
+
+@app.post("/api/event")
+async def event_api(request: Request):
+
+    try:
+        data = await request.json()
+        topic = data.get("topic")
+
+        print("EVENT RECEIVED:", topic)
+
+        register_event(topic)
+
+    except Exception as e:
+        print("EVENT ERROR:", e)
+
+    return {"status": "ok"}
 
 
 # -------------------------
