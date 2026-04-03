@@ -1,5 +1,3 @@
-# ai_engine/dominance_engine.py
-
 def compute_dominance(signals):
 
     if not signals:
