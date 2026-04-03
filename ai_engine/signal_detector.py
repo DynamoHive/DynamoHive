@@ -16,20 +16,20 @@ def detect_signals(analysis):
         "after","before","between","will","would","could","should"
     }
 
-    def safe_float(x, default=0.0):
-        try:
-            return float(x)
-        except:
-            return default
-
     def normalize(text):
         try:
             return str(text).lower().strip()
         except:
             return ""
 
+    def safe_float(x, default=0.0):
+        try:
+            return float(x)
+        except:
+            return default
+
     # -------------------------
-    # 1. COLLECT
+    # COLLECT
     # -------------------------
     for item in analysis:
 
@@ -47,19 +47,19 @@ def detect_signals(analysis):
             if len(w) > 3 and w not in STOPWORDS
         ]
 
-        # 🔥 BIGRAM + TRIGRAM
         phrases = []
 
+        # BIGRAM
         for i in range(len(words) - 1):
             phrases.append(words[i] + " " + words[i+1])
 
+        # TRIGRAM
         for i in range(len(words) - 2):
             phrases.append(words[i] + " " + words[i+1] + " " + words[i+2])
 
         keywords = phrases[:20] if phrases else words[:10]
 
         for kw in keywords:
-
             kw = normalize(kw)
 
             if not kw or len(kw) < 4:
@@ -70,7 +70,7 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. MERGE DUPLICATES
+    # MERGE DUPLICATES
     # -------------------------
     merged = {}
 
@@ -93,7 +93,7 @@ def detect_signals(analysis):
             merged[base]["samples"].extend(keyword_texts[kw])
 
     # -------------------------
-    # 3. BUILD SIGNALS
+    # BUILD
     # -------------------------
     signals = []
 
@@ -102,10 +102,10 @@ def detect_signals(analysis):
         count = data["count"]
         total_score = data["score"]
 
-        avg_score = total_score / count if count else 0
-
         if count < 2:
             continue
+
+        avg_score = total_score / count
 
         signals.append({
             "topic": topic,
@@ -117,7 +117,7 @@ def detect_signals(analysis):
         })
 
     # -------------------------
-    # 4. FALLBACK (KRİTİK)
+    # FALLBACK
     # -------------------------
     if len(signals) <= 2:
 
@@ -140,7 +140,7 @@ def detect_signals(analysis):
             })
 
     # -------------------------
-    # 5. SORT
+    # SORT
     # -------------------------
     signals.sort(
         key=lambda x: (x.get("count", 0), x.get("score", 0)),
