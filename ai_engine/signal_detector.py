@@ -30,7 +30,7 @@ def detect_signals(analysis):
             return ""
 
     # -------------------------
-    # 1. COLLECT (PHRASE MODE 🔥)
+    # 1. COLLECT
     # -------------------------
     for item in analysis:
 
@@ -48,19 +48,18 @@ def detect_signals(analysis):
                 if len(w) > 3 and w not in STOPWORDS
             ]
 
-            # 🔥 BIGRAM (2 kelimelik)
+            # 🔥 sadece BIGRAM (tek kelimeyi azalt)
             phrases = []
             for i in range(len(words) - 1):
                 phrases.append(words[i] + " " + words[i+1])
 
-            # 🔥 hem tek hem phrase
-            keywords = words[:10] + phrases[:10]
+            keywords = phrases[:15] if phrases else words[:10]
 
         for kw in keywords:
 
             kw = normalize(kw)
 
-            if not kw:
+            if not kw or len(kw) < 4:
                 continue
 
             keyword_counter[kw] += 1
@@ -68,33 +67,57 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. BUILD SIGNALS
+    # 2. MERGE (🔥 DUPLICATE FIX)
     # -------------------------
-    signals = []
+    merged = {}
 
     for kw in keyword_counter:
 
+        base = kw[:40]  # 🔥 aynı topic varyasyonlarını yakalar
+
         count = keyword_counter[kw]
         total_score = keyword_scores[kw]
+
+        if base not in merged:
+            merged[base] = {
+                "count": count,
+                "score": total_score,
+                "samples": keyword_texts[kw][:]
+            }
+        else:
+            merged[base]["count"] += count
+            merged[base]["score"] += total_score
+            merged[base]["samples"].extend(keyword_texts[kw])
+
+    # -------------------------
+    # 3. BUILD SIGNALS
+    # -------------------------
+    signals = []
+
+    for topic, data in merged.items():
+
+        count = data["count"]
+        total_score = data["score"]
+
         avg_score = total_score / count if count else 0
 
-        # 🔥 dengeli threshold
-        if count < 2 and avg_score < 1:
+        # 🔥 daha stabil threshold
+        if count < 2:
             continue
 
         signals.append({
-            "topic": kw,
-            "keywords": [kw],
+            "topic": topic,
+            "keywords": topic.split(),
             "count": count,
             "score": round(avg_score, 2),
             "boost": max(1, count * 2),
-            "samples": keyword_texts[kw][:3]
+            "samples": data["samples"][:3]
         })
 
     # -------------------------
-    # 3. FALLBACK
+    # 4. FALLBACK (kritik)
     # -------------------------
-    if len(signals) <= 1:
+    if len(signals) <= 2:
 
         signals = []
 
@@ -115,15 +138,12 @@ def detect_signals(analysis):
             })
 
     # -------------------------
-    # 4. SORT
+    # 5. SORT
     # -------------------------
-    try:
-        signals.sort(
-            key=lambda x: (x.get("count", 0), x.get("score", 0)),
-            reverse=True
-        )
-    except Exception as e:
-        print("SIGNAL SORT ERROR:", e)
+    signals.sort(
+        key=lambda x: (x.get("count", 0), x.get("score", 0)),
+        reverse=True
+    )
 
     print("signals detected:", len(signals))
 
