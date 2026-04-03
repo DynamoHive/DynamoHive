@@ -1,185 +1,61 @@
-import sys
-import os
-from contextlib import asynccontextmanager
+# backend/main.py
 
-# make project root visible to Python
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from fastapi import FastAPI
+from backend.feed_engine import get_feed
+from backend.events import handle_event
 
-from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 
-import sqlite3
-from threading import Thread
-
-from backend.storage import get_posts
-from backend.posts import router as posts_router
-from backend.events import register_event   # 🔥 EKLENDİ
+app = FastAPI()
 
 
 # -------------------------
-# PATHS
+# 🔥 TEST SIGNALS (geçici)
 # -------------------------
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-DATABASE_DIR = os.path.join(BASE_DIR, "..", "database")
-DB_PATH = os.path.join(DATABASE_DIR, "dynamohive.db")
-
-
-# -------------------------
-# DATABASE INIT
-# -------------------------
-
-def init_database():
-
-    os.makedirs(DATABASE_DIR, exist_ok=True)
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
-            content TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    conn.commit()
-    conn.close()
+signals = [
+    {"topic": "war", "score": 10},
+    {"topic": "ai", "score": 8},
+    {"topic": "economy", "score": 7},
+    {"topic": "politics", "score": 6}
+]
 
 
 # -------------------------
-# AI ORCHESTRATOR
+# 🔥 FEED ENDPOINT
 # -------------------------
 
-def start_orchestrator():
-
-    try:
-        from backend.orchestrator import start
-        print("Starting DynamoHive AI engine")
-        start()
-    except Exception as e:
-        print("AI engine failed:", e)
-
-
-# -------------------------
-# LIFESPAN STARTUP
-# -------------------------
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-
-    print("DynamoHive boot sequence")
-
-    try:
-        init_database()
-        print("Database ready")
-    except Exception as e:
-        print("Database error:", e)
-
-    try:
-        thread = Thread(target=start_orchestrator, daemon=True)
-        thread.start()
-        print("AI engine started")
-    except Exception as e:
-        print("AI engine failed:", e)
-
-    yield
-
-
-app = FastAPI(
-    title="DynamoHive",
-    version="1.0",
-    lifespan=lifespan
-)
+@app.get("/feed")
+def feed(user_id: str):
+    """
+    örnek:
+    /feed?user_id=u1
+    """
+    return get_feed(user_id, signals)
 
 
 # -------------------------
-# ROUTES
+# 🔥 EVENT ENDPOINT
 # -------------------------
 
-app.include_router(posts_router)
+@app.post("/event")
+def event(user_id: str, type: str, topic: str):
+    """
+    örnek:
+    /event?user_id=u1&type=click&topic=ai
+    """
+
+    result = handle_event(user_id, {
+        "type": type,
+        "topic": topic
+    })
+
+    return result
 
 
 # -------------------------
-# STATIC
-# -------------------------
-
-os.makedirs(STATIC_DIR, exist_ok=True)
-
-app.mount(
-    "/static",
-    StaticFiles(directory=STATIC_DIR),
-    name="static"
-)
-
-
-# -------------------------
-# ROOT
+# 🔥 HEALTH CHECK
 # -------------------------
 
 @app.get("/")
-def home():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
-
-
-# -------------------------
-# DEBUG
-# -------------------------
-
-@app.get("/debug/static")
-def debug_static():
-    return os.listdir(STATIC_DIR)
-
-
-# -------------------------
-# API FEED
-# -------------------------
-
-@app.get("/api/feed")
-def feed_api():
-
-    try:
-        posts = get_posts()
-    except Exception as e:
-        print("Feed error:", e)
-        posts = []
-
-    return {
-        "platform": "DynamoHive",
-        "feed": posts
-    }
-
-
-# -------------------------
-# 🔥 EVENT ENDPOINT (KRİTİK)
-# -------------------------
-
-@app.post("/api/event")
-async def event_api(request: Request):
-
-    try:
-        data = await request.json()
-        topic = data.get("topic")
-
-        print("EVENT RECEIVED:", topic)
-
-        register_event(topic)
-
-    except Exception as e:
-        print("EVENT ERROR:", e)
-
-    return {"status": "ok"}
-
-
-# -------------------------
-# HEALTH CHECK
-# -------------------------
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+def root():
+    return {"status": "DynamoHive running"}
