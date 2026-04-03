@@ -40,7 +40,7 @@ def safe_float(x, default=0.0):
 
 
 # -------------------------
-# 🔥 STRONG FILTER
+# 🔥 STRONG MEANING FILTER
 # -------------------------
 
 def is_meaningful(phrase):
@@ -62,7 +62,7 @@ def is_meaningful(phrase):
     if sum(len(w) >= 5 for w in words) < 2:
         return False
 
-    # bad pattern
+    # kötü pattern
     if any(w in BAD_PATTERNS for w in words):
         return False
 
@@ -85,7 +85,7 @@ def similarity(a, b):
 
 
 # -------------------------
-# 🔥 CLUSTER
+# 🔥 CLUSTER MERGE
 # -------------------------
 
 def merge_topics(counter, scores, texts):
@@ -120,18 +120,18 @@ def merge_topics(counter, scores, texts):
 
 
 # -------------------------
-# 🔥 CONTEXT EXTRACTION (CRITICAL FIX)
+# 🔥 CONTEXT EXTRACTION (CRITICAL)
 # -------------------------
 
 def extract_phrases(words):
 
     phrases = []
 
-    # 🔥 anlam çekirdeği
+    # 3 kelimelik çekirdek
     if len(words) >= 3:
         phrases.append(" ".join(words[:3]))
 
-    # 🔥 geniş context
+    # 5 kelimelik geniş context
     if len(words) >= 5:
         phrases.append(" ".join(words[:5]))
 
@@ -143,7 +143,7 @@ def extract_phrases(words):
 
 
 # -------------------------
-# 🔥 MAIN
+# 🔥 MAIN ENGINE
 # -------------------------
 
 def detect_signals(analysis):
@@ -188,7 +188,7 @@ def detect_signals(analysis):
             if len(kw) < 6:
                 continue
 
-            # 🔥 HARD SPAM CUT
+            # HARD spam kes
             if kw.startswith(("there","more","first","new")):
                 continue
 
@@ -210,7 +210,7 @@ def detect_signals(analysis):
     )
 
     # -------------------------
-    # BUILD
+    # BUILD SIGNALS
     # -------------------------
 
     signals = []
