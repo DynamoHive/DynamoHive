@@ -4,6 +4,10 @@ from fastapi import FastAPI
 from backend.feed_engine import get_feed
 from backend.events import handle_event
 
+# 🔥 EKLENENLER
+import threading
+from backend.auto_content_loop import start as start_loop
+
 app = FastAPI()
 
 
@@ -35,7 +39,7 @@ def feed(user_id: str):
 
 
 # -------------------------
-# 🔥 EVENT (FIXED)
+# 🔥 EVENT
 # -------------------------
 @app.get("/event")
 def event(user_id: str, type: str, topic: str):
@@ -43,5 +47,13 @@ def event(user_id: str, type: str, topic: str):
         "type": type,
         "topic": topic
     })
-
     return result
+
+
+# -------------------------
+# 🔥 ORCHESTRATOR START (EKLENEN)
+# -------------------------
+@app.on_event("startup")
+def start_orchestrator():
+    thread = threading.Thread(target=start_loop, daemon=True)
+    thread.start()
