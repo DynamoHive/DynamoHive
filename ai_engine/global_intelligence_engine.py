@@ -2,24 +2,16 @@ class GlobalIntelligenceEngine:
 
     def __init__(self):
         self.history = []
-        self.max_history = 200
+        self.max_history = 300
 
-    # -------------------------
-    # MAIN PROCESS
-    # -------------------------
     def process(self, intelligence):
 
-        if not intelligence or not isinstance(intelligence, list):
+        if not intelligence:
             return []
-
-        cleaned = self._deduplicate(intelligence)
 
         enhanced = []
 
-        for item in cleaned:
-
-            if not isinstance(item, dict):
-                continue
+        for item in intelligence:
 
             topic = str(item.get("topic", "")).strip()
             if len(topic) < 5:
@@ -27,100 +19,126 @@ class GlobalIntelligenceEngine:
 
             score = self._safe_float(item.get("score", 1.0))
 
-            summary = item.get("summary")
-            if not summary:
-                summary = self._generate_summary(topic)
-
+            category = self._categorize(topic)
+            actors = self._extract_actors(topic)
+            risk = self._compute_risk(score, topic)
             trend = self._compute_trend(topic, score)
 
             enriched = {
                 "topic": topic,
-                "summary": summary,
-                "trend": trend,
                 "score": round(score, 2),
-                "importance": self._compute_importance(score),
+                "category": category,
+                "actors": actors,
+                "risk": risk,
+                "trend": trend,
+                "importance": self._importance(score, risk),
+                "summary": self._build_summary(topic, category, risk),
                 "timestamp": self._now()
             }
 
             enhanced.append(enriched)
 
-        # HISTORY UPDATE
         self.history.extend(enhanced)
         self.history = self.history[-self.max_history:]
 
         return enhanced
 
     # -------------------------
-    # 🔥 DUPLICATE CLEAN
+    # 🧠 CATEGORY
     # -------------------------
-    def _deduplicate(self, items):
+    def _categorize(self, topic):
 
-        seen = set()
-        result = []
+        t = topic.lower()
 
-        for item in items:
+        if any(x in t for x in ["war","attack","military","missile","conflict"]):
+            return "geopolitics"
 
-            topic = str(item.get("topic", "")).lower().strip()
-            key = topic[:80]
+        if any(x in t for x in ["ai","technology","robot","openai","spacex"]):
+            return "technology"
 
-            if key in seen:
-                continue
+        if any(x in t for x in ["bank","economy","market","billion","ipo"]):
+            return "economy"
 
-            seen.add(key)
-            result.append(item)
+        if any(x in t for x in ["election","government","law","court"]):
+            return "politics"
 
-        return result
-
-    # -------------------------
-    # 🔥 TREND DETECTION
-    # -------------------------
-    def _compute_trend(self, topic, score):
-
-        past_scores = [
-            h["score"] for h in self.history
-            if topic[:50] in h.get("topic", "")
-        ]
-
-        if not past_scores:
-            return "new"
-
-        avg = sum(past_scores) / len(past_scores)
-
-        if score > avg * 1.3:
-            return "rising"
-        elif score < avg * 0.7:
-            return "falling"
-        else:
-            return "stable"
+        return "general"
 
     # -------------------------
-    # 🔥 SUMMARY GENERATOR
+    # 🧠 ACTOR EXTRACTION
     # -------------------------
-    def _generate_summary(self, topic):
+    def _extract_actors(self, topic):
 
         words = topic.split()
 
-        if len(words) <= 6:
-            return f"Emerging signal around {topic}"
+        actors = []
 
-        return " ".join(words[:10])
+        for w in words:
+            if w.istitle() and len(w) > 3:
+                actors.append(w)
+
+        return list(set(actors))[:5]
 
     # -------------------------
-    # 🔥 IMPORTANCE LOGIC (UPGRADED)
+    # ⚠️ RISK ENGINE
     # -------------------------
-    def _compute_importance(self, score):
+    def _compute_risk(self, score, topic):
 
-        if score >= 8:
+        t = topic.lower()
+
+        risk = score
+
+        if any(x in t for x in ["war","attack","crisis","explosion"]):
+            risk += 3
+
+        if any(x in t for x in ["collapse","bankrupt","failure"]):
+            risk += 2
+
+        return min(risk, 10)
+
+    # -------------------------
+    # 📈 TREND
+    # -------------------------
+    def _compute_trend(self, topic, score):
+
+        past = [
+            h["score"] for h in self.history
+            if topic[:40] in h.get("topic", "")
+        ]
+
+        if not past:
+            return "new"
+
+        avg = sum(past) / len(past)
+
+        if score > avg * 1.4:
+            return "surging"
+        elif score < avg * 0.7:
+            return "declining"
+        return "stable"
+
+    # -------------------------
+    # 🧠 IMPORTANCE
+    # -------------------------
+    def _importance(self, score, risk):
+
+        val = score + risk
+
+        if val > 12:
             return "critical"
-        elif score >= 5:
+        elif val > 8:
             return "high"
-        elif score >= 3:
+        elif val > 5:
             return "medium"
-        else:
-            return "low"
+        return "low"
 
     # -------------------------
-    # SAFE FLOAT
+    # 🧾 SUMMARY (GERÇEK)
+    # -------------------------
+    def _build_summary(self, topic, category, risk):
+
+        return f"{category.upper()} SIGNAL: {topic} | risk={risk}"
+
     # -------------------------
     def _safe_float(self, x, default=1.0):
         try:
@@ -128,9 +146,6 @@ class GlobalIntelligenceEngine:
         except:
             return default
 
-    # -------------------------
-    # TIME
-    # -------------------------
     def _now(self):
         from datetime import datetime
         return datetime.utcnow().isoformat()
