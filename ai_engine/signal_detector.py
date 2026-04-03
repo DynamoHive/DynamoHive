@@ -20,6 +20,7 @@ BAD_PATTERNS = {
 MIN_COUNT = 2
 MIN_SCORE = 1.5
 
+
 # -------------------------
 # HELPERS
 # -------------------------
@@ -69,28 +70,28 @@ def is_meaningful(phrase):
 
 
 # -------------------------
-# 🔥 PHRASE EXTRACTION
+# 🔥 FIX: LOW NOISE EXTRACTION
 # -------------------------
 
 def extract_phrases(words):
 
     phrases = []
 
-    for i in range(len(words)):
-        chunk3 = words[i:i+3]
-        chunk4 = words[i:i+4]
+    # 🔥 TEK ANA PHRASE (SPAM BİTER)
+    if len(words) >= 6:
+        phrases.append(" ".join(words[:6]))
 
-        if len(chunk3) == 3:
-            phrases.append(" ".join(chunk3))
+    elif len(words) >= 5:
+        phrases.append(" ".join(words[:5]))
 
-        if len(chunk4) == 4:
-            phrases.append(" ".join(chunk4))
+    elif len(words) >= 4:
+        phrases.append(" ".join(words[:4]))
 
     return phrases
 
 
 # -------------------------
-# 🔥 FIXED CLUSTER MERGE (ASIL ÇÖZÜM)
+# 🔥 FIXED CLUSTER MERGE
 # -------------------------
 
 def merge_topics(counter, scores, texts):
@@ -107,10 +108,9 @@ def merge_topics(counter, scores, texts):
         for c in clusters:
 
             words_c = set(c["topic"].split())
-
-            # 🔥 ANA FIX: kelime overlap
             overlap = len(words_kw & words_c)
 
+            # 🔥 overlap threshold
             if overlap >= 2 and overlap > best_overlap:
                 best = c
                 best_overlap = overlap
@@ -120,7 +120,6 @@ def merge_topics(counter, scores, texts):
             best["score"] += scores[kw]
             best["samples"].extend(texts[kw])
 
-            # daha anlamlı olanı seç
             if len(words_kw) > len(best["topic"].split()):
                 best["topic"] = kw
 
@@ -149,6 +148,8 @@ def detect_signals(analysis):
     keyword_scores = defaultdict(float)
     keyword_texts = defaultdict(list)
 
+    seen_phrases = set()  # 🔥 DUPLICATE CUT
+
     for item in analysis:
 
         if not isinstance(item, dict):
@@ -172,8 +173,10 @@ def detect_signals(analysis):
 
         for kw in phrases:
 
-            if len(kw.split()) < 3:
+            # 🔥 DUPLICATE BLOCK
+            if kw in seen_phrases:
                 continue
+            seen_phrases.add(kw)
 
             if not is_meaningful(kw):
                 continue
@@ -182,11 +185,19 @@ def detect_signals(analysis):
             keyword_scores[kw] += score
             keyword_texts[kw].append(text)
 
+    # -------------------------
+    # CLUSTER
+    # -------------------------
+
     clusters = merge_topics(
         keyword_counter,
         keyword_scores,
         keyword_texts
     )
+
+    # -------------------------
+    # BUILD SIGNALS
+    # -------------------------
 
     signals = []
 
@@ -209,6 +220,10 @@ def detect_signals(analysis):
             "boost": max(1, boost),
             "samples": list(set(c["samples"]))[:3]
         })
+
+    # -------------------------
+    # FALLBACK
+    # -------------------------
 
     if len(signals) == 0:
 
@@ -234,6 +249,10 @@ def detect_signals(analysis):
                 "boost": 1,
                 "samples": [text]
             })
+
+    # -------------------------
+    # SORT
+    # -------------------------
 
     signals.sort(
         key=lambda x: (x["boost"], x["score"], x["count"]),
