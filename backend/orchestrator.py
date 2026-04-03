@@ -1,3 +1,4 @@
+TAM DOSYA (KOPYALA — ESKİYİ SİL)
 import time
 import traceback
 import hashlib
@@ -8,7 +9,7 @@ from backend.logger import logger
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 import ai_engine.signal_detector as signal_module
-from ai_engine.signal_ranking_engine import rank_signals
+# ❌ rank_signals IMPORT KALDIRILDI
 
 from backend.events import register_event, detect_event_spikes
 from backend.user_profile_engine import get_user_profile, compute_final_score
@@ -19,17 +20,14 @@ from ai_engine.narrative_engine import generate_narrative
 from backend.storage import save_post, get_posts
 from backend.distribution_engine import distribute
 
-# 🔥 NEW
 from ai_engine.anomaly_engine import detect_anomalies
 from ai_engine.dominance_engine import compute_dominance
 
 
 intel_engine = GlobalIntelligenceEngine()
 
-
-# 🔥 DUPLICATE CACHE (LOCAL FIX)
+# 🔥 DUPLICATE CACHE
 duplicate_cache = {}
-
 
 def is_duplicate_local(topic):
     h = hashlib.md5(topic.encode()).hexdigest()
@@ -50,7 +48,6 @@ class Orchestrator:
         self.last_duration = 0
         self.last_signal_count = 0
         self.last_event_count = 0
-
         self.last_anomalies = []
         self.last_dominance = []
 
@@ -75,11 +72,11 @@ class Orchestrator:
             raw_data = process_data(raw_data)
 
             # -------------------------
-            # 2. SIGNAL (🔥 FIXED)
+            # 2. SIGNAL (🔥 FIXED FULL)
             # -------------------------
             signals = signal_module.detect_signals(raw_data)
 
-            # 🔥 CRITICAL FIX → SIGNAL YOKSA HEPSİNİ AL
+            # 🔥 Eğer detector saçmalarsa → tüm datayı sinyal yap
             if not signals or len(signals) <= 1:
                 signals = []
                 for item in raw_data:
@@ -92,7 +89,7 @@ class Orchestrator:
                         "score": 1.0
                     })
 
-            signals = rank_signals(signals)
+            # ❌ RANKING TAMAMEN KAPALI
             self.last_signal_count = len(signals)
 
             # -------------------------
@@ -127,7 +124,7 @@ class Orchestrator:
                 s["text"] = topic
 
             # -------------------------
-            # 🔥 ANOMALY + DOMINANCE
+            # 5. ANOMALY + DOMINANCE
             # -------------------------
             self.last_anomalies = detect_anomalies(signals, events)
 
@@ -138,7 +135,7 @@ class Orchestrator:
                 self.last_dominance = []
 
             # -------------------------
-            # 5. INTELLIGENCE
+            # 6. INTELLIGENCE
             # -------------------------
             intelligence = self._build_intelligence(signals, events)
 
@@ -148,7 +145,7 @@ class Orchestrator:
                 logger.warning(f"[INTEL ERROR] {e}")
 
             # -------------------------
-            # 6. CONTENT
+            # 7. CONTENT
             # -------------------------
             self._generate_content(intelligence)
 
@@ -162,7 +159,7 @@ class Orchestrator:
             logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
     # -------------------------
-    # 🧠 INTELLIGENCE BUILDER
+    # 🧠 INTELLIGENCE
     # -------------------------
 
     def _build_intelligence(self, signals, events):
@@ -181,17 +178,17 @@ class Orchestrator:
         return intelligence
 
     # -------------------------
-    # 📰 CONTENT ENGINE (🔥 FIXED)
+    # 📰 CONTENT
     # -------------------------
 
     def _generate_content(self, intelligence):
 
         for intel in intelligence:
 
-            base_topic = intel.get("topic") or "unknown"
+            topic = intel.get("topic") or "unknown"
 
-            # 🔥 DUPLICATE FIX
-            if is_duplicate_local(base_topic):
+            # 🔥 DUPLICATE KES
+            if is_duplicate_local(topic):
                 continue
 
             content = generate_narrative(intel)
@@ -199,7 +196,7 @@ class Orchestrator:
             if not content:
                 continue
 
-            title = content.get("title") or base_topic
+            title = content.get("title") or topic
             body = content.get("content") or "No content"
 
             try:
@@ -213,10 +210,10 @@ class Orchestrator:
             except Exception:
                 logger.warning("[DISTRIBUTION ERROR]")
 
-            logger.info(f"[ORCHESTRATOR] GENERATED: {base_topic}")
+            logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
 
     # -------------------------
-    # 🔥 STATUS
+    # 📊 STATUS
     # -------------------------
 
     def get_status(self):
@@ -228,4 +225,5 @@ class Orchestrator:
             "last_event_count": self.last_event_count,
             "anomalies": self.last_anomalies,
             "dominance": self.last_dominance[:5]
+        }
         }
