@@ -19,6 +19,10 @@ from backend.storage import save_post, get_posts
 from backend.cache import is_duplicate, mark_generated
 from backend.distribution_engine import distribute
 
+# 🔥 NEW
+from ai_engine.anomaly_engine import detect_anomalies
+from ai_engine.dominance_engine import compute_dominance
+
 
 intel_engine = GlobalIntelligenceEngine()
 
@@ -31,6 +35,10 @@ class Orchestrator:
         self.last_duration = 0
         self.last_signal_count = 0
         self.last_event_count = 0
+
+        # 🔥 NEW
+        self.last_anomalies = []
+        self.last_dominance = []
 
     # -------------------------
     # 🔥 CORE FLOW
@@ -68,7 +76,6 @@ class Orchestrator:
                 }]
 
             signals = rank_signals(signals)
-
             self.last_signal_count = len(signals)
 
             # -------------------------
@@ -81,18 +88,33 @@ class Orchestrator:
             self.last_event_count = len(events)
 
             # -------------------------
+            # 🔥 ANOMALY + DOMINANCE
+            # -------------------------
+            self.last_anomalies = detect_anomalies(signals, events)
+            self.last_dominance = compute_dominance(signals)
+
+            # -------------------------
             # 4. PERSONALIZATION
             # -------------------------
             profile = get_user_profile("global_user")
 
             for s in signals:
-                topic = s.get("text")
+                topic = (
+                    s.get("text")
+                    or s.get("topic")
+                    or s.get("title")
+                    or "unknown"
+                )
+
                 base_score = s.get("score", 0)
 
                 s["score"] = compute_final_score(
                     {"topic": topic, "score": base_score},
                     profile
                 )
+
+                # topic normalize
+                s["text"] = topic
 
             # -------------------------
             # 5. INTELLIGENCE
@@ -127,7 +149,11 @@ class Orchestrator:
         intelligence = []
 
         for s in signals:
-            topic = s.get("text") or "unknown"
+            topic = (
+                s.get("text")
+                or s.get("topic")
+                or "unknown"
+            )
 
             intelligence.append({
                 "topic": topic,
@@ -179,7 +205,7 @@ class Orchestrator:
             logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
 
     # -------------------------
-    # 🔥 STATUS (KOD-9)
+    # 🔥 STATUS (FULL)
     # -------------------------
 
     def get_status(self):
@@ -188,5 +214,7 @@ class Orchestrator:
             "last_run": self.last_run,
             "last_duration": self.last_duration,
             "last_signal_count": self.last_signal_count,
-            "last_event_count": self.last_event_count
+            "last_event_count": self.last_event_count,
+            "anomalies": self.last_anomalies,
+            "dominance": self.last_dominance[:5]
         }
