@@ -30,7 +30,7 @@ def detect_signals(analysis):
     keyword_texts = defaultdict(list)
 
     # -------------------------
-    # 1. COLLECT (SAFE)
+    # 1. COLLECT
     # -------------------------
     for item in analysis:
 
@@ -49,7 +49,6 @@ def detect_signals(analysis):
 
             kw = normalize(kw)
 
-            # 🔴 çöp filtre
             if not kw or len(kw) < 3:
                 continue
 
@@ -58,7 +57,7 @@ def detect_signals(analysis):
             keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. BUILD SIGNALS (NO DEAD ZONE)
+    # 2. BUILD SIGNALS (CLEAN)
     # -------------------------
     signals = []
 
@@ -69,18 +68,18 @@ def detect_signals(analysis):
 
         avg_score = total_score / count if count else 0
 
-        # 🔥 HER ZAMAN SIGNAL ÜRET (kritik)
         signals.append({
-            "text": kw,
+            # 🔥 ARTIK TEXT YOK (kirlenmeyi engeller)
+            "topic": kw,
             "keywords": [kw],
             "count": count,
             "score": round(avg_score, 2),
-            "boost": max(1, count * 2),  # 🔥 agresif boost
+            "boost": max(1, count * 2),
             "samples": keyword_texts[kw][:3]
         })
 
     # -------------------------
-    # 3. FALLBACK (ASLA BOŞ YOK)
+    # 3. FALLBACK (SAFE)
     # -------------------------
     if not signals:
 
@@ -89,7 +88,7 @@ def detect_signals(analysis):
 
             if text:
                 signals.append({
-                    "text": text[:50],
+                    "topic": text[:30],
                     "keywords": [text[:10]],
                     "count": 1,
                     "score": 1,
@@ -99,7 +98,7 @@ def detect_signals(analysis):
                 break
 
     # -------------------------
-    # 4. SORT (STABLE)
+    # 4. SORT
     # -------------------------
     try:
         signals.sort(
