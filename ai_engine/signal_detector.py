@@ -19,8 +19,6 @@ BAD_PATTERNS = {
 
 MIN_COUNT = 2
 MIN_SCORE = 1.5
-SIM_THRESHOLD = 0.65
-
 
 # -------------------------
 # HELPERS
@@ -29,17 +27,10 @@ SIM_THRESHOLD = 0.65
 def normalize(text):
     try:
         text = str(text).lower()
-
-        # html/artifacts temizle
         text = text.replace("…", " ")
         text = text.replace("8230", " ")
-
-        # punctuation temizle
         text = re.sub(r"[^\w\s]", " ", text)
-
-        # fazla boşluk temizle
         text = re.sub(r"\s+", " ", text)
-
         return text.strip()
     except:
         return ""
@@ -53,7 +44,7 @@ def safe_float(x, default=0.0):
 
 
 # -------------------------
-# 🔥 MEANING FILTER (GÜÇLÜ)
+# 🔥 MEANING FILTER
 # -------------------------
 
 def is_meaningful(phrase):
@@ -63,15 +54,12 @@ def is_meaningful(phrase):
     if len(words) < 3:
         return False
 
-    # çok kısa kelime varsa direkt çöpe
     if any(len(w) <= 3 for w in words):
         return False
 
-    # kötü pattern varsa çöpe
     if any(w in BAD_PATTERNS for w in words):
         return False
 
-    # en az 2 güçlü kelime şart
     strong = [w for w in words if len(w) >= 5]
 
     if len(strong) < 2:
@@ -81,31 +69,14 @@ def is_meaningful(phrase):
 
 
 # -------------------------
-# 🔥 SIMILARITY
-# -------------------------
-
-def similarity(a, b):
-
-    a_words = set(a.split())
-    b_words = set(b.split())
-
-    if not a_words or not b_words:
-        return 0
-
-    return len(a_words & b_words) / len(a_words | b_words)
-
-
-# -------------------------
-# 🔥 SMART PHRASE EXTRACTION (DAHA TEMİZ)
+# 🔥 PHRASE EXTRACTION
 # -------------------------
 
 def extract_phrases(words):
 
     phrases = []
 
-    # sadece 3 ve 4 kelimelik phrase kullan (noise azaltıldı)
     for i in range(len(words)):
-
         chunk3 = words[i:i+3]
         chunk4 = words[i:i+4]
 
@@ -119,7 +90,7 @@ def extract_phrases(words):
 
 
 # -------------------------
-# 🔥 CLUSTER MERGE (DAHA AGRESİF)
+# 🔥 FIXED CLUSTER MERGE (ASIL ÇÖZÜM)
 # -------------------------
 
 def merge_topics(counter, scores, texts):
@@ -128,23 +99,29 @@ def merge_topics(counter, scores, texts):
 
     for kw in counter:
 
+        words_kw = set(kw.split())
+
         best = None
-        best_score = 0
+        best_overlap = 0
 
         for c in clusters:
-            sim = similarity(c["topic"], kw)
 
-            if sim > SIM_THRESHOLD and sim > best_score:
+            words_c = set(c["topic"].split())
+
+            # 🔥 ANA FIX: kelime overlap
+            overlap = len(words_kw & words_c)
+
+            if overlap >= 2 and overlap > best_overlap:
                 best = c
-                best_score = sim
+                best_overlap = overlap
 
         if best:
             best["count"] += counter[kw]
             best["score"] += scores[kw]
             best["samples"].extend(texts[kw])
 
-            # daha temiz ve uzun olanı seç
-            if len(kw.split()) > len(best["topic"].split()):
+            # daha anlamlı olanı seç
+            if len(words_kw) > len(best["topic"].split()):
                 best["topic"] = kw
 
         else:
@@ -159,7 +136,7 @@ def merge_topics(counter, scores, texts):
 
 
 # -------------------------
-# 🔥 MAIN ENGINE (TEMİZ AKIŞ)
+# 🔥 MAIN ENGINE
 # -------------------------
 
 def detect_signals(analysis):
@@ -171,10 +148,6 @@ def detect_signals(analysis):
     keyword_counter = defaultdict(int)
     keyword_scores = defaultdict(float)
     keyword_texts = defaultdict(list)
-
-    # -------------------------
-    # COLLECT
-    # -------------------------
 
     for item in analysis:
 
@@ -192,7 +165,6 @@ def detect_signals(analysis):
             if len(w) > 3 and w not in STOPWORDS
         ]
 
-        # 🔥 minimum kalite
         if len(words) < 4:
             continue
 
@@ -200,7 +172,6 @@ def detect_signals(analysis):
 
         for kw in phrases:
 
-            # 🔥 çok kısa phrase yok
             if len(kw.split()) < 3:
                 continue
 
@@ -211,19 +182,11 @@ def detect_signals(analysis):
             keyword_scores[kw] += score
             keyword_texts[kw].append(text)
 
-    # -------------------------
-    # CLUSTER
-    # -------------------------
-
     clusters = merge_topics(
         keyword_counter,
         keyword_scores,
         keyword_texts
     )
-
-    # -------------------------
-    # BUILD SIGNALS
-    # -------------------------
 
     signals = []
 
@@ -236,7 +199,6 @@ def detect_signals(analysis):
             continue
 
         avg_score = total_score / count
-
         boost = int(math.log1p(count) * 6)
 
         signals.append({
@@ -247,10 +209,6 @@ def detect_signals(analysis):
             "boost": max(1, boost),
             "samples": list(set(c["samples"]))[:3]
         })
-
-    # -------------------------
-    # FALLBACK (TEMİZ)
-    # -------------------------
 
     if len(signals) == 0:
 
@@ -276,10 +234,6 @@ def detect_signals(analysis):
                 "boost": 1,
                 "samples": [text]
             })
-
-    # -------------------------
-    # SORT
-    # -------------------------
 
     signals.sort(
         key=lambda x: (x["boost"], x["score"], x["count"]),
