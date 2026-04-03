@@ -25,21 +25,26 @@ from ai_engine.dominance_engine import compute_dominance
 intel_engine = GlobalIntelligenceEngine()
 
 # -------------------------
-# 🔥 DUPLICATE CACHE
+# 🔥 DUPLICATE CACHE (GÜÇLENDİRİLDİ)
 # -------------------------
 duplicate_cache = {}
 
 def is_duplicate_local(topic):
+
     try:
+        topic = str(topic).lower().strip()
         h = hashlib.md5(topic.encode()).hexdigest()
     except:
         return False
 
+    now = time.time()
+
+    # 🔥 2 SAAT BLOK (daha güçlü)
     if h in duplicate_cache:
-        if time.time() - duplicate_cache[h] < 3600:
+        if now - duplicate_cache[h] < 7200:
             return True
 
-    duplicate_cache[h] = time.time()
+    duplicate_cache[h] = now
     return False
 
 
@@ -200,7 +205,7 @@ class Orchestrator:
 
             topic = intel.get("topic") or "unknown"
 
-            # 🔥 DUPLICATE KES
+            # 🔥 CRITICAL → DUPLICATE KES
             if is_duplicate_local(topic):
                 continue
 
