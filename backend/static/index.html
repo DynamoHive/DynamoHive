@@ -22,8 +22,8 @@ async function loadFeed() {
     const feed = document.getElementById("feed");
 
     try {
-        // 🔴 FIX: bulunduğun host + port'u kullanır
-        const res = await fetch(window.location.origin + "/posts");
+        // 🔥 DOĞRU ENDPOINT
+        const res = await fetch(window.location.origin + "/api/feed");
 
         if (!res.ok) {
             throw new Error("API error");
@@ -31,14 +31,14 @@ async function loadFeed() {
 
         const data = await res.json();
 
-        if (!data.posts || data.posts.length === 0) {
+        if (!data.feed || data.feed.length === 0) {
             feed.innerHTML = "No content yet";
             return;
         }
 
         feed.innerHTML = "";
 
-        data.posts.forEach(p => {
+        data.feed.forEach(p => {
             const div = document.createElement("div");
             div.style.margin = "20px";
             div.style.padding = "10px";
@@ -56,7 +56,7 @@ async function loadFeed() {
 
     } catch (err) {
         console.error("FETCH ERROR:", err);
-        feed.innerHTML = "Feed yüklenemedi (API bağlantı hatası)";
+        feed.innerHTML = "Feed yüklenemedi";
     }
 }
 
