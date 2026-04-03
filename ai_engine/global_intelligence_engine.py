@@ -1,55 +1,63 @@
-import random
+class GlobalIntelligenceEngine:
 
+    def __init__(self):
+        self.history = []
 
-def build_headline(topic):
+    def process(self, intelligence):
 
-    base = topic.title()
+        if not intelligence:
+            return []
 
-    variations = [
-        f"{base}: What is happening?",
-        f"{base}: Strategic shift detected",
-        f"{base}: Why this matters now",
-        f"{base}: Emerging global signal",
-        f"{base}: Hidden dynamics revealed",
-    ]
+        enhanced = []
 
-    return random.choice(variations)
+        for item in intelligence:
 
+            if not isinstance(item, dict):
+                continue
 
-def build_summary(signal):
+            topic = item.get("topic", "unknown")
+            summary = item.get("summary", "")
+            trend = item.get("trend", "stable")
+            score = item.get("score", 1.0)
 
-    samples = signal.get("samples", [])
+            # 🔥 BASIC ENRICHMENT
+            enriched = {
+                "topic": topic,
+                "summary": summary,
+                "trend": trend,
+                "score": score,
+                "importance": self._compute_importance(score),
+                "timestamp": self._now()
+            }
 
-    if samples:
-        return samples[0]
+            enhanced.append(enriched)
 
-    return signal.get("topic", "")
+        self.history.extend(enhanced[-50:])
 
+        return enhanced
 
-def generate_intelligence(signals):
+    # -------------------------
+    # 🔥 IMPORTANCE LOGIC
+    # -------------------------
+    def _compute_importance(self, score):
 
-    if not signals:
-        return []
+        try:
+            score = float(score)
+        except:
+            score = 1.0
 
-    stories = []
+        if score > 5:
+            return "critical"
+        elif score > 3:
+            return "high"
+        elif score > 2:
+            return "medium"
+        else:
+            return "low"
 
-    for s in signals[:10]:
-
-        topic = s.get("topic", "")
-        keywords = s.get("keywords", [])
-        strength = s.get("boost", 1)
-
-        headline = build_headline(topic)
-        summary = build_summary(s)
-
-        stories.append({
-            "type": "intelligence",
-            "headline": headline,
-            "summary": summary,
-            "keywords": keywords,
-            "strength": strength
-        })
-
-    print("[INTELLIGENCE]", len(stories))
-
-    return stories
+    # -------------------------
+    # 🕒 TIME
+    # -------------------------
+    def _now(self):
+        from datetime import datetime
+        return datetime.utcnow().isoformat()
