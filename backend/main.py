@@ -1,29 +1,26 @@
-# backend/main.py
-
 from fastapi import FastAPI
+import threading
+
+# mevcut sistem
 from backend.feed_engine import get_feed
 from backend.events import handle_event
-
-# 🔥 EKLENENLER
-import threading
 from backend.auto_content_loop import start as start_loop
+
+# 🔥 AI PIPELINE
+from ai_engine.signal_detector import detect_signals
+from ai_engine.global_intelligence import merge_signals
+from backend.newsroom.story_engine import build_story
 
 app = FastAPI()
 
-
 # -------------------------
-# 🔥 TEST SIGNALS
+# 🔥 GLOBAL MEMORY (ORCHESTRATOR BURAYA YAZACAK)
 # -------------------------
-signals = [
-    {"topic": "war", "score": 10},
-    {"topic": "ai", "score": 8},
-    {"topic": "economy", "score": 7},
-    {"topic": "politics", "score": 6}
-]
+GLOBAL_DATA = []
 
 
 # -------------------------
-# 🔥 ROOT
+# ROOT
 # -------------------------
 @app.get("/")
 def root():
@@ -31,27 +28,45 @@ def root():
 
 
 # -------------------------
-# 🔥 FEED
+# 🔥 FEED (GERÇEK AI FEED)
 # -------------------------
 @app.get("/feed")
-def feed(user_id: str):
-    return get_feed(user_id, signals)
+def feed():
+
+    # 1. signal çıkar
+    signals = detect_signals(GLOBAL_DATA)
+
+    # 2. global merge
+    signals = merge_signals(signals)
+
+    # 3. intelligence oluştur
+    intelligence = {
+        "signals": signals
+    }
+
+    # 4. story üret
+    story = build_story(intelligence)
+
+    return {
+        "story": story,
+        "signals": signals[:10],
+        "count": len(signals)
+    }
 
 
 # -------------------------
-# 🔥 EVENT
+# EVENT
 # -------------------------
 @app.get("/event")
 def event(user_id: str, type: str, topic: str):
-    result = handle_event(user_id, {
+    return handle_event(user_id, {
         "type": type,
         "topic": topic
     })
-    return result
 
 
 # -------------------------
-# 🔥 ORCHESTRATOR START (EKLENEN)
+# 🔥 ORCHESTRATOR START
 # -------------------------
 @app.on_event("startup")
 def start_orchestrator():
