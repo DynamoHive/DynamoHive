@@ -1,24 +1,21 @@
-def compute_dominance(signals):
+class DominanceCore:
 
-    if not signals:
-        return []
+    def rank(self, items):
 
-    results = []
+        if not items:
+            return []
 
-    total_score = sum(s.get("score", 0) for s in signals) or 1
+        ranked = sorted(
+            items,
+            key=lambda x: (
+                x.get("score", 0),
+                x.get("cluster_size", 1),
+                x.get("momentum", 0)
+            ),
+            reverse=True
+        )
 
-    for s in signals:
-        score = s.get("score", 0)
-        topic = s.get("text", "")
+        for i, item in enumerate(ranked):
+            item["rank"] = i + 1
 
-        dominance = score / total_score
-
-        results.append({
-            "topic": topic,
-            "score": score,
-            "dominance": round(dominance, 4)
-        })
-
-    results.sort(key=lambda x: x["dominance"], reverse=True)
-
-    return results
+        return ranked[:20]
