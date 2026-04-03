@@ -2,24 +2,49 @@ import time
 from backend.analytics_engine import get_topic_boost
 
 
-def score_signal(signal, boost_map):
+# -------------------------
+# SAFE HELPERS
+# -------------------------
 
-    score = 0
+def safe_str(x):
+    try:
+        return str(x)
+    except:
+        return ""
 
-    # 🔴 SOURCE
-    source = str(signal.get("source", "")).lower()
+
+def safe_float(x, default=0.0):
+    try:
+        return float(x)
+    except:
+        return default
+
+
+def normalize(text):
+    return safe_str(text).lower()
+
+
+# -------------------------
+# CORE SCORING BLOCKS
+# -------------------------
+
+def source_score(source):
+
+    source = normalize(source)
 
     if "reuters" in source:
-        score += 25
+        return 25
     elif "nyt" in source or "new york times" in source:
-        score += 20
+        return 20
     elif "bbc" in source:
-        score += 20
+        return 20
     else:
-        score += 10
+        return 10
 
-    # 🔴 TEXT
-    text = str(signal.get("text", "")).lower()
+
+def keyword_score(text):
+
+    score = 0
 
     if "war" in text:
         score += 30
@@ -28,49 +53,98 @@ def score_signal(signal, boost_map):
     if "energy" in text:
         score += 20
 
-    # 🔥 STRONG EVENT MATCHING
+    return score
+
+
+def freshness_score(timestamp):
+
+    try:
+        age = time.time() - safe_float(timestamp)
+        hours = age / 3600
+        return max(0, 24 - hours)
+    except:
+        return 0
+
+
+def event_boost_score(text, boost_map):
+
+    if not boost_map or not isinstance(boost_map, dict):
+        return 0
+
+    total = 0
+
     for topic, boost in boost_map.items():
 
-        if not topic:
+        topic = normalize(topic)
+        boost = safe_float(boost)
+
+        if not topic or boost <= 0:
             continue
 
-        topic_words = topic.split()
-        if not topic_words:
+        words = topic.split()
+
+        if not words:
             continue
 
         match_count = 0
 
-        for w in topic_words:
+        for w in words:
             if w in text:
                 match_count += 1
 
         if match_count > 0:
-            # 🔥 agresif boost (ANA FARK)
-            ratio = match_count / len(topic_words)
-            score += boost * ratio * 2   # <-- güçlendirilmiş
+            ratio = match_count / len(words)
 
-    # 🔴 FRESHNESS
-    timestamp = signal.get("timestamp", 0)
+            # 🔥 AGGRESSIVE + SAFE BOOST
+            total += boost * ratio * 2.5
+
+    return total
+
+
+# -------------------------
+# MAIN SCORING
+# -------------------------
+
+def score_signal(signal, boost_map):
 
     try:
-        age = time.time() - float(timestamp)
-        hours = age / 3600
+        text = normalize(signal.get("text", ""))
+        source = signal.get("source", "")
+        timestamp = signal.get("timestamp", 0)
 
-        freshness = max(0, 24 - hours)
+        score = 0
 
-        score += freshness
-    except:
-        pass
+        score += source_score(source)
+        score += keyword_score(text)
+        score += freshness_score(timestamp)
 
-    return round(score, 2)
+        # 🔥 EVENT INTELLIGENCE
+        score += event_boost_score(text, boost_map)
 
+        return round(score, 2)
+
+    except Exception as e:
+        print("SCORE ERROR:", e)
+        return 0
+
+
+# -------------------------
+# RANKING ENGINE
+# -------------------------
 
 def rank_signals(signals):
 
-    if not signals:
+    if not signals or not isinstance(signals, list):
         return []
 
-    boost_map = get_topic_boost()
+    # 🔥 BOOST SAFE LOAD
+    try:
+        boost_map = get_topic_boost()
+        if not isinstance(boost_map, dict):
+            boost_map = {}
+    except Exception as e:
+        print("BOOST ERROR:", e)
+        boost_map = {}
 
     ranked = []
 
@@ -83,8 +157,11 @@ def rank_signals(signals):
             s["score"] = score_signal(s, boost_map)
             ranked.append(s)
         except Exception as e:
-            print("RANK ERROR:", e)
+            print("RANK ITEM ERROR:", e)
 
-    ranked.sort(key=lambda x: x.get("score", 0), reverse=True)
+    try:
+        ranked.sort(key=lambda x: x.get("score", 0), reverse=True)
+    except Exception as e:
+        print("SORT ERROR:", e)
 
     return ranked
