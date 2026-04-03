@@ -1,5 +1,6 @@
 import time
 import traceback
+import hashlib
 
 from backend.logger import logger
 
@@ -16,7 +17,6 @@ from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
 from ai_engine.narrative_engine import generate_narrative
 
 from backend.storage import save_post, get_posts
-from backend.cache import is_duplicate, mark_generated
 from backend.distribution_engine import distribute
 
 # 🔥 NEW
@@ -25,6 +25,21 @@ from ai_engine.dominance_engine import compute_dominance
 
 
 intel_engine = GlobalIntelligenceEngine()
+
+
+# 🔥 DUPLICATE CACHE (LOCAL FIX)
+duplicate_cache = {}
+
+
+def is_duplicate_local(topic):
+    h = hashlib.md5(topic.encode()).hexdigest()
+
+    if h in duplicate_cache:
+        if time.time() - duplicate_cache[h] < 3600:
+            return True
+
+    duplicate_cache[h] = time.time()
+    return False
 
 
 class Orchestrator:
@@ -36,13 +51,8 @@ class Orchestrator:
         self.last_signal_count = 0
         self.last_event_count = 0
 
-        # 🔥 NEW
         self.last_anomalies = []
         self.last_dominance = []
-
-    # -------------------------
-    # 🔥 CORE FLOW
-    # -------------------------
 
     def run_cycle(self):
 
@@ -65,15 +75,22 @@ class Orchestrator:
             raw_data = process_data(raw_data)
 
             # -------------------------
-            # 2. SIGNAL
+            # 2. SIGNAL (🔥 FIXED)
             # -------------------------
             signals = signal_module.detect_signals(raw_data)
 
-            if not signals:
-                signals = [{
-                    "text": f"system_{int(time.time())}",
-                    "score": 1
-                }]
+            # 🔥 CRITICAL FIX → SIGNAL YOKSA HEPSİNİ AL
+            if not signals or len(signals) <= 1:
+                signals = []
+                for item in raw_data:
+                    text = item.get("title") or item.get("text")
+                    if not text:
+                        continue
+
+                    signals.append({
+                        "text": text,
+                        "score": 1.0
+                    })
 
             signals = rank_signals(signals)
             self.last_signal_count = len(signals)
@@ -86,12 +103,6 @@ class Orchestrator:
 
             events = detect_event_spikes()
             self.last_event_count = len(events)
-
-            # -------------------------
-            # 🔥 ANOMALY + DOMINANCE
-            # -------------------------
-            self.last_anomalies = detect_anomalies(signals, events)
-            self.last_dominance = compute_dominance(signals)
 
             # -------------------------
             # 4. PERSONALIZATION
@@ -113,8 +124,18 @@ class Orchestrator:
                     profile
                 )
 
-                # topic normalize
                 s["text"] = topic
+
+            # -------------------------
+            # 🔥 ANOMALY + DOMINANCE
+            # -------------------------
+            self.last_anomalies = detect_anomalies(signals, events)
+
+            try:
+                self.last_dominance = compute_dominance(signals)
+            except Exception as e:
+                logger.warning(f"[DOMINANCE ERROR] {e}")
+                self.last_dominance = []
 
             # -------------------------
             # 5. INTELLIGENCE
@@ -149,11 +170,7 @@ class Orchestrator:
         intelligence = []
 
         for s in signals:
-            topic = (
-                s.get("text")
-                or s.get("topic")
-                or "unknown"
-            )
+            topic = s.get("text") or "unknown"
 
             intelligence.append({
                 "topic": topic,
@@ -164,7 +181,7 @@ class Orchestrator:
         return intelligence
 
     # -------------------------
-    # 📰 CONTENT ENGINE
+    # 📰 CONTENT ENGINE (🔥 FIXED)
     # -------------------------
 
     def _generate_content(self, intelligence):
@@ -173,17 +190,16 @@ class Orchestrator:
 
             base_topic = intel.get("topic") or "unknown"
 
-            if is_duplicate(base_topic):
-                topic = f"{base_topic}_{int(time.time())}"
-            else:
-                topic = base_topic
+            # 🔥 DUPLICATE FIX
+            if is_duplicate_local(base_topic):
+                continue
 
             content = generate_narrative(intel)
 
             if not content:
                 continue
 
-            title = content.get("title") or topic
+            title = content.get("title") or base_topic
             body = content.get("content") or "No content"
 
             try:
@@ -197,15 +213,10 @@ class Orchestrator:
             except Exception:
                 logger.warning("[DISTRIBUTION ERROR]")
 
-            try:
-                mark_generated(topic)
-            except Exception:
-                logger.warning("[CACHE ERROR]")
-
-            logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
+            logger.info(f"[ORCHESTRATOR] GENERATED: {base_topic}")
 
     # -------------------------
-    # 🔥 STATUS (FULL)
+    # 🔥 STATUS
     # -------------------------
 
     def get_status(self):
