@@ -2,111 +2,110 @@ class NarrativeEngine:
 
     def generate(self, intelligence):
 
-        if not intelligence or not isinstance(intelligence, dict):
-            return None
+        topic = intelligence.get("topic", "")
 
-        topic = str(intelligence.get("topic", "")).strip()
+        reality = intelligence.get("summary", "") or topic
+        trend = intelligence.get("trend", "emerging")
+        score = intelligence.get("score", 1.0)
 
-        if not topic or len(topic) < 3:
-            return None
+        context = self._build_context(topic)
+        power = self._analyze_power(topic)
+        cause = self._analyze_cause(topic)
+        trajectory = self._build_trajectory(trend, score)
 
-        reality = intelligence.get("summary", "") or f"{topic} is showing emerging systemic signals."
-
-        context = self._build_context(intelligence)
-        contradictions = self._detect_contradictions(intelligence)
-        power = self._analyze_power(intelligence)
-        trajectory = self._build_trajectory(intelligence)
-
-        title = self._build_headline(topic, trajectory)
+        title = self._build_headline(topic, trend)
         content = self._build_article(
             reality,
             context,
-            contradictions,
+            cause,
             power,
             trajectory
         )
 
-        if not title or not content or len(content) < 120:
-            return None
-
         return {
-            "title": title.strip(),
-            "content": content.strip(),
+            "title": title,
+            "content": content,
             "topic": topic
         }
 
-    def _build_context(self, data):
-        topic = data.get("topic", "This issue")
+    # -------------------------
+    # CONTEXT (GERÇEK)
+    # -------------------------
+    def _build_context(self, topic):
+
         return (
-            f"{topic} is embedded within broader systemic transformations, "
-            f"shaped by economic pressure, political realignment, and structural shifts."
+            f"{topic} is not an isolated event. "
+            f"It reflects broader structural changes across economic, technological, "
+            f"and political systems shaping global dynamics."
         )
 
-    def _detect_contradictions(self, data):
-        topic = data.get("topic", "this issue")
-        return [
-            f"Public narratives around {topic} diverge from observable outcomes.",
-            f"Institutional responses often conflict with stated objectives regarding {topic}."
-        ]
+    # -------------------------
+    # CAUSE (NEDEN)
+    # -------------------------
+    def _analyze_cause(self, topic):
 
-    def _analyze_power(self, data):
-        score = data.get("score", 1.0)
+        return (
+            f"The emergence of {topic} is driven by underlying pressures such as "
+            f"market competition, geopolitical instability, and systemic inefficiencies."
+        )
+
+    # -------------------------
+    # POWER ANALYSIS (KRİTİK)
+    # -------------------------
+    def _analyze_power(self, topic):
+
+        return (
+            f"Power asymmetry is visible around {topic}. "
+            f"Institutional actors and dominant platforms consolidate advantage, "
+            f"while smaller actors and independent entities face increasing pressure."
+        )
+
+    # -------------------------
+    # TRAJECTORY
+    # -------------------------
+    def _build_trajectory(self, trend, score):
 
         if score > 4:
-            return {
-                "winners": ["state actors", "global institutions"],
-                "losers": ["local populations", "independent actors"]
-            }
-
-        return {
-            "winners": ["established entities"],
-            "losers": ["emerging or vulnerable groups"]
-        }
-
-    def _build_trajectory(self, data):
-        trend = data.get("trend", "emerging")
+            return "This development is accelerating rapidly and may become structurally dominant."
 
         if trend == "surging":
-            return "This development is accelerating and becoming systemic."
+            return "The trend is intensifying and expanding across multiple domains."
 
         if trend == "rising":
-            return "This trend is expanding and stabilizing."
+            return "The trend is gaining stability and widening its influence."
 
         return "The trajectory remains uncertain but structurally relevant."
 
-    def _build_headline(self, topic, trajectory):
+    # -------------------------
+    # HEADLINE (TEMİZ)
+    # -------------------------
+    def _build_headline(self, topic, trend):
 
         topic = topic.capitalize()
 
-        if "accelerating" in trajectory:
-            return f"{topic} rapidly escalates across global systems"
+        if trend == "surging":
+            return f"{topic} accelerates across global systems"
 
-        if "stabilizing" in trajectory:
-            return f"{topic} expands its structural influence"
+        if trend == "rising":
+            return f"{topic} expands its structural impact"
 
-        return f"Emerging dynamics reshape narratives around {topic}"
+        return f"{topic} signals emerging systemic shift"
 
-    def _build_article(self, reality, context, contradictions, power, trajectory):
-
-        contradictions_text = " ".join(contradictions)
-
-        winners = ", ".join(power.get("winners", []))
-        losers = ", ".join(power.get("losers", []))
+    # -------------------------
+    # ARTICLE (AKICI)
+    # -------------------------
+    def _build_article(self, reality, context, cause, power, trajectory):
 
         return " ".join([
             reality,
             context,
-            contradictions_text,
-            f"Power dynamics reveal asymmetry. Winners: {winners}. Losers: {losers}.",
+            cause,
+            power,
             trajectory
         ])
 
 
-_engine_instance = NarrativeEngine()
-
+# 🔥 ENTRY POINT (KRİTİK)
 def generate_narrative(intelligence):
-    try:
-        return _engine_instance.generate(intelligence)
-    except Exception as e:
-        print("[NARRATIVE ERROR]", e)
-        return None
+    engine = NarrativeEngine()
+    return engine.generate(intelligence)
