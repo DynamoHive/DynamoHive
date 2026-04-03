@@ -8,10 +8,9 @@ def is_low_quality(text):
     if len(text) < 120:
         return True
 
-    # çok tekrar eden kelime kontrolü
     words = text.lower().split()
 
-    if len(words) == 0:
+    if not words:
         return True
 
     unique_ratio = len(set(words)) / len(words)
