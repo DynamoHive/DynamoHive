@@ -26,7 +26,7 @@ def get_map():
             "topic": topic,
             "posts": count
         })
-GLOBAL_DATA = []
+
     result.sort(reverse=True, key=lambda x: x["posts"])
 
     return result
