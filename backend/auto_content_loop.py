@@ -1,28 +1,11 @@
+# backend/auto_content_loop.py
+
 import time
-import random
+from backend.orchestrator import Orchestrator
 
+orchestrator = Orchestrator()
 
-def generate_content(event):
-
-    if not event:
-        return None
-
-    topic = event.get("topic", "unknown")
-
-    article = {
-        "title": f"Signal Detected: {topic}",
-        "content": f"""
-DynamoHive detected a spike in '{topic}'.
-
-Signal intensity: {event.get("count", 0)}
-Velocity: {event.get("velocity", 0)}
-
-This indicates a potential emerging event in the global information space.
-""",
-        "author": "DynamoHive AI",
-        "timestamp": time.time()
-    }
-
-    print("Generated content:", article)
-
-    return article
+def start():
+    while True:
+        orchestrator.run_cycle()
+        time.sleep(30)
