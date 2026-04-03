@@ -21,10 +21,8 @@ from backend.distribution_engine import distribute
 from ai_engine.anomaly_engine import detect_anomalies
 from ai_engine.dominance_engine import compute_dominance
 
-# 🔥 NEW SYSTEMS
-from ai_engine.intelligence_layer import IntelligenceLayer
-from ai_engine.memory_engine import MemoryEngine
-from ai_engine.dominance_core import DominanceCore
+# ✅ GERÇEK SİSTEM
+from ai_engine.memory_pattern_engine import MemoryPatternEngine
 from ai_engine.content_filter import is_low_quality
 from ai_engine.vector_memory import search_similar, store_vector
 
@@ -64,10 +62,8 @@ class Orchestrator:
         self.last_anomalies = []
         self.last_dominance = []
 
-        # 🔥 AI LAYERS
-        self.intel_layer = IntelligenceLayer()
-        self.memory = MemoryEngine()
-        self.dominance_core = DominanceCore()
+        # ✅ TEK MEMORY
+        self.pattern_memory = MemoryPatternEngine()
 
     # -------------------------
     # MAIN LOOP
@@ -82,9 +78,7 @@ class Orchestrator:
 
         try:
 
-            # -------------------------
             # DATA
-            # -------------------------
             raw_data = crawl()
 
             if not raw_data:
@@ -92,9 +86,7 @@ class Orchestrator:
 
             raw_data = process_data(raw_data)
 
-            # -------------------------
             # SIGNAL
-            # -------------------------
             signals = signal_module.detect_signals(raw_data)
 
             if not signals:
@@ -131,18 +123,14 @@ class Orchestrator:
             signals = normalized
             self.last_signal_count = len(signals)
 
-            # -------------------------
             # EVENTS
-            # -------------------------
             for s in signals:
                 register_event(s["topic"])
 
             events = detect_event_spikes()
             self.last_event_count = len(events)
 
-            # -------------------------
             # PERSONALIZATION
-            # -------------------------
             profile = get_user_profile("global_user")
 
             for s in signals:
@@ -151,9 +139,7 @@ class Orchestrator:
                 except:
                     pass
 
-            # -------------------------
             # ANOMALY + DOMINANCE
-            # -------------------------
             try:
                 self.last_anomalies = detect_anomalies(signals, events)
             except Exception as e:
@@ -166,23 +152,15 @@ class Orchestrator:
                 logger.warning(f"[DOMINANCE ERROR] {e}")
                 self.last_dominance = []
 
-            # -------------------------
-            # 🔥 INTELLIGENCE
-            # -------------------------
-            intelligence = self.intel_layer.process(signals)
-            intelligence = self.memory.boost(intelligence)
-            intelligence = self.dominance_core.rank(intelligence)
+            # INTELLIGENCE (senin engine)
+            intelligence = signals
 
             try:
                 intelligence = intel_engine.process(intelligence)
             except Exception as e:
                 logger.warning(f"[INTEL ERROR] {e}")
 
-            self.memory.learn(intelligence)
-
-            # -------------------------
             # CONTENT
-            # -------------------------
             self._generate_content(intelligence)
 
         except Exception:
@@ -209,7 +187,11 @@ class Orchestrator:
             if is_duplicate_local(topic):
                 continue
 
-            # 🔥 VECTOR CHECK (YUMUŞATILDI)
+            # PATTERN MEMORY (GERÇEK)
+            if self.pattern_memory.seen_before(topic):
+                continue
+
+            # VECTOR CHECK
             similar = search_similar(topic)
             if similar:
                 try:
@@ -230,11 +212,10 @@ class Orchestrator:
             if not title or not body:
                 continue
 
-            # 🔥 FILTER (YUMUŞAK)
+            # FILTER
             if is_low_quality(body):
                 continue
 
-            # 🔥 LENGTH (DÜŞÜRÜLDÜ)
             if len(body) < 80:
                 continue
 
@@ -245,20 +226,19 @@ class Orchestrator:
                 logger.warning("[SAVE ERROR]")
                 continue
 
-            # VECTOR MEMORY
+            # MEMORY STORE
+            self.pattern_memory.store(topic)
+
             try:
                 store_vector(content)
             except Exception:
                 logger.warning("[VECTOR ERROR]")
 
-            # DISTRIBUTION
             try:
                 distribute(content)
             except Exception:
                 logger.warning("[DISTRIBUTION ERROR]")
 
-            # 🔥 DEBUG + SUCCESS
-            print("DEBUG PASSED:", topic)
             logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
 
     # -------------------------
