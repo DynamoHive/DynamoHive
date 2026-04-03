@@ -28,10 +28,26 @@ def score_signal(signal, boost_map):
     if "energy" in text:
         score += 20
 
-    # 🔥 EVENT BOOST (ANA NOKTA)
+    # 🔥 STRONG EVENT MATCHING
     for topic, boost in boost_map.items():
-        if topic and topic in text:
-            score += boost
+
+        if not topic:
+            continue
+
+        topic_words = topic.split()
+        if not topic_words:
+            continue
+
+        match_count = 0
+
+        for w in topic_words:
+            if w in text:
+                match_count += 1
+
+        if match_count > 0:
+            # 🔥 agresif boost (ANA FARK)
+            ratio = match_count / len(topic_words)
+            score += boost * ratio * 2   # <-- güçlendirilmiş
 
     # 🔴 FRESHNESS
     timestamp = signal.get("timestamp", 0)
@@ -39,11 +55,14 @@ def score_signal(signal, boost_map):
     try:
         age = time.time() - float(timestamp)
         hours = age / 3600
-        score += max(0, 24 - hours)
+
+        freshness = max(0, 24 - hours)
+
+        score += freshness
     except:
         pass
 
-    return score
+    return round(score, 2)
 
 
 def rank_signals(signals):
@@ -51,7 +70,6 @@ def rank_signals(signals):
     if not signals:
         return []
 
-    # 🔥 analytics bağlantısı
     boost_map = get_topic_boost()
 
     ranked = []
