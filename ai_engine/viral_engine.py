@@ -1,20 +1,59 @@
-viral_scores = {}
+# ai_engine/viral_engine.py
+
+from collections import defaultdict
+
+viral_scores = defaultdict(int)
 
 
-def detect_viral(topics):
-
-    global viral_scores
+# -------------------------
+# 🔥 VIRAL DETECTION ENGINE
+# -------------------------
+def detect_viral(signals):
 
     viral = []
 
-    for t in topics:
+    for s in signals:
 
-        if t not in viral_scores:
-            viral_scores[t] = 0
+        topic = s.get("text") or s.get("topic")
 
-        viral_scores[t] += 1
+        if not topic:
+            continue
 
-        if viral_scores[t] > 5:
-            viral.append(t)
+        topic = str(topic).lower()
+
+        viral_scores[topic] += 1
+
+        # 🔥 threshold
+        if viral_scores[topic] > 5:
+            viral.append({
+                "topic": topic,
+                "viral_score": viral_scores[topic]
+            })
+
+    # güçlü olanlar üste
+    viral.sort(key=lambda x: x["viral_score"], reverse=True)
 
     return viral
+
+
+# -------------------------
+# 🔥 VIRAL BOOST (RANKING HOOK)
+# -------------------------
+def apply_viral_boost(signals, viral_list):
+
+    viral_map = {
+        v["topic"]: v["viral_score"]
+        for v in viral_list
+    }
+
+    for s in signals:
+
+        topic = s.get("text") or s.get("topic")
+
+        if topic in viral_map:
+            boost = viral_map[topic] * 0.5  # 🔥 ayarlanabilir
+
+            s["score"] += boost
+            s["viral"] = True
+
+    return signals
