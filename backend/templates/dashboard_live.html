@@ -3,6 +3,8 @@
 <head>
     <title>DynamoHive Intelligence</title>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         body {
             background:#0B0F19;
@@ -26,6 +28,12 @@
             color:#00FF9C;
             margin-bottom:10px;
         }
+
+        canvas {
+            background:#0f172a;
+            padding:10px;
+            border-radius:10px;
+        }
     </style>
 </head>
 <body>
@@ -34,20 +42,22 @@
 
 <div class="card">
     <div class="title">SYSTEM</div>
-    <div id="system">loading...</div>
+    <div id="system"></div>
 </div>
 
 <div class="card">
-    <div class="title">DOMINANCE</div>
-    <div id="dominance">loading...</div>
+    <div class="title">DOMINANCE GRAPH</div>
+    <canvas id="dominanceChart"></canvas>
 </div>
 
 <div class="card">
     <div class="title">ANOMALIES</div>
-    <div id="anomalies">loading...</div>
+    <div id="anomalies"></div>
 </div>
 
 <script>
+
+let chart;
 
 async function load() {
 
@@ -55,39 +65,54 @@ async function load() {
 
         const res = await fetch("/metrics");
         const data = await res.json();
-
         const o = data.orchestrator || {};
 
+        // SYSTEM
         document.getElementById("system").innerHTML = `
             cycles: ${o.cycle_count || 0} <br>
-            duration: ${o.last_duration || 0}s <br>
             signals: ${o.last_signal_count || 0} <br>
             events: ${o.last_event_count || 0}
         `;
 
-        document.getElementById("dominance").innerHTML =
-            (o.dominance || []).map(d =>
-                `${d.topic} → ${d.dominance}`
-            ).join("<br>") || "no data";
+        // DOMINANCE GRAPH
+        const labels = (o.dominance || []).map(d => d.topic);
+        const values = (o.dominance || []).map(d => d.dominance);
 
+        if (!chart) {
+            const ctx = document.getElementById("dominanceChart");
+
+            chart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Dominance",
+                        data: values
+                    }]
+                }
+            });
+
+        } else {
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = values;
+            chart.update();
+        }
+
+        // ANOMALIES
         document.getElementById("anomalies").innerHTML =
             (o.anomalies || []).map(a =>
                 `${a.type} → ${a.topic}`
             ).join("<br>") || "no anomalies";
 
     } catch (e) {
-
-        document.getElementById("system").innerHTML = "error loading metrics";
-        document.getElementById("dominance").innerHTML = "-";
-        document.getElementById("anomalies").innerHTML = "-";
-
+        console.error(e);
     }
 }
 
-// 🔥 ilk yükleme
+// first load
 load()
 
-// 🔥 sürekli güncelle
+// live refresh
 setInterval(load, 2000);
 
 </script>
