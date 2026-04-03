@@ -1,34 +1,94 @@
+from collections import defaultdict
+import time
+
+
+WINDOW = 3600
+
+
+STOPWORDS = {
+    "the","and","for","with","that","this","from","are","was","were",
+    "has","have","had","but","not","you","your","about","into","over",
+    "after","before","between","will","would","could","should"
+}
+
+
+def normalize(text):
+    try:
+        return str(text).lower().strip()
+    except:
+        return ""
+
+
+def safe_float(x, default=0.0):
+    try:
+        return float(x)
+    except:
+        return default
+
+
+# -------------------------
+# 🔥 SIMILARITY (CLUSTER CORE)
+# -------------------------
+def similarity(a, b):
+
+    a_words = set(a.split())
+    b_words = set(b.split())
+
+    if not a_words or not b_words:
+        return 0
+
+    inter = len(a_words & b_words)
+    union = len(a_words | b_words)
+
+    return inter / union
+
+
+# -------------------------
+# 🔥 CLUSTER MERGE
+# -------------------------
+def merge_topics(keyword_counter, keyword_scores, keyword_texts):
+
+    clusters = []
+
+    for kw in keyword_counter:
+
+        added = False
+
+        for cluster in clusters:
+
+            if similarity(cluster["topic"], kw) > 0.6:
+                cluster["count"] += keyword_counter[kw]
+                cluster["score"] += keyword_scores[kw]
+                cluster["samples"].extend(keyword_texts[kw])
+                added = True
+                break
+
+        if not added:
+            clusters.append({
+                "topic": kw,
+                "count": keyword_counter[kw],
+                "score": keyword_scores[kw],
+                "samples": keyword_texts[kw][:]
+            })
+
+    return clusters
+
+
+# -------------------------
+# 🔥 MAIN
+# -------------------------
 def detect_signals(analysis):
 
     if not analysis or not isinstance(analysis, list):
         print("signals detected: 0")
         return []
 
-    from collections import defaultdict
-
     keyword_counter = defaultdict(int)
     keyword_scores = defaultdict(float)
-
-    STOPWORDS = {
-        "the","and","for","with","that","this","from","are","was","were",
-        "has","have","had","but","not","you","your","about","into","over",
-        "after","before","between","will","would","could","should"
-    }
-
-    def normalize(text):
-        try:
-            return str(text).lower().strip()
-        except:
-            return ""
-
-    def safe_float(x, default=0.0):
-        try:
-            return float(x)
-        except:
-            return default
+    keyword_texts = defaultdict(list)
 
     # -------------------------
-    # 1. COLLECT (PHRASE MODE)
+    # 1. COLLECT
     # -------------------------
     for item in analysis:
 
@@ -46,7 +106,7 @@ def detect_signals(analysis):
             if len(w) > 3 and w not in STOPWORDS
         ]
 
-        # 🔥 BIGRAM + TRIGRAM
+        # 🔥 PHRASES
         phrases = []
 
         for i in range(len(words) - 1):
@@ -58,7 +118,6 @@ def detect_signals(analysis):
         keywords = phrases[:20] if phrases else words[:10]
 
         for kw in keywords:
-
             kw = normalize(kw)
 
             if not kw or len(kw) < 4:
@@ -66,33 +125,40 @@ def detect_signals(analysis):
 
             keyword_counter[kw] += 1
             keyword_scores[kw] += score
+            keyword_texts[kw].append(text)
 
     # -------------------------
-    # 2. BUILD (MERGE SIMPLIFIED)
+    # 2. 🔥 CLUSTERING
+    # -------------------------
+    clusters = merge_topics(keyword_counter, keyword_scores, keyword_texts)
+
+    # -------------------------
+    # 3. BUILD SIGNALS
     # -------------------------
     signals = []
 
-    for kw in keyword_counter:
+    for c in clusters:
 
-        count = keyword_counter[kw]
-        total_score = keyword_scores[kw]
+        count = c["count"]
+        total_score = c["score"]
 
-        # 🔥 kritik eşik
-        if count < 2:
+        # 🔥 SOFT THRESHOLD
+        if count < 2 and total_score < 2:
             continue
 
         avg_score = total_score / count
 
         signals.append({
-            "topic": kw,
-            "keywords": kw.split(),
+            "topic": c["topic"],
+            "keywords": c["topic"].split(),
             "count": count,
             "score": round(avg_score, 2),
-            "boost": max(1, count * 2)
+            "boost": max(1, count * 2),
+            "samples": c["samples"][:3]
         })
 
     # -------------------------
-    # 3. FALLBACK (SİSTEMİ KURTARIR)
+    # 4. FALLBACK
     # -------------------------
     if len(signals) <= 2:
 
@@ -110,11 +176,12 @@ def detect_signals(analysis):
                 "keywords": text.split()[:5],
                 "count": 1,
                 "score": 1.0,
-                "boost": 1
+                "boost": 1,
+                "samples": [text]
             })
 
     # -------------------------
-    # 4. SORT
+    # 5. SORT
     # -------------------------
     signals.sort(
         key=lambda x: (x.get("count", 0), x.get("score", 0)),
