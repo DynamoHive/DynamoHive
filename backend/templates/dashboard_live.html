@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>DynamoHive Intelligence</title>
+    <title>DynamoHive GOD MODE</title>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
-            background:#0B0F19;
+            background:#05080F;
             color:white;
             font-family:Arial;
             padding:20px;
@@ -34,16 +34,24 @@
             margin-bottom:10px;
         }
 
-        canvas {
-            background:#0f172a;
-            border-radius:10px;
+        button {
             padding:10px;
+            margin-top:10px;
+            background:#00F0FF;
+            border:none;
+            cursor:pointer;
+        }
+
+        input {
+            padding:8px;
+            width:100%;
+            margin-top:5px;
         }
     </style>
 </head>
 <body>
 
-<h1>🧠 DynamoHive Intelligence OPS</h1>
+<h1>⚡ DynamoHive GOD MODE</h1>
 
 <div class="card">
     <div class="title">SYSTEM</div>
@@ -58,7 +66,7 @@
     </div>
 
     <div class="card">
-        <div class="title">TREND (CYCLES)</div>
+        <div class="title">TREND</div>
         <canvas id="trendChart"></canvas>
     </div>
 
@@ -72,7 +80,25 @@
     </div>
 
     <div class="card">
-        <div class="title">LIVE SIGNAL FLOW</div>
+        <div class="title">TOP SIGNAL</div>
+        <div id="top"></div>
+    </div>
+
+</div>
+
+<div class="grid">
+
+    <div class="card">
+        <div class="title">EVENT INJECTOR</div>
+
+        <input id="topic" placeholder="topic (ai / war / etc)">
+        <input id="type" placeholder="type (click / like / skip)">
+        <button onclick="sendEvent()">SEND EVENT</button>
+
+    </div>
+
+    <div class="card">
+        <div class="title">LIVE FLOW</div>
         <div id="flow"></div>
     </div>
 
@@ -82,98 +108,95 @@
 
 let dominanceChart;
 let trendChart;
-
 let trendData = [];
 
 async function load() {
 
-    try {
+    const res = await fetch("/metrics");
+    const data = await res.json();
+    const o = data.orchestrator || {};
 
-        const res = await fetch("/metrics");
-        const data = await res.json();
-        const o = data.orchestrator || {};
+    // SYSTEM
+    document.getElementById("system").innerHTML = `
+        cycles: ${o.cycle_count || 0}<br>
+        signals: ${o.last_signal_count || 0}<br>
+        events: ${o.last_event_count || 0}
+    `;
 
-        // ---------------- SYSTEM
-        document.getElementById("system").innerHTML = `
-            cycles: ${o.cycle_count || 0} <br>
-            duration: ${o.last_duration || 0}s <br>
-            signals: ${o.last_signal_count || 0} <br>
-            events: ${o.last_event_count || 0}
-        `;
+    // DOMINANCE
+    const labels = (o.dominance || []).map(d => d.topic);
+    const values = (o.dominance || []).map(d => d.dominance);
 
-        // ---------------- DOMINANCE
-        const labels = (o.dominance || []).map(d => d.topic);
-        const values = (o.dominance || []).map(d => d.dominance);
-
-        if (!dominanceChart) {
-
-            dominanceChart = new Chart(
-                document.getElementById("dominanceChart"),
-                {
-                    type: "bar",
-                    data: {
-                        labels: labels,
-                        datasets: [{ data: values }]
-                    }
+    if (!dominanceChart) {
+        dominanceChart = new Chart(
+            document.getElementById("dominanceChart"),
+            {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: [{ data: values }]
                 }
-            );
-
-        } else {
-            dominanceChart.data.labels = labels;
-            dominanceChart.data.datasets[0].data = values;
-            dominanceChart.update();
-        }
-
-        // ---------------- TREND GRAPH
-        trendData.push(o.last_signal_count || 0);
-
-        if (trendData.length > 20) {
-            trendData.shift();
-        }
-
-        if (!trendChart) {
-
-            trendChart = new Chart(
-                document.getElementById("trendChart"),
-                {
-                    type: "line",
-                    data: {
-                        labels: trendData.map((_, i) => i),
-                        datasets: [{
-                            label: "Signal Count",
-                            data: trendData
-                        }]
-                    }
-                }
-            );
-
-        } else {
-            trendChart.data.labels = trendData.map((_, i) => i);
-            trendChart.data.datasets[0].data = trendData;
-            trendChart.update();
-        }
-
-        // ---------------- ANOMALIES
-        document.getElementById("anomalies").innerHTML =
-            (o.anomalies || []).map(a =>
-                `⚠ ${a.type} → ${a.topic}`
-            ).join("<br>") || "no anomalies";
-
-        // ---------------- LIVE FLOW
-        document.getElementById("flow").innerHTML =
-            (o.dominance || []).map(d =>
-                `→ ${d.topic} (${d.dominance})`
-            ).join("<br>");
-
-    } catch (e) {
-        console.log("error", e);
+            }
+        );
+    } else {
+        dominanceChart.data.labels = labels;
+        dominanceChart.data.datasets[0].data = values;
+        dominanceChart.update();
     }
+
+    // TREND
+    trendData.push(o.last_signal_count || 0);
+    if (trendData.length > 20) trendData.shift();
+
+    if (!trendChart) {
+        trendChart = new Chart(
+            document.getElementById("trendChart"),
+            {
+                type: "line",
+                data: {
+                    labels: trendData.map((_, i) => i),
+                    datasets: [{ data: trendData }]
+                }
+            }
+        );
+    } else {
+        trendChart.data.labels = trendData.map((_, i) => i);
+        trendChart.data.datasets[0].data = trendData;
+        trendChart.update();
+    }
+
+    // ANOMALIES
+    document.getElementById("anomalies").innerHTML =
+        (o.anomalies || []).map(a =>
+            `⚠ ${a.type} → ${a.topic}`
+        ).join("<br>") || "none";
+
+    // TOP SIGNAL
+    if (o.dominance && o.dominance.length > 0) {
+        const top = o.dominance[0];
+        document.getElementById("top").innerHTML =
+            `${top.topic} (${top.dominance})`;
+    }
+
+    // FLOW
+    document.getElementById("flow").innerHTML =
+        (o.dominance || []).map(d =>
+            `→ ${d.topic}`
+        ).join("<br>");
 }
 
-// first load
-load()
+// EVENT INJECTOR
+async function sendEvent() {
 
-// live update
+    const topic = document.getElementById("topic").value;
+    const type = document.getElementById("type").value;
+
+    await fetch(`/event?user_id=admin&type=${type}&topic=${topic}`);
+
+}
+
+// INIT
+load()
 setInterval(load, 2000);
 
 </script>
