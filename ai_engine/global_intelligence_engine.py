@@ -4,18 +4,30 @@ class GlobalIntelligenceEngine:
         self.history = []
         self.max_history = 300
 
+    # -------------------------
+    # MAIN
+    # -------------------------
     def process(self, intelligence):
 
-        if not intelligence:
+        if not intelligence or not isinstance(intelligence, list):
             return []
 
         enhanced = []
+        seen = set()  # 🔥 duplicate fix
 
         for item in intelligence:
+
+            if not isinstance(item, dict):
+                continue
 
             topic = str(item.get("topic", "")).strip()
             if len(topic) < 5:
                 continue
+
+            key = topic.lower()[:80]
+            if key in seen:
+                continue
+            seen.add(key)
 
             score = self._safe_float(item.get("score", 1.0))
 
@@ -29,7 +41,7 @@ class GlobalIntelligenceEngine:
                 "score": round(score, 2),
                 "category": category,
                 "actors": actors,
-                "risk": risk,
+                "risk": round(risk, 2),
                 "trend": trend,
                 "importance": self._importance(score, risk),
                 "summary": self._build_summary(topic, category, risk),
@@ -38,34 +50,36 @@ class GlobalIntelligenceEngine:
 
             enhanced.append(enriched)
 
-        self.history.extend(enhanced)
-        self.history = self.history[-self.max_history:]
+        # 🔥 history safe update
+        if enhanced:
+            self.history.extend(enhanced)
+            self.history = self.history[-self.max_history:]
 
         return enhanced
 
     # -------------------------
-    # 🧠 CATEGORY
+    # CATEGORY
     # -------------------------
     def _categorize(self, topic):
 
         t = topic.lower()
 
-        if any(x in t for x in ["war","attack","military","missile","conflict"]):
+        if any(x in t for x in ["war","attack","military","missile","conflict","iran","israel"]):
             return "geopolitics"
 
-        if any(x in t for x in ["ai","technology","robot","openai","spacex"]):
+        if any(x in t for x in ["ai","technology","robot","openai","spacex","deepmind"]):
             return "technology"
 
-        if any(x in t for x in ["bank","economy","market","billion","ipo"]):
+        if any(x in t for x in ["bank","economy","market","billion","ipo","inflation"]):
             return "economy"
 
-        if any(x in t for x in ["election","government","law","court"]):
+        if any(x in t for x in ["election","government","law","court","trump"]):
             return "politics"
 
         return "general"
 
     # -------------------------
-    # 🧠 ACTOR EXTRACTION
+    # ACTOR EXTRACTION (FIXED)
     # -------------------------
     def _extract_actors(self, topic):
 
@@ -74,36 +88,51 @@ class GlobalIntelligenceEngine:
         actors = []
 
         for w in words:
-            if w.istitle() and len(w) > 3:
-                actors.append(w)
+            w_clean = w.strip(",.()")
 
-        return list(set(actors))[:5]
+            # 🔥 büyük harf + gerçek isim filtresi
+            if (
+                len(w_clean) > 3
+                and w_clean[0].isupper()
+                and not w_clean.isupper()  # NASA gibi spam engel
+            ):
+                actors.append(w_clean)
+
+        return list(dict.fromkeys(actors))[:5]  # unique + order koru
 
     # -------------------------
-    # ⚠️ RISK ENGINE
+    # RISK ENGINE (UPGRADE)
     # -------------------------
     def _compute_risk(self, score, topic):
 
         t = topic.lower()
-
         risk = score
 
-        if any(x in t for x in ["war","attack","crisis","explosion"]):
+        if any(x in t for x in ["war","attack","crisis","explosion","strike"]):
             risk += 3
 
-        if any(x in t for x in ["collapse","bankrupt","failure"]):
+        if any(x in t for x in ["collapse","bankrupt","failure","crash"]):
             risk += 2
 
-        return min(risk, 10)
+        if any(x in t for x in ["nuclear","missile","drone"]):
+            risk += 2
+
+        return min(risk, 10.0)
 
     # -------------------------
-    # 📈 TREND
+    # TREND (FIXED)
     # -------------------------
     def _compute_trend(self, topic, score):
 
+        if not self.history:
+            return "new"
+
+        topic_key = topic.lower()[:40]
+
         past = [
-            h["score"] for h in self.history
-            if topic[:40] in h.get("topic", "")
+            h["score"]
+            for h in self.history
+            if topic_key in h.get("topic", "").lower()
         ]
 
         if not past:
@@ -118,26 +147,26 @@ class GlobalIntelligenceEngine:
         return "stable"
 
     # -------------------------
-    # 🧠 IMPORTANCE
+    # IMPORTANCE (FIXED)
     # -------------------------
     def _importance(self, score, risk):
 
         val = score + risk
 
-        if val > 12:
+        if val >= 12:
             return "critical"
-        elif val > 8:
+        elif val >= 8:
             return "high"
-        elif val > 5:
+        elif val >= 5:
             return "medium"
         return "low"
 
     # -------------------------
-    # 🧾 SUMMARY (GERÇEK)
+    # SUMMARY (UPGRADE)
     # -------------------------
     def _build_summary(self, topic, category, risk):
 
-        return f"{category.upper()} SIGNAL: {topic} | risk={risk}"
+        return f"[{category.upper()}] {topic} | risk={round(risk,1)}"
 
     # -------------------------
     def _safe_float(self, x, default=1.0):
