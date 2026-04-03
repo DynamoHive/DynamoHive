@@ -1,13 +1,21 @@
-from fastapi import APIRouter
-from backend.storage import get_posts
-
-router = APIRouter()
-
-
-@router.get("/posts")
-def get_posts_api():
     posts = get_posts()
-    return {"posts": posts}
+
+    # posts → signal formatı
+    signals = []
+    for p in posts:
+        signals.append({
+            "post_id": p["id"],
+            "score": 0,
+            "content": p
+        })
+
+    # ranking uygula
+    ranked = rank_signals(signals)
+
+    # tekrar post listesine çevir
+    ranked_posts = [s["content"] for s in ranked]
+
+    return {"posts": ranked_posts}
 
 
 @router.get("/posts/{post_id}")
