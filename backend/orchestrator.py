@@ -1,4 +1,3 @@
-TAM DOSYA (KOPYALA — ESKİYİ SİL)
 import time
 import traceback
 import hashlib
@@ -9,7 +8,6 @@ from backend.logger import logger
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
 import ai_engine.signal_detector as signal_module
-# ❌ rank_signals IMPORT KALDIRILDI
 
 from backend.events import register_event, detect_event_spikes
 from backend.user_profile_engine import get_user_profile, compute_final_score
@@ -72,24 +70,21 @@ class Orchestrator:
             raw_data = process_data(raw_data)
 
             # -------------------------
-            # 2. SIGNAL (🔥 FIXED FULL)
+            # 2. SIGNAL (🔥 TEMİZ HAL)
             # -------------------------
             signals = signal_module.detect_signals(raw_data)
 
-            # 🔥 Eğer detector saçmalarsa → tüm datayı sinyal yap
+            # 🔥 fallback → detector bozulursa
             if not signals or len(signals) <= 1:
                 signals = []
                 for item in raw_data:
                     text = item.get("title") or item.get("text")
-                    if not text:
-                        continue
+                    if text:
+                        signals.append({
+                            "text": text,
+                            "score": 1.0
+                        })
 
-                    signals.append({
-                        "text": text,
-                        "score": 1.0
-                    })
-
-            # ❌ RANKING TAMAMEN KAPALI
             self.last_signal_count = len(signals)
 
             # -------------------------
@@ -137,7 +132,7 @@ class Orchestrator:
             # -------------------------
             # 6. INTELLIGENCE
             # -------------------------
-            intelligence = self._build_intelligence(signals, events)
+            intelligence = self._build_intelligence(signals)
 
             try:
                 intelligence = intel_engine.process(intelligence)
@@ -162,7 +157,7 @@ class Orchestrator:
     # 🧠 INTELLIGENCE
     # -------------------------
 
-    def _build_intelligence(self, signals, events):
+    def _build_intelligence(self, signals):
 
         intelligence = []
 
@@ -187,7 +182,7 @@ class Orchestrator:
 
             topic = intel.get("topic") or "unknown"
 
-            # 🔥 DUPLICATE KES
+            # 🔥 duplicate kes
             if is_duplicate_local(topic):
                 continue
 
@@ -225,5 +220,4 @@ class Orchestrator:
             "last_event_count": self.last_event_count,
             "anomalies": self.last_anomalies,
             "dominance": self.last_dominance[:5]
-        }
         }
