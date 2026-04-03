@@ -107,7 +107,7 @@ class Orchestrator:
                         })
 
             # 🔥 MERGE (CRITICAL FIX)
-            signals = merge_signals(signals)
+            
 
             # -------------------------
             # NORMALIZE
