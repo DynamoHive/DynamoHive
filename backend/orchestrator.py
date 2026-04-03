@@ -28,7 +28,7 @@ from ai_engine.content_filter import is_low_quality
 from ai_engine.vector_memory import search_similar, store_vector
 
 # 🔥 MAIN GLOBAL DATA (CRITICAL FIX)
-from backend.main import GLOBAL_DATA
+
 
 
 intel_engine = GlobalIntelligenceEngine()
