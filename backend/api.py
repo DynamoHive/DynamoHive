@@ -1,18 +1,34 @@
+  from fastapi import APIRouter
+from backend.storage import get_posts
+from ai_engine.signal_ranking_engine import rank_signals
+
+router = APIRouter()
+
+
+@router.get("/posts")
+def get_posts_api():
+
     posts = get_posts()
 
-    # posts → signal formatı
     signals = []
+
     for p in posts:
         signals.append({
-            "post_id": p["id"],
-            "score": 0,
-            "content": p
+            "post_id": p.get("id"),
+            "content": p,
+
+            # ranking için veri
+            "text": str(p.get("title", "")) + " " + str(p.get("content", "")),
+            "keywords": p.get("keywords", []),
+            "source": p.get("source", "unknown"),
+            "timestamp": p.get("timestamp", 0),
+
+            # event sonrası kullanılacak
+            "boost": 0
         })
 
-    # ranking uygula
     ranked = rank_signals(signals)
 
-    # tekrar post listesine çevir
     ranked_posts = [s["content"] for s in ranked]
 
     return {"posts": ranked_posts}
