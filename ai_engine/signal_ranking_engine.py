@@ -1,51 +1,14 @@
-def rank_signals(signals):
-
-    if not signals or not isinstance(signals, list):
-        return []
-
-    # 🔥 BOOST MAP
-    try:
-        boost_map = get_topic_boost()
-        if not isinstance(boost_map, dict):
-            boost_map = {}
-    except Exception as e:
-        print("BOOST ERROR:", e)
-        boost_map = {}
-
-    # 🔥 BASE SCORE
-    base_scored = []
-
-    for s in signals:
-
-        if not isinstance(s, dict):
-            continue
-
-        try:
-            s["score"] = score_signal(s, boost_map, {})
-            base_scored.append(s)
-        except Exception as e:
-            print("BASE SCORE ERROR:", e)
-
-    # 🔥 INTELLIGENCE
-    intelligence = build_intelligence(base_scored)
-
-    # 🔥 FINAL SCORE
-    ranked = []
-
-    for s in base_scored:
-        try:
-            s["score"] = score_signal(s, boost_map, intelligence)
-            ranked.append(s)
-        except Exception as e:
-            print("FINAL SCORE ERROR:", e)
-
-    # 🔥 SORT
-    ranked.sort(key=lambda x: x.get("score", 0), reverse=True)
+  ranked.sort(key=lambda x: x.get("score", 0), reverse=True)
 
     # -------------------------
-    # 🔥 CRITICAL FIX → MERGE DUPLICATES
+    # 🔥 SMART MERGE (ASIL FIX)
     # -------------------------
-    merged = {}
+    from difflib import SequenceMatcher
+
+    def similar(a, b):
+        return SequenceMatcher(None, a, b).ratio() > 0.75
+
+    merged = []
 
     for s in ranked:
 
@@ -54,18 +17,22 @@ def rank_signals(signals):
         if not topic:
             continue
 
-        if topic not in merged:
-            merged[topic] = s
-        else:
-            # score birleştir
-            merged[topic]["score"] += s.get("score", 0)
+        found = False
 
-            # count artır
-            merged[topic]["count"] = merged[topic].get("count", 1) + 1
+        for existing in merged:
+            existing_topic = normalize(existing.get("topic") or existing.get("text"))
 
-    final = list(merged.values())
+            if similar(topic, existing_topic):
+                # 🔥 aynı topic → birleştir
+                existing["score"] += s.get("score", 0)
+                existing["count"] = existing.get("count", 1) + 1
+                found = True
+                break
 
-    # tekrar sırala
-    final.sort(key=lambda x: x.get("score", 0), reverse=True)
+        if not found:
+            merged.append(s)
 
-    return final
+    # 🔥 FINAL SORT
+    merged.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+    return merged
