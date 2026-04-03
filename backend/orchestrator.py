@@ -21,11 +21,18 @@ from backend.distribution_engine import distribute
 from ai_engine.anomaly_engine import detect_anomalies
 from ai_engine.dominance_engine import compute_dominance
 
+# 🔥 NEW SYSTEMS
+from ai_engine.intelligence_layer import IntelligenceLayer
+from ai_engine.memory_engine import MemoryEngine
+from ai_engine.dominance_core import DominanceCore
+from ai_engine.content_filter import is_low_quality
+from ai_engine.vector_memory import search_similar, store_vector
+
 
 intel_engine = GlobalIntelligenceEngine()
 
 # -------------------------
-# 🔥 DUPLICATE CACHE
+# DUPLICATE CACHE
 # -------------------------
 duplicate_cache = {}
 
@@ -57,8 +64,13 @@ class Orchestrator:
         self.last_anomalies = []
         self.last_dominance = []
 
+        # 🔥 NEW ENGINES
+        self.intel_layer = IntelligenceLayer()
+        self.memory = MemoryEngine()
+        self.dominance_core = DominanceCore()
+
     # -------------------------
-    # 🚀 MAIN LOOP
+    # MAIN LOOP
     # -------------------------
     def run_cycle(self):
 
@@ -71,7 +83,7 @@ class Orchestrator:
         try:
 
             # -------------------------
-            # 1. DATA
+            # DATA
             # -------------------------
             raw_data = crawl()
 
@@ -81,11 +93,10 @@ class Orchestrator:
             raw_data = process_data(raw_data)
 
             # -------------------------
-            # 2. SIGNAL
+            # SIGNAL
             # -------------------------
             signals = signal_module.detect_signals(raw_data)
 
-            # 🔥 HARD FALLBACK
             if not signals:
                 signals = []
                 for item in raw_data[:20]:
@@ -96,7 +107,7 @@ class Orchestrator:
                             "score": 1.0
                         })
 
-            # 🔥 NORMALIZE (CRITICAL)
+            # NORMALIZE
             normalized = []
             for s in signals:
 
@@ -121,7 +132,7 @@ class Orchestrator:
             self.last_signal_count = len(signals)
 
             # -------------------------
-            # 3. EVENTS
+            # EVENTS
             # -------------------------
             for s in signals:
                 register_event(s["topic"])
@@ -130,7 +141,7 @@ class Orchestrator:
             self.last_event_count = len(events)
 
             # -------------------------
-            # 4. PERSONALIZATION
+            # PERSONALIZATION
             # -------------------------
             profile = get_user_profile("global_user")
 
@@ -141,7 +152,7 @@ class Orchestrator:
                     pass
 
             # -------------------------
-            # 5. ANOMALY + DOMINANCE
+            # ANOMALY + DOMINANCE
             # -------------------------
             try:
                 self.last_anomalies = detect_anomalies(signals, events)
@@ -156,17 +167,22 @@ class Orchestrator:
                 self.last_dominance = []
 
             # -------------------------
-            # 6. INTELLIGENCE
+            # 🔥 ADVANCED INTELLIGENCE
             # -------------------------
-            intelligence = self._build_intelligence(signals)
+            intelligence = self.intel_layer.process(signals)
+
+            intelligence = self.memory.boost(intelligence)
+            intelligence = self.dominance_core.rank(intelligence)
 
             try:
                 intelligence = intel_engine.process(intelligence)
             except Exception as e:
                 logger.warning(f"[INTEL ERROR] {e}")
 
+            self.memory.learn(intelligence)
+
             # -------------------------
-            # 7. CONTENT
+            # CONTENT
             # -------------------------
             self._generate_content(intelligence)
 
@@ -179,44 +195,32 @@ class Orchestrator:
             logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
     # -------------------------
-    # 🧠 INTELLIGENCE
-    # -------------------------
-    def _build_intelligence(self, signals):
-
-        intelligence = []
-
-        for s in signals:
-            topic = s["topic"]
-
-            intelligence.append({
-                "topic": topic,
-                "summary": f"{topic} shows emerging structural signals in global systems.",
-                "trend": "surging" if s.get("score", 0) > 3 else "rising",
-                "score": s.get("score", 1.0)
-            })
-
-        return intelligence
-
-    # -------------------------
-    # 📰 CONTENT
+    # CONTENT
     # -------------------------
     def _generate_content(self, intelligence):
 
         for intel in intelligence:
 
-            topic = intel.get("topic", "").strip()
+            topic = str(intel.get("topic", "")).strip()
 
             if not topic or len(topic) < 5:
                 continue
 
-            # 🔥 DUPLICATE FILTER
+            # LOCAL DUPLICATE
             if is_duplicate_local(topic):
                 continue
 
-            try:
-                content = generate_narrative(intel)
-            except Exception:
-                continue
+            # 🔥 VECTOR DUPLICATE
+            similar = search_similar(topic)
+            if similar:
+                try:
+                    if similar[0]["score"] > 0.85:
+                        continue
+                except:
+                    pass
+
+            # GENERATE
+            content = generate_narrative(intel)
 
             if not content:
                 continue
@@ -227,15 +231,27 @@ class Orchestrator:
             if not title or not body:
                 continue
 
-            if len(body) < 50:
+            # 🔥 QUALITY FILTER
+            if is_low_quality(body):
                 continue
 
+            if len(body) < 120:
+                continue
+
+            # SAVE
             try:
                 save_post(title, body)
             except Exception:
                 logger.warning("[SAVE ERROR]")
                 continue
 
+            # VECTOR MEMORY
+            try:
+                store_vector(content)
+            except Exception:
+                logger.warning("[VECTOR ERROR]")
+
+            # DISTRIBUTION
             try:
                 distribute(content)
             except Exception:
@@ -244,7 +260,7 @@ class Orchestrator:
             logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
 
     # -------------------------
-    # 📊 STATUS
+    # STATUS
     # -------------------------
     def get_status(self):
         return {
