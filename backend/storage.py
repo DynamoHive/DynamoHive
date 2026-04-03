@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import time
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "database", "dynamohive.db")
@@ -56,4 +57,23 @@ def get_posts():
     rows = cursor.fetchall()
     conn.close()
 
-    return [dict(row) for row in rows]
+    posts = []
+
+    for row in rows:
+        post = dict(row)
+
+        # timestamp üret
+        try:
+            post["timestamp"] = time.mktime(
+                time.strptime(post["created_at"], "%Y-%m-%d %H:%M:%S")
+            )
+        except:
+            post["timestamp"] = time.time()
+
+        # AI alanları
+        post["keywords"] = []
+        post["source"] = "internal"
+
+        posts.append(post)
+
+    return posts
