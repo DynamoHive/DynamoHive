@@ -1,4 +1,5 @@
 import time
+from collections import defaultdict
 from backend.analytics_engine import get_topic_boost
 
 
@@ -22,6 +23,43 @@ def safe_float(x, default=0.0):
 
 def normalize(text):
     return safe_str(text).lower()
+
+
+# -------------------------
+# INTELLIGENCE LAYER
+# -------------------------
+
+def build_intelligence(signals):
+
+    topic_strength = defaultdict(float)
+    topic_count = defaultdict(int)
+
+    for s in signals:
+
+        topic = normalize(s.get("topic") or s.get("text"))
+        score = safe_float(s.get("score", 0))
+        count = int(s.get("count", 1))
+
+        topic_strength[topic] += score * count
+        topic_count[topic] += count
+
+    total = sum(topic_strength.values()) or 1
+
+    intelligence = {}
+
+    for topic in topic_strength:
+
+        strength = topic_strength[topic]
+        count = topic_count[topic]
+        dominance = strength / total
+
+        intelligence[topic] = {
+            "strength": strength,
+            "count": count,
+            "dominance": dominance
+        }
+
+    return intelligence
 
 
 # -------------------------
@@ -94,8 +132,6 @@ def event_boost_score(text, boost_map):
 
         if match_count > 0:
             ratio = match_count / len(words)
-
-            # 🔥 güçlü ama kontrolü boost
             total += boost * ratio * 2.5
 
     return total
@@ -105,14 +141,15 @@ def event_boost_score(text, boost_map):
 # MAIN SCORING
 # -------------------------
 
-def score_signal(signal, boost_map):
+def score_signal(signal, boost_map, intelligence):
 
     try:
-        # 🔥 KRİTİK: topic + text birleşti
         text = normalize(
             safe_str(signal.get("text", "")) + " " +
             safe_str(signal.get("topic", ""))
         )
+
+        topic = normalize(signal.get("topic", ""))
 
         source = signal.get("source", "")
         timestamp = signal.get("timestamp", 0)
@@ -123,8 +160,18 @@ def score_signal(signal, boost_map):
         score += keyword_score(text)
         score += freshness_score(timestamp)
 
-        # 🔥 EVENT INTELLIGENCE
+        # 🔥 EVENT BOOST
         score += event_boost_score(text, boost_map)
+
+        # 🔥 INTELLIGENCE BOOST (ANA FARK)
+        if topic in intelligence:
+
+            dominance = intelligence[topic].get("dominance", 0)
+            strength = intelligence[topic].get("strength", 0)
+
+            # 🔥 agresif ama kontrollü
+            score += dominance * 120
+            score += (strength ** 0.5)  # log benzeri büyüme
 
         return round(score, 2)
 
@@ -142,7 +189,7 @@ def rank_signals(signals):
     if not signals or not isinstance(signals, list):
         return []
 
-    # 🔥 boost güvenli yükleme
+    # 🔥 BOOST MAP
     try:
         boost_map = get_topic_boost()
         if not isinstance(boost_map, dict):
@@ -151,7 +198,8 @@ def rank_signals(signals):
         print("BOOST ERROR:", e)
         boost_map = {}
 
-    ranked = []
+    # 🔥 BASE SCORE (ilk tur)
+    base_scored = []
 
     for s in signals:
 
@@ -159,11 +207,26 @@ def rank_signals(signals):
             continue
 
         try:
-            s["score"] = score_signal(s, boost_map)
+            s["score"] = score_signal(s, boost_map, {})
+            base_scored.append(s)
+        except Exception as e:
+            print("BASE SCORE ERROR:", e)
+
+    # 🔥 INTELLIGENCE BUILD
+    intelligence = build_intelligence(base_scored)
+
+    # 🔥 FINAL SCORE (intelligence ile)
+    ranked = []
+
+    for s in base_scored:
+
+        try:
+            s["score"] = score_signal(s, boost_map, intelligence)
             ranked.append(s)
         except Exception as e:
-            print("RANK ITEM ERROR:", e)
+            print("FINAL SCORE ERROR:", e)
 
+    # 🔥 SORT
     try:
         ranked.sort(key=lambda x: x.get("score", 0), reverse=True)
     except Exception as e:
