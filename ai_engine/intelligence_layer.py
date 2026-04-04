@@ -1,38 +1,68 @@
 import re
 
+# -------------------------
+# KEYWORD MAP
+# -------------------------
+
+GEO_KEYWORDS = ["war", "attack", "conflict", "missile", "strike"]
+CRISIS_KEYWORDS = ["sanction", "crisis", "collapse", "tension"]
+AI_KEYWORDS = ["ai", "openai", "anthropic", "google", "model"]
+ECON_KEYWORDS = ["ipo", "billion", "valuation", "market", "funding"]
+SOCIAL_KEYWORDS = ["protest", "uprising", "riot", "strike"]
+TECH_KEYWORDS = ["robot", "automation", "chip", "gpu", "compute"]
+
+
+# -------------------------
+# MAIN
+# -------------------------
+
 def enrich_intelligence(signals):
 
     enriched = []
 
     for s in signals:
 
-        topic = str(s.get("topic", "")).lower()
+        topic_raw = str(s.get("topic", ""))
+        topic = topic_raw.lower()
 
         insight = []
+        score_boost = 0
 
         # -------------------------
-        # GEOPOLITICAL SIGNALS
+        # GEOPOLITICAL
         # -------------------------
-        if any(x in topic for x in ["war", "attack", "conflict", "missile"]):
+        if any(k in topic for k in GEO_KEYWORDS):
             insight.append("geopolitical escalation")
+            score_boost += 2
 
-        if any(x in topic for x in ["sanction", "crisis", "collapse"]):
+        if any(k in topic for k in CRISIS_KEYWORDS):
             insight.append("system instability")
+            score_boost += 1
 
         # -------------------------
-        # TECH / POWER SIGNALS
+        # AI / TECH POWER
         # -------------------------
-        if any(x in topic for x in ["ai", "openai", "anthropic", "google"]):
+        if any(k in topic for k in AI_KEYWORDS):
             insight.append("ai power shift")
+            score_boost += 2
 
-        if any(x in topic for x in ["ipo", "billion", "valuation"]):
+        if any(k in topic for k in TECH_KEYWORDS):
+            insight.append("technological acceleration")
+            score_boost += 1
+
+        # -------------------------
+        # ECONOMIC
+        # -------------------------
+        if any(k in topic for k in ECON_KEYWORDS):
             insight.append("economic expansion")
+            score_boost += 1
 
         # -------------------------
-        # SOCIAL SIGNALS
+        # SOCIAL
         # -------------------------
-        if any(x in topic for x in ["protest", "uprising", "riot"]):
+        if any(k in topic for k in SOCIAL_KEYWORDS):
             insight.append("social unrest")
+            score_boost += 1
 
         # -------------------------
         # DEFAULT
@@ -40,10 +70,18 @@ def enrich_intelligence(signals):
         if not insight:
             insight.append("emerging pattern")
 
+        # -------------------------
+        # BUILD INTEL OBJECT
+        # -------------------------
         enriched.append({
-            "topic": s.get("topic"),
-            "score": s.get("score", 1.0),
-            "insight": ", ".join(insight)
+            "topic": topic_raw,
+            "score": s.get("score", 1.0) + score_boost,
+            "insight": ", ".join(insight),
+
+            # 🔥 orchestrator + narrative için kritik
+            "information_warfare": {
+                "narratives": insight
+            }
         })
 
     return enriched
