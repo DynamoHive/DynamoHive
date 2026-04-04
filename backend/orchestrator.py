@@ -4,7 +4,7 @@ import hashlib
 
 from backend.logger import logger
 
-# --- SAFE IMPORTS (hiçbiri sistemi düşürmesin)
+# SAFE IMPORTS
 try:
     from ai_engine.multi_crawler import crawl
 except:
@@ -67,69 +67,51 @@ except:
     generate_narrative = None
 
 
-# -------------------------
 # GLOBALS
-# -------------------------
 GLOBAL_DATA = []
-_duplicate_cache = {}
+duplicate_cache = {}
 
 
-# -------------------------
-# HELPERS
-# -------------------------
-def is_duplicate_local(topic: str) -> bool:
+def is_duplicate_local(topic):
     try:
-        key = hashlib.md5(topic.lower().strip().encode()).hexdigest()
+        h = hashlib.md5(topic.lower().encode()).hexdigest()
     except:
         return False
 
     now = time.time()
-    if key in _duplicate_cache and (now - _duplicate_cache[key] < 3600):
+
+    if h in duplicate_cache and now - duplicate_cache[h] < 3600:
         return True
 
-    _duplicate_cache[key] = now
+    duplicate_cache[h] = now
     return False
 
 
-def normalize_signals(signals):
+def force_signals(raw_data):
     out = []
-    for s in signals or []:
-        topic = str(s.get("topic") or s.get("title") or s.get("text") or "").strip()
-        if len(topic) < 5:
-            continue
-        out.append({
-            "topic": topic,
-            "score": float(s.get("score", 1.0))
-        })
+    for item in raw_data[:5]:
+        text = item.get("title") or item.get("text") or ""
+        if text:
+            out.append({"topic": text, "score": 1.0})
     return out
 
 
-def force_signals(raw_data):
-    forced = []
-    for item in (raw_data or [])[:5]:
-        text = (item.get("title") or item.get("text") or "").strip()
-        if text:
-            forced.append({"topic": text, "score": 1.0})
-    return forced
-
-
-def safe_generate_content(intel):
-    # narrative engine varsa kullan, yoksa fallback
+def safe_generate(intel):
     try:
         if generate_narrative:
             c = generate_narrative(intel)
-            if isinstance(c, dict) and c.get("title") and c.get("content"):
+            if c and c.get("title") and c.get("content"):
                 return c
     except:
         pass
 
-    topic = str(intel.get("topic", ""))[:120]
-    return {"title": topic, "content": topic}
+    topic = str(intel.get("topic", ""))
+    return {
+        "title": topic[:80],
+        "content": topic
+    }
 
 
-# -------------------------
-# ORCHESTRATOR
-# -------------------------
 class Orchestrator:
 
     def __init__(self):
@@ -137,65 +119,58 @@ class Orchestrator:
         self.pattern_memory = MemoryPatternEngine()
 
     def run_cycle(self):
-        t0 = time.time()
+
+        start = time.time()
         self.cycle += 1
+
         logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
 
         try:
-            # ---- DATA
-            raw = crawl() or []
-            if not raw:
-                raw = [{"text": "bootstrap signal"}]
-
-            raw = process_data(raw) or raw
+            # DATA
+            raw = crawl() or [{"text": "fallback"}]
+            raw = process_data(raw)
 
             GLOBAL_DATA.clear()
             GLOBAL_DATA.extend(raw[:100])
 
-            # ---- SIGNALS
-            signals = detect_signals(raw) or []
-            signals = normalize_signals(signals)
+            # SIGNAL
+            signals = detect_signals(raw)
 
-            # 🔥 CRITICAL: boşsa zorla üret
             if not signals:
                 logger.info("[FORCE SIGNAL]")
                 signals = force_signals(raw)
 
-            # ---- EVENTS (opsiyonel)
-            for s in signals:
-                try:
-                    register_event(s["topic"])
-                except:
-                    pass
-            try:
-                _ = detect_event_spikes()
-            except:
-                pass
-
-            # ---- PERSONALIZE (opsiyonel)
+            # PERSONALIZE
             profile = get_user_profile("global_user")
+
             for s in signals:
                 try:
                     s["score"] = compute_final_score(s, profile)
                 except:
                     pass
 
-            # ---- CONTENT
+            # CONTENT
             self._generate(signals)
 
         except Exception:
             traceback.print_exc()
 
         finally:
-            dt = round(time.time() - t0, 2)
-            logger.info(f"[ORCHESTRATOR] Cycle finished in {dt}s")
+            duration = round(time.time() - start, 2)
+            logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
-    # -------------------------
     def _generate(self, items):
+
+        MAX_POSTS = 5
         generated = 0
 
         for intel in items:
+
+            if generated >= MAX_POSTS:
+                break
+
             topic = str(intel.get("topic", "")).strip()
+
             if len(topic) < 5:
                 continue
 
@@ -205,15 +180,15 @@ class Orchestrator:
             if self.pattern_memory.seen_before(topic):
                 continue
 
-            # similarity gate (yumuşak)
             try:
-                sims = search_similar(topic) or []
+                sims = search_similar(topic)
                 if sims and sims[0].get("score", 0) > 0.95:
                     continue
             except:
                 pass
 
-            content = safe_generate_content(intel)
+            content = safe_generate(intel)
+
             title = content.get("title")
             body = content.get("content")
 
@@ -224,13 +199,12 @@ class Orchestrator:
                 continue
 
             if len(body) < 40:
-                # çok kısa ise yine de kaydet (minimum akış için)
-                body = body + "."
+                body += "."
 
             try:
                 save_post(title, body)
             except:
-                pass
+                continue
 
             try:
                 store_vector(content)
@@ -244,15 +218,13 @@ class Orchestrator:
 
             self.pattern_memory.store(topic)
             generated += 1
+
             logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
 
         if generated == 0:
-            # 🔥 son çare: tek zorunlu içerik
-            fallback = items[0] if items else {"topic": "fallback signal"}
-            topic = str(fallback.get("topic", "fallback signal"))[:120]
-            content = {"title": topic, "content": topic}
+            topic = "fallback signal"
             try:
-                save_post(content["title"], content["content"])
+                save_post(topic, topic)
             except:
                 pass
-            logger.info("[ORCHESTRATOR] GENERATED (FORCED): fallback")
+            logger.info("[ORCHESTRATOR] GENERATED (FORCED)")
