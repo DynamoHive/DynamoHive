@@ -1,11 +1,13 @@
 import time
 import traceback
 import hashlib
-from ai_engine.intelligence_layer import enrich_intelligence
-from ai_engine.power_mapping_engine import map_power
+
 from backend.logger import logger
 
+# -------------------------
 # SAFE IMPORTS
+# -------------------------
+
 try:
     from ai_engine.multi_crawler import crawl
 except:
@@ -17,16 +19,9 @@ except:
     def process_data(x): return x
 
 try:
-    import ai_engine.signal_detector as signal_module
-    detect_signals = getattr(signal_module, "detect_signals", lambda x: [])
+    from ai_engine.signal_detector import detect_signals
 except:
     def detect_signals(x): return []
-
-try:
-    from backend.events import register_event, detect_event_spikes
-except:
-    def register_event(*a, **k): pass
-    def detect_event_spikes(): return []
 
 try:
     from backend.user_profile_engine import get_user_profile, compute_final_score
@@ -68,12 +63,13 @@ except:
     generate_narrative = None
 
 
-# GLOBALS
-GLOBAL_DATA = []
+# -------------------------
+# DUPLICATE CACHE
+# -------------------------
+
 duplicate_cache = {}
 
-
-def is_duplicate_local(topic):
+def is_duplicate(topic):
     try:
         h = hashlib.md5(topic.lower().encode()).hexdigest()
     except:
@@ -88,36 +84,37 @@ def is_duplicate_local(topic):
     return False
 
 
-def force_signals(raw_data):
-    out = []
-    for item in raw_data[:5]:
-        text = item.get("title") or item.get("text") or ""
-        if text:
-            out.append({"topic": text, "score": 1.0})
-    return out
-
+# -------------------------
+# SAFE GENERATION
+# -------------------------
 
 def safe_generate(intel):
-    try:
-        if generate_narrative:
+
+    if generate_narrative:
+        try:
             c = generate_narrative(intel)
             if c and c.get("title") and c.get("content"):
                 return c
-    except:
-        pass
+        except:
+            pass
 
     topic = str(intel.get("topic", ""))
+
     return {
         "title": topic[:80],
-        "content": topic
+        "content": f"{topic} is emerging as a relevant global signal."
     }
 
+
+# -------------------------
+# ORCHESTRATOR
+# -------------------------
 
 class Orchestrator:
 
     def __init__(self):
         self.cycle = 0
-        self.pattern_memory = MemoryPatternEngine()
+        self.memory = MemoryPatternEngine()
 
     def run_cycle(self):
 
@@ -127,21 +124,29 @@ class Orchestrator:
         logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
 
         try:
-            # DATA
-            raw = crawl() or [{"text": "fallback"}]
+            # -------------------------
+            # 1. DATA
+            # -------------------------
+            raw = crawl()
+
+            if not raw:
+                logger.warning("[ORCHESTRATOR] No data from crawler")
+                return
+
             raw = process_data(raw)
 
-            GLOBAL_DATA.clear()
-            GLOBAL_DATA.extend(raw[:100])
-
-            # SIGNAL
+            # -------------------------
+            # 2. SIGNALS
+            # -------------------------
             signals = detect_signals(raw)
 
             if not signals:
-                logger.info("[FORCE SIGNAL]")
-                signals = force_signals(raw)
+                logger.warning("[ORCHESTRATOR] No signals detected")
+                return
 
-            # PERSONALIZE
+            # -------------------------
+            # 3. PERSONALIZATION
+            # -------------------------
             profile = get_user_profile("global_user")
 
             for s in signals:
@@ -150,7 +155,9 @@ class Orchestrator:
                 except:
                     pass
 
-            # CONTENT
+            # -------------------------
+            # 4. GENERATE
+            # -------------------------
             self._generate(signals)
 
         except Exception:
@@ -160,12 +167,16 @@ class Orchestrator:
             duration = round(time.time() - start, 2)
             logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
-    def _generate(self, items):
+    # -------------------------
+    # GENERATION ENGINE
+    # -------------------------
 
-        MAX_POSTS = 5
+    def _generate(self, signals):
+
         generated = 0
+        MAX_POSTS = 5
 
-        for intel in items:
+        for intel in signals:
 
             if generated >= MAX_POSTS:
                 break
@@ -175,10 +186,10 @@ class Orchestrator:
             if len(topic) < 5:
                 continue
 
-            if is_duplicate_local(topic):
+            if is_duplicate(topic):
                 continue
 
-            if self.pattern_memory.seen_before(topic):
+            if self.memory.seen_before(topic):
                 continue
 
             try:
@@ -217,15 +228,10 @@ class Orchestrator:
             except:
                 pass
 
-            self.pattern_memory.store(topic)
+            self.memory.store(topic)
             generated += 1
 
             logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
 
         if generated == 0:
-            topic = "fallback signal"
-            try:
-                save_post(topic, topic)
-            except:
-                pass
-            logger.info("[ORCHESTRATOR] GENERATED (FORCED)")
+            logger.warning("[ORCHESTRATOR] Nothing generated")
