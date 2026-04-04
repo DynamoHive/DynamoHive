@@ -1,35 +1,49 @@
+import re
+
 def enrich_intelligence(signals):
 
     enriched = []
 
     for s in signals:
 
-        topic = s.get("topic", "")
-        base = float(s.get("score", 1.0))
+        topic = str(s.get("topic", "")).lower()
 
-        narratives = []
-        actors = []
+        insight = []
 
-        t = topic.lower()
+        # -------------------------
+        # GEOPOLITICAL SIGNALS
+        # -------------------------
+        if any(x in topic for x in ["war", "attack", "conflict", "missile"]):
+            insight.append("geopolitical escalation")
 
-        if "war" in t or "attack" in t:
-            narratives.append("conflict")
+        if any(x in topic for x in ["sanction", "crisis", "collapse"]):
+            insight.append("system instability")
 
-        if "ai" in t or "openai" in t:
-            narratives.append("ai dominance")
+        # -------------------------
+        # TECH / POWER SIGNALS
+        # -------------------------
+        if any(x in topic for x in ["ai", "openai", "anthropic", "google"]):
+            insight.append("ai power shift")
 
-        for a in ["usa","china","russia","iran","israel","openai","google","tesla"]:
-            if a in t:
-                actors.append(a)
+        if any(x in topic for x in ["ipo", "billion", "valuation"]):
+            insight.append("economic expansion")
 
-        score = base + len(narratives)*1.5 + len(actors)*1.2
+        # -------------------------
+        # SOCIAL SIGNALS
+        # -------------------------
+        if any(x in topic for x in ["protest", "uprising", "riot"]):
+            insight.append("social unrest")
+
+        # -------------------------
+        # DEFAULT
+        # -------------------------
+        if not insight:
+            insight.append("emerging pattern")
 
         enriched.append({
-            "topic": topic,
-            "score": round(score,2),
-            "information_warfare": {"narratives": narratives},
-            "power": {"actors": actors},
-            "insight": topic
+            "topic": s.get("topic"),
+            "score": s.get("score", 1.0),
+            "insight": ", ".join(insight)
         })
 
     return enriched
