@@ -70,7 +70,7 @@ def is_meaningful(phrase):
 
 
 # -------------------------
-# LOW NOISE PHRASE EXTRACTION
+# PHRASE EXTRACTION
 # -------------------------
 
 def extract_phrases(words):
@@ -91,7 +91,7 @@ def extract_phrases(words):
 
 
 # -------------------------
-# CLUSTER MERGE (OVERLAP BASED)
+# CLUSTER MERGE
 # -------------------------
 
 def merge_topics(counter, scores, texts):
@@ -147,7 +147,7 @@ def detect_signals(analysis):
     keyword_scores = defaultdict(float)
     keyword_texts = defaultdict(list)
 
-    seen_texts = set()  # ✅ DOĞRU YERDE DUPLICATE
+    seen_texts = set()
 
     for item in analysis:
 
@@ -160,7 +160,6 @@ def detect_signals(analysis):
         if not text:
             continue
 
-        # 🔥 TEXT duplicate engelle
         if text in seen_texts:
             continue
         seen_texts.add(text)
@@ -184,19 +183,11 @@ def detect_signals(analysis):
             keyword_scores[kw] += score
             keyword_texts[kw].append(text)
 
-    # -------------------------
-    # CLUSTER
-    # -------------------------
-
     clusters = merge_topics(
         keyword_counter,
         keyword_scores,
         keyword_texts
     )
-
-    # -------------------------
-    # BUILD SIGNALS
-    # -------------------------
 
     signals = []
 
@@ -220,11 +211,8 @@ def detect_signals(analysis):
             "samples": list(set(c["samples"]))[:3]
         })
 
-    # -------------------------
-    # FALLBACK
-    # -------------------------
-
-    if len(signals) == 0:
+    # 🔥 FALLBACK FIX (EN KRİTİK)
+    if not signals:
 
         for item in analysis[:10]:
 
@@ -248,10 +236,6 @@ def detect_signals(analysis):
                 "boost": 1,
                 "samples": [text]
             })
-
-    # -------------------------
-    # SORT
-    # -------------------------
 
     signals.sort(
         key=lambda x: (x["boost"], x["score"], x["count"]),
