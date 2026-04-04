@@ -1,5 +1,23 @@
 from collections import defaultdict
+import re
 
+
+# -------------------------
+# CLEAN
+# -------------------------
+def normalize(text):
+    try:
+        text = str(text).lower()
+        text = re.sub(r"[^\w\s]", " ", text)
+        text = re.sub(r"\s+", " ", text)
+        return text.strip()
+    except:
+        return ""
+
+
+# -------------------------
+# MAIN
+# -------------------------
 def detect_signals(analysis):
 
     if not analysis:
@@ -7,21 +25,32 @@ def detect_signals(analysis):
         return []
 
     counter = defaultdict(int)
+    samples = {}
+    seen = set()
 
     for item in analysis:
 
-        text = str(item.get("title") or item.get("text") or "").lower()
+        raw = item.get("title") or item.get("text") or ""
+        text = normalize(raw)
 
         if not text:
             continue
+
+        # 🔥 DUPLICATE ENGELLE
+        if text in seen:
+            continue
+        seen.add(text)
 
         words = [w for w in text.split() if len(w) > 4]
 
         if len(words) < 3:
             continue
 
-        topic = " ".join(words[:6])
+        # 🔥 KRİTİK FIX → PARÇALAMA YOK
+        topic = raw.strip()[:120]
+
         counter[topic] += 1
+        samples[topic] = raw
 
     signals = []
 
@@ -30,24 +59,34 @@ def detect_signals(analysis):
         signals.append({
             "topic": topic,
             "score": float(count),
-            "count": count
+            "count": count,
+            "samples": [samples.get(topic, topic)]
         })
 
-    # 🔥 KRİTİK: fallback garanti
+    # -------------------------
+    # 🔥 GARANTİ FALLBACK
+    # -------------------------
     if not signals:
 
         for item in analysis[:10]:
 
-            text = str(item.get("title") or "").lower()
+            raw = item.get("title") or item.get("text") or ""
+            text = normalize(raw)
 
             if not text:
                 continue
 
             signals.append({
-                "topic": text[:80],
+                "topic": raw[:120],
                 "score": 1.0,
-                "count": 1
+                "count": 1,
+                "samples": [raw]
             })
+
+    # -------------------------
+    # SORT
+    # -------------------------
+    signals.sort(key=lambda x: x["score"], reverse=True)
 
     print("signals detected:", len(signals))
 
