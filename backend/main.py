@@ -50,31 +50,32 @@ def health():
 
 
 # -------------------------
-# 🔥 START ORCHESTRATOR (INLINE LOOP)
+# 🔥 BACKGROUND LOOP (FORCED START)
 # -------------------------
-@app.on_event("startup")
-def start_orchestrator():
+def start_background():
 
-    def runner():
-        print("🚀 THREAD STARTED")
+    print("🚀 FORCE START")
 
-        try:
-            orch = Orchestrator()
-            print("🔥 ORCHESTRATOR INIT OK")
+    try:
+        orch = Orchestrator()
+        print("🔥 ORCHESTRATOR READY")
 
-            while True:
-                print("🔁 LOOP TICK")
-                try:
-                    orch.run_cycle()
-                except Exception:
-                    print("❌ CYCLE ERROR")
-                    traceback.print_exc()
+        while True:
+            print("🔁 LOOP TICK")
 
-                time.sleep(20)
+            try:
+                orch.run_cycle()
+            except Exception:
+                print("❌ CYCLE ERROR")
+                traceback.print_exc()
 
-        except Exception:
-            print("❌ LOOP CRASH")
-            traceback.print_exc()
+            time.sleep(20)
 
-    thread = threading.Thread(target=runner)
-    thread.start()
+    except Exception:
+        print("❌ THREAD CRASH")
+        traceback.print_exc()
+
+
+# 🔥 THREAD DIRECT START (NO STARTUP EVENT)
+thread = threading.Thread(target=start_background)
+thread.start()
