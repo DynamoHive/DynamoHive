@@ -5,7 +5,7 @@ import hashlib
 from backend.logger import logger
 
 # -------------------------
-# SAFE IMPORTS
+# IMPORTS (SAFE)
 # -------------------------
 
 try:
@@ -22,6 +22,16 @@ try:
     from ai_engine.signal_detector import detect_signals
 except:
     def detect_signals(x): return []
+
+try:
+    from ai_engine.intelligence_layer import enrich_intelligence
+except:
+    def enrich_intelligence(x): return x
+
+try:
+    from ai_engine.power_mapping_engine import map_power
+except:
+    def map_power(x): return {}
 
 try:
     from backend.user_profile_engine import get_user_profile, compute_final_score
@@ -85,7 +95,7 @@ def is_duplicate(topic):
 
 
 # -------------------------
-# SAFE GENERATION
+# SAFE GENERATE
 # -------------------------
 
 def safe_generate(intel):
@@ -102,7 +112,7 @@ def safe_generate(intel):
 
     return {
         "title": topic[:80],
-        "content": f"{topic} is emerging as a relevant global signal."
+        "content": f"{topic} is emerging as a significant global signal."
     }
 
 
@@ -130,7 +140,7 @@ class Orchestrator:
             raw = crawl()
 
             if not raw:
-                logger.warning("[ORCHESTRATOR] No data from crawler")
+                logger.warning("[ORCHESTRATOR] No data")
                 return
 
             raw = process_data(raw)
@@ -141,7 +151,7 @@ class Orchestrator:
             signals = detect_signals(raw)
 
             if not signals:
-                logger.warning("[ORCHESTRATOR] No signals detected")
+                logger.warning("[ORCHESTRATOR] No signals")
                 return
 
             # -------------------------
@@ -156,9 +166,20 @@ class Orchestrator:
                     pass
 
             # -------------------------
-            # 4. GENERATE
+            # 4. INTELLIGENCE
             # -------------------------
-            self._generate(signals)
+            intel = enrich_intelligence(signals)
+
+            for i in intel:
+                try:
+                    i["power"] = map_power(i)
+                except:
+                    i["power"] = {}
+
+            # -------------------------
+            # 5. GENERATE
+            # -------------------------
+            self._generate(intel)
 
         except Exception:
             traceback.print_exc()
@@ -168,15 +189,15 @@ class Orchestrator:
             logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
     # -------------------------
-    # GENERATION ENGINE
+    # GENERATION
     # -------------------------
 
-    def _generate(self, signals):
+    def _generate(self, items):
 
         generated = 0
         MAX_POSTS = 5
 
-        for intel in signals:
+        for intel in items:
 
             if generated >= MAX_POSTS:
                 break
