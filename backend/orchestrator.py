@@ -1,7 +1,8 @@
 import time
 import traceback
 import hashlib
-
+from ai_engine.intelligence_layer import enrich_intelligence
+from ai_engine.power_mapping_engine import map_power
 from backend.logger import logger
 
 # SAFE IMPORTS
