@@ -39,4 +39,4 @@ def generate_narrative(intel):
         "title": title,
         "content": content
     }
-⚠️ ÇOK ÖNEMLİ
+
