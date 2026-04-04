@@ -1,29 +1,72 @@
 import time
 import traceback
+import hashlib
 
 from backend.logger import logger
 
-# SAFE IMPORT
-def safe_import(module_path, attr=None):
+from ai_engine.multi_crawler import crawl
+from ai_engine.data_pipeline import process_data
+import ai_engine.signal_detector as signal_module
+
+from backend.events import register_event, detect_event_spikes
+from backend.user_profile_engine import get_user_profile, compute_final_score
+
+from backend.storage import save_post
+from backend.distribution_engine import distribute
+
+from ai_engine.memory_pattern_engine import MemoryPatternEngine
+from ai_engine.content_filter import is_low_quality
+from ai_engine.vector_memory import search_similar, store_vector
+
+# SAFE IMPORTS
+try:
+    from ai_engine.narrative_engine import generate_narrative
+except:
+    generate_narrative = None
+
+
+# -------------------------
+# GLOBAL
+# -------------------------
+GLOBAL_DATA = []
+duplicate_cache = {}
+
+
+# -------------------------
+# DUPLICATE
+# -------------------------
+def is_duplicate_local(topic):
     try:
-        module = __import__(module_path, fromlist=[attr] if attr else [])
-        return getattr(module, attr) if attr else module
-    except Exception as e:
-        print(f"[IMPORT ERROR] {module_path}.{attr} -> {e}")
-        return None
+        topic = str(topic).lower().strip()
+        h = hashlib.md5(topic.encode()).hexdigest()
+    except:
+        return False
+
+    now = time.time()
+
+    if h in duplicate_cache:
+        if now - duplicate_cache[h] < 7200:
+            return True
+
+    duplicate_cache[h] = now
+    return False
 
 
 # -------------------------
-# IMPORTS
+# MERGE
 # -------------------------
-crawl = safe_import("ai_engine.multi_crawler", "crawl")
-process_data = safe_import("ai_engine.data_pipeline", "process_data")
-signal_module = safe_import("ai_engine.signal_detector")
+def merge_signals(signals):
+    merged = {}
 
-generate_narrative = safe_import("ai_engine.narrative_engine", "generate_narrative")
+    for s in signals:
+        topic = s["topic"]
 
-save_post = safe_import("backend.storage", "save_post")
-distribute = safe_import("backend.distribution_engine", "distribute")
+        if topic not in merged:
+            merged[topic] = s
+        else:
+            merged[topic]["score"] += s["score"]
+
+    return list(merged.values())
 
 
 # -------------------------
@@ -33,42 +76,67 @@ class Orchestrator:
 
     def __init__(self):
         self.cycle_count = 0
+        self.pattern_memory = MemoryPatternEngine()
 
+    # -------------------------
     def run_cycle(self):
 
+        start = time.time()
         self.cycle_count += 1
+
         logger.info(f"[ORCHESTRATOR] Cycle {self.cycle_count} started")
 
         try:
             # -------------------------
             # DATA
             # -------------------------
-            raw_data = []
+            raw_data = crawl()
 
-            if crawl:
-                try:
-                    raw_data = crawl()
-                except Exception as e:
-                    logger.warning(f"[CRAWL ERROR] {e}")
+            if not raw_data:
+                raw_data = [{"text": "fallback signal"}]
 
-            if process_data:
-                try:
-                    raw_data = process_data(raw_data)
-                except Exception as e:
-                    logger.warning(f"[PIPELINE ERROR] {e}")
+            raw_data = process_data(raw_data)
+
+            GLOBAL_DATA.clear()
+            GLOBAL_DATA.extend(raw_data[:100])
 
             # -------------------------
             # SIGNAL
             # -------------------------
-            signals = []
+            signals = signal_module.detect_signals(raw_data)
 
-            if signal_module and hasattr(signal_module, "detect_signals"):
+            # 🔥 FORCE SIGNAL (CRITICAL FIX)
+            if not signals:
+                logger.info("[FORCE SIGNAL ACTIVATED]")
+
+                for item in raw_data[:5]:
+                    text = item.get("title") or item.get("text") or ""
+                    if text:
+                        signals.append({
+                            "topic": text,
+                            "score": 1.0
+                        })
+
+            signals = merge_signals(signals)
+
+            # -------------------------
+            # EVENTS
+            # -------------------------
+            for s in signals:
+                register_event(s["topic"])
+
+            events = detect_event_spikes()
+
+            # -------------------------
+            # PERSONALIZATION
+            # -------------------------
+            profile = get_user_profile("global_user")
+
+            for s in signals:
                 try:
-                    signals = signal_module.detect_signals(raw_data)
-                except Exception as e:
-                    logger.warning(f"[SIGNAL ERROR] {e}")
-
-            logger.info(f"[SIGNALS] {len(signals)}")
+                    s["score"] = compute_final_score(s, profile)
+                except:
+                    pass
 
             # -------------------------
             # CONTENT
@@ -79,36 +147,44 @@ class Orchestrator:
             traceback.print_exc()
 
         finally:
-            logger.info("[ORCHESTRATOR] Cycle finished")
-
+            duration = round(time.time() - start, 2)
+            logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
     # -------------------------
-    # CONTENT
-    # -------------------------
-    def _generate_content(self, signals):
+    def _generate_content(self, intelligence):
 
-        if not signals:
-            logger.info("[CONTENT] no signals")
-            return
+        for intel in intelligence:
 
-        for s in signals:
+            topic = str(intel.get("topic", "")).strip()
 
-            topic = str(s.get("topic", "")).strip()
-
-            if not topic:
+            if not topic or len(topic) < 5:
                 continue
 
+            if is_duplicate_local(topic):
+                continue
+
+            if self.pattern_memory.seen_before(topic):
+                continue
+
+            similar = search_similar(topic)
+            if similar:
+                try:
+                    if similar[0]["score"] > 0.92:
+                        continue
+                except:
+                    pass
+
+            # 🔥 SAFE NARRATIVE
             try:
                 if generate_narrative:
-                    content = generate_narrative(s)
+                    content = generate_narrative(intel)
                 else:
-                    content = {"title": topic, "content": topic}
-            except Exception as e:
-                logger.warning(f"[NARRATIVE ERROR] {e}")
-                continue
-
-            if not content:
-                continue
+                    raise Exception("no narrative engine")
+            except:
+                content = {
+                    "title": topic[:80],
+                    "content": topic
+                }
 
             title = content.get("title")
             body = content.get("content")
@@ -116,16 +192,27 @@ class Orchestrator:
             if not title or not body:
                 continue
 
-            try:
-                if save_post:
-                    save_post(title, body)
-            except Exception as e:
-                logger.warning(f"[SAVE ERROR] {e}")
+            if is_low_quality(body):
+                continue
+
+            if len(body) < 50:
+                continue
 
             try:
-                if distribute:
-                    distribute(content)
-            except Exception as e:
-                logger.warning(f"[DISTRIBUTION ERROR] {e}")
+                save_post(title, body)
+            except:
+                continue
 
-            logger.info(f"[GENERATED] {topic}")
+            self.pattern_memory.store(topic)
+
+            try:
+                store_vector(content)
+            except:
+                pass
+
+            try:
+                distribute(content)
+            except:
+                pass
+
+            logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
