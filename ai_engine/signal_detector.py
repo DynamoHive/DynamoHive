@@ -2,9 +2,6 @@ from collections import defaultdict
 import re
 
 
-# -------------------------
-# CLEAN
-# -------------------------
 def normalize(text):
     try:
         text = str(text).lower()
@@ -15,9 +12,22 @@ def normalize(text):
         return ""
 
 
-# -------------------------
-# MAIN
-# -------------------------
+def compute_score(text, count):
+
+    t = text.lower()
+    score = count * 2
+
+    strong = [
+        "war","attack","crisis","collapse",
+        "ai","nuclear","sanction","conflict"
+    ]
+
+    if any(w in t for w in strong):
+        score += 3
+
+    return score
+
+
 def detect_signals(analysis):
 
     if not analysis:
@@ -25,7 +35,6 @@ def detect_signals(analysis):
         return []
 
     counter = defaultdict(int)
-    samples = {}
     seen = set()
 
     for item in analysis:
@@ -36,56 +45,35 @@ def detect_signals(analysis):
         if not text:
             continue
 
-        # 🔥 DUPLICATE ENGELLE
         if text in seen:
             continue
         seen.add(text)
 
-        words = [w for w in text.split() if len(w) > 4]
-
-        if len(words) < 3:
-            continue
-
-        # 🔥 KRİTİK FIX → PARÇALAMA YOK
         topic = raw.strip()[:120]
-
         counter[topic] += 1
-        samples[topic] = raw
 
     signals = []
 
     for topic, count in counter.items():
 
+        score = compute_score(topic, count)
+
         signals.append({
             "topic": topic,
-            "score": float(count),
-            "count": count,
-            "samples": [samples.get(topic, topic)]
+            "score": score,
+            "count": count
         })
 
-    # -------------------------
-    # 🔥 GARANTİ FALLBACK
-    # -------------------------
     if not signals:
-
         for item in analysis[:10]:
+            raw = item.get("title") or ""
+            if raw:
+                signals.append({
+                    "topic": raw[:120],
+                    "score": 1.0,
+                    "count": 1
+                })
 
-            raw = item.get("title") or item.get("text") or ""
-            text = normalize(raw)
-
-            if not text:
-                continue
-
-            signals.append({
-                "topic": raw[:120],
-                "score": 1.0,
-                "count": 1,
-                "samples": [raw]
-            })
-
-    # -------------------------
-    # SORT
-    # -------------------------
     signals.sort(key=lambda x: x["score"], reverse=True)
 
     print("signals detected:", len(signals))
