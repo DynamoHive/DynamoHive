@@ -2,10 +2,6 @@ import re
 from difflib import SequenceMatcher
 
 
-# -------------------------
-# NORMALIZE
-# -------------------------
-
 def normalize(text):
     try:
         text = str(text).lower()
@@ -16,20 +12,12 @@ def normalize(text):
         return ""
 
 
-# -------------------------
-# SIMILARITY
-# -------------------------
-
 def similar(a, b):
     try:
         return SequenceMatcher(None, a, b).ratio() > 0.75
     except:
         return False
 
-
-# -------------------------
-# MERGE + RANK
-# -------------------------
 
 def merge_ranked_signals(signals):
 
@@ -66,11 +54,9 @@ def merge_ranked_signals(signals):
 
                 if similar(topic, existing_topic):
 
-                    # 🔥 MERGE
                     existing["score"] += s.get("score", 0)
                     existing["count"] = existing.get("count", 1) + 1
 
-                    # daha iyi başlığı koru
                     if len(str(topic_raw)) > len(str(existing.get("topic", ""))):
                         existing["topic"] = topic_raw
 
