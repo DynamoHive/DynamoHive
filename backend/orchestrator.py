@@ -34,6 +34,11 @@ except:
     def map_power(x): return {}
 
 try:
+    from ai_engine.prediction_engine import predict_trend
+except:
+    def predict_trend(x): return {}
+
+try:
     from backend.user_profile_engine import get_user_profile, compute_final_score
 except:
     def get_user_profile(*a, **k): return {}
@@ -53,7 +58,7 @@ try:
     from ai_engine.memory_pattern_engine import MemoryPatternEngine
 except:
     class MemoryPatternEngine:
-        def __init__(self): self.memory = set()
+        def __init__(self): self.memory = []
         def seen_before(self, x): return False
         def store(self, x): pass
         def pattern_score(self, x): return 0
@@ -154,8 +159,8 @@ class Orchestrator:
 
             if not signals:
                 logger.warning("[ORCHESTRATOR] No signals → forcing")
-
                 signals = []
+
                 for item in raw[:5]:
                     text = item.get("title") or item.get("text")
                     if text:
@@ -176,16 +181,22 @@ class Orchestrator:
                     pass
 
             # -------------------------
-            # 4. INTELLIGENCE
+            # 4. INTELLIGENCE + POWER + PREDICTION
             # -------------------------
             intel = enrich_intelligence(signals)
 
             enriched = []
             for i in intel:
+
                 try:
                     i["power"] = map_power(i)
                 except:
                     i["power"] = {}
+
+                try:
+                    i["prediction"] = predict_trend(i)
+                except:
+                    i["prediction"] = {}
 
                 enriched.append(i)
 
@@ -226,7 +237,7 @@ class Orchestrator:
             if self.memory.seen_before(topic):
                 continue
 
-            # 🔥 pattern intelligence
+            # pattern intelligence
             try:
                 if self.memory.pattern_score(topic) > 3:
                     logger.info(f"[SKIP PATTERN] {topic}")
@@ -234,7 +245,7 @@ class Orchestrator:
             except:
                 pass
 
-            # 🔥 semantic duplicate
+            # semantic duplicate
             try:
                 sims = search_similar(topic)
                 if sims and sims[0].get("score", 0) > 0.95:
