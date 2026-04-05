@@ -29,28 +29,31 @@ except:
     def merge_ranked_signals(x): return x
 
 try:
-    from ai_engine.intelligence_layer import enrich_intelligence
-except:
-    def enrich_intelligence(x): return x
-
-try:
-    from ai_engine.power_mapping_engine import map_power
-except:
-    def map_power(x): return {}
-
-# 🔥 EVENT MEMORY
-try:
     from ai_engine.event_memory_engine import register_event, detect_event_spikes
 except:
     def register_event(*a, **k): pass
     def detect_event_spikes(): return []
 
-# 🔥 TREND
 try:
     from ai_engine.trend_engine import update_trends, get_trending
 except:
     def update_trends(*a, **k): pass
     def get_trending(*a, **k): return []
+
+try:
+    from ai_engine.intelligence_layer import enrich_intelligence
+except:
+    def enrich_intelligence(x): return x
+
+try:
+    from ai_engine.importance_engine import compute_importance
+except:
+    def compute_importance(x): return x
+
+try:
+    from ai_engine.power_mapping_engine import map_power
+except:
+    def map_power(x): return {}
 
 try:
     from backend.user_profile_engine import get_user_profile, compute_final_score
@@ -249,13 +252,13 @@ class Orchestrator:
 
                 topic = str(i.get("topic", "")).lower()
 
-                # event attach
+                # EVENT attach
                 for e in spikes:
                     if e.get("topic") == topic:
                         i["event_count"] = e.get("count")
                         i["event_velocity"] = e.get("velocity")
 
-                # trend attach
+                # TREND attach
                 for t in trending:
                     if t.get("topic") == topic:
                         i["trend_score"] = t.get("score")
@@ -264,7 +267,12 @@ class Orchestrator:
                 enriched.append(i)
 
             # -------------------------
-            # 8. GENERATE
+            # 8. IMPORTANCE (FINAL DECISION)
+            # -------------------------
+            enriched = compute_importance(enriched)
+
+            # -------------------------
+            # 9. GENERATE
             # -------------------------
             self._generate(enriched)
 
@@ -288,6 +296,10 @@ class Orchestrator:
 
             if generated >= MAX_POSTS:
                 break
+
+            # 🔥 OPTIONAL HARD FILTER (dominant only)
+            # if not intel.get("dominant"):
+            #     continue
 
             topic = str(intel.get("topic", "")).strip()
 
