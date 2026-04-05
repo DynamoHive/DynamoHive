@@ -1,5 +1,5 @@
 # -------------------------
-# GLOBAL TREND STORAGE
+# GLOBAL STORAGE
 # -------------------------
 
 trend_scores = {}
@@ -17,7 +17,7 @@ def normalize_topic(t):
 
 
 # -------------------------
-# UPDATE TRENDS
+# UPDATE
 # -------------------------
 
 def update_trends(topics):
@@ -45,7 +45,7 @@ def update_trends(topics):
 
 
 # -------------------------
-# GET TRENDING
+# GET TRENDING (DICT RETURN)
 # -------------------------
 
 def get_trending(top_n=5):
@@ -56,17 +56,16 @@ def get_trending(top_n=5):
 
         items = list(trend_scores.items())
 
-        # güvenli sort
-        try:
-            items.sort(key=lambda x: x[1], reverse=True)
-        except:
-            items = sorted(
-                items,
-                key=lambda x: x[1] if isinstance(x, tuple) and len(x) > 1 else 0,
-                reverse=True
-            )
+        items.sort(key=lambda x: x[1], reverse=True)
 
-        return items[:top_n]
+        # 🔥 CRITICAL FIX: artık dict dönüyor
+        return [
+            {
+                "topic": topic,
+                "score": score
+            }
+            for topic, score in items[:top_n]
+        ]
 
     except:
         return []
