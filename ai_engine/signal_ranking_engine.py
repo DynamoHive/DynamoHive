@@ -1,119 +1,92 @@
+import re
+from difflib import SequenceMatcher
+
+
 # -------------------------
-# SAFE HELPERS
+# NORMALIZE
 # -------------------------
 
-def safe_str(x):
+def normalize(text):
     try:
-        return str(x)
+        text = str(text).lower()
+        text = re.sub(r"[^a-z0-9 ]", " ", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
     except:
         return ""
 
 
-def safe_list(x):
-    if isinstance(x, list):
-        return x
-    return []
+# -------------------------
+# SIMILARITY
+# -------------------------
+
+def similar(a, b):
+    try:
+        return SequenceMatcher(None, a, b).ratio() > 0.75
+    except:
+        return False
 
 
 # -------------------------
-# MAIN
+# MERGE + RANK
 # -------------------------
 
-def generate_narrative(intel):
+def merge_ranked_signals(signals):
 
     try:
-        if not isinstance(intel, dict):
-            return None
+        if not isinstance(signals, list):
+            return []
 
-        topic = safe_str(intel.get("topic"))
-        insight = safe_str(intel.get("insight")).lower()
-        actors = safe_list(intel.get("actors"))
-        region = safe_str(intel.get("region")) or "global"
-        urgency = safe_str(intel.get("urgency")) or "low"
-
-        if not topic:
-            return None
-
-        # -------------------------
-        # WHAT
-        # -------------------------
-        what = topic
-
-        # -------------------------
-        # WHY
-        # -------------------------
-        if "geopolitical" in insight:
-            why = "This reflects rising geopolitical tension and strategic positioning."
-
-        elif "ai" in insight or "technological" in insight:
-            why = "This signals acceleration in technological competition and capability shifts."
-
-        elif "economic" in insight:
-            why = "This indicates movement in economic power or capital flows."
-
-        elif "social" in insight:
-            why = "This reflects underlying social instability or pressure."
-
-        else:
-            why = "This is an emerging signal gaining structural relevance."
-
-        # -------------------------
-        # IMPACT
-        # -------------------------
-        if urgency == "high":
-            impact = "High probability of escalation or broader systemic effects."
-
-        elif urgency == "medium":
-            impact = "Likely to influence regional or sector-level dynamics."
-
-        else:
-            impact = "Currently limited, but worth monitoring."
-
-        # -------------------------
-        # NEXT
-        # -------------------------
-        if "geopolitical" in insight:
-            nxt = "Watch for escalation, alliances, or counter-actions."
-
-        elif "ai" in insight or "technological" in insight:
-            nxt = "Expect rapid iteration, competition, and regulatory response."
-
-        elif "economic" in insight:
-            nxt = "Monitor capital movement and institutional response."
-
-        elif "social" in insight:
-            nxt = "Watch for escalation in civil response or policy reaction."
-
-        else:
-            nxt = "Track signal frequency and cross-domain spread."
-
-        # -------------------------
-        # TITLE
-        # -------------------------
-        title = topic[:80]
-
-        # -------------------------
-        # CONTENT
-        # -------------------------
-        content = (
-            f"{what}\n\n"
-            f"Why it matters:\n{why}\n\n"
-            f"Impact:\n{impact}\n\n"
-            f"What to watch:\n{nxt}"
+        # önce score’a göre sırala
+        ranked = sorted(
+            signals,
+            key=lambda x: x.get("score", 0),
+            reverse=True
         )
 
-        # -------------------------
-        # FINAL OUTPUT
-        # -------------------------
-        return {
-            "title": title,
-            "content": content,
-            "meta": {
-                "actors": actors,
-                "region": region,
-                "urgency": urgency
-            }
-        }
+        merged = []
+
+        for s in ranked:
+
+            if not isinstance(s, dict):
+                continue
+
+            topic_raw = s.get("topic") or s.get("text")
+            topic = normalize(topic_raw)
+
+            if not topic:
+                continue
+
+            found = False
+
+            for existing in merged:
+
+                existing_topic = normalize(
+                    existing.get("topic") or existing.get("text")
+                )
+
+                if similar(topic, existing_topic):
+                    # 🔥 MERGE
+                    existing["score"] += s.get("score", 0)
+                    existing["count"] = existing.get("count", 1) + 1
+
+                    # daha güçlü topic’i koru
+                    if len(topic_raw) > len(existing.get("topic", "")):
+                        existing["topic"] = topic_raw
+
+                    found = True
+                    break
+
+            if not found:
+                merged.append({
+                    **s,
+                    "count": 1
+                })
+
+        # final sort
+        merged.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+        return merged
 
     except:
-        return None
+        return signals if isinstance(signals, list) else []
