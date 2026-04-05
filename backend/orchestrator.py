@@ -23,7 +23,6 @@ try:
 except:
     def detect_signals(x): return []
 
-# 🔥 EKLENEN (RANKING)
 try:
     from ai_engine.ranking_engine import merge_ranked_signals
 except:
@@ -38,6 +37,20 @@ try:
     from ai_engine.power_mapping_engine import map_power
 except:
     def map_power(x): return {}
+
+# 🔥 EVENT MEMORY
+try:
+    from ai_engine.event_memory_engine import register_event, detect_event_spikes
+except:
+    def register_event(*a, **k): pass
+    def detect_event_spikes(): return []
+
+# 🔥 TREND
+try:
+    from ai_engine.trend_engine import update_trends, get_trending
+except:
+    def update_trends(*a, **k): pass
+    def get_trending(*a, **k): return []
 
 try:
     from backend.user_profile_engine import get_user_profile, compute_final_score
@@ -188,11 +201,29 @@ class Orchestrator:
                 logger.warning("[ORCHESTRATOR] No signals → forcing")
                 signals = force_signals(raw)
 
-            # 🔥 KRİTİK: RANKING BURADA (HİÇBİR ŞEY DEĞİŞMEDİ)
+            # -------------------------
+            # 3. RANKING
+            # -------------------------
             signals = merge_ranked_signals(signals)
 
             # -------------------------
-            # 3. PERSONALIZATION
+            # 4. EVENT MEMORY
+            # -------------------------
+            for s in signals:
+                register_event(s.get("topic"))
+
+            spikes = detect_event_spikes()
+
+            # -------------------------
+            # 5. TREND MEMORY
+            # -------------------------
+            topics = [s.get("topic") for s in signals]
+            update_trends(topics)
+
+            trending = get_trending(5)
+
+            # -------------------------
+            # 6. PERSONALIZATION
             # -------------------------
             profile = get_user_profile("global_user")
 
@@ -203,20 +234,37 @@ class Orchestrator:
                     pass
 
             # -------------------------
-            # 4. INTELLIGENCE
+            # 7. INTELLIGENCE
             # -------------------------
             intel = enrich_intelligence(signals)
 
             enriched = []
+
             for i in intel:
+
                 try:
                     i["power"] = map_power(i)
                 except:
                     i["power"] = {}
+
+                topic = str(i.get("topic", "")).lower()
+
+                # event attach
+                for e in spikes:
+                    if e.get("topic") == topic:
+                        i["event_count"] = e.get("count")
+                        i["event_velocity"] = e.get("velocity")
+
+                # trend attach
+                for t in trending:
+                    if t.get("topic") == topic:
+                        i["trend_score"] = t.get("score")
+                        i["trend_direction"] = t.get("direction")
+
                 enriched.append(i)
 
             # -------------------------
-            # 5. GENERATE
+            # 8. GENERATE
             # -------------------------
             self._generate(enriched)
 
