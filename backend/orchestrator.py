@@ -34,11 +34,6 @@ except:
     def map_power(x): return {}
 
 try:
-    from ai_engine.prediction_engine import predict_trend
-except:
-    def predict_trend(x): return {}
-
-try:
     from backend.user_profile_engine import get_user_profile, compute_final_score
 except:
     def get_user_profile(*a, **k): return {}
@@ -58,7 +53,8 @@ try:
     from ai_engine.memory_pattern_engine import MemoryPatternEngine
 except:
     class MemoryPatternEngine:
-        def __init__(self): self.memory = []
+        def __init__(self):
+            self.memory = set()
         def seen_before(self, x): return False
         def store(self, x): pass
         def pattern_score(self, x): return 0
@@ -81,10 +77,12 @@ except:
 
 
 # -------------------------
-# DUPLICATE CACHE
+# GLOBAL FALLBACK STORAGE
 # -------------------------
 
+LAST_DATA = []
 duplicate_cache = {}
+
 
 def is_duplicate(topic):
     try:
@@ -124,6 +122,22 @@ def safe_generate(intel):
 
 
 # -------------------------
+# FORCE SIGNAL
+# -------------------------
+
+def force_signals(raw):
+    out = []
+    for item in raw[:5]:
+        text = item.get("title") or item.get("text")
+        if text:
+            out.append({
+                "topic": text,
+                "score": 1.0
+            })
+    return out
+
+
+# -------------------------
 # ORCHESTRATOR
 # -------------------------
 
@@ -147,10 +161,17 @@ class Orchestrator:
             raw = crawl()
 
             if not raw:
-                logger.warning("[ORCHESTRATOR] No data → fallback")
-                raw = [{"title": "global fallback signal"}]
+                if LAST_DATA:
+                    logger.warning("[ORCHESTRATOR] Using LAST_DATA")
+                    raw = LAST_DATA
+                else:
+                    logger.warning("[ORCHESTRATOR] No data → fallback")
+                    raw = [{"title": "global fallback signal"}]
 
             raw = process_data(raw)
+
+            LAST_DATA.clear()
+            LAST_DATA.extend(raw[:100])
 
             # -------------------------
             # 2. SIGNALS
@@ -159,15 +180,7 @@ class Orchestrator:
 
             if not signals:
                 logger.warning("[ORCHESTRATOR] No signals → forcing")
-                signals = []
-
-                for item in raw[:5]:
-                    text = item.get("title") or item.get("text")
-                    if text:
-                        signals.append({
-                            "topic": text,
-                            "score": 1.0
-                        })
+                signals = force_signals(raw)
 
             # -------------------------
             # 3. PERSONALIZATION
@@ -181,23 +194,16 @@ class Orchestrator:
                     pass
 
             # -------------------------
-            # 4. INTELLIGENCE + POWER + PREDICTION
+            # 4. INTELLIGENCE
             # -------------------------
             intel = enrich_intelligence(signals)
 
             enriched = []
             for i in intel:
-
                 try:
                     i["power"] = map_power(i)
                 except:
                     i["power"] = {}
-
-                try:
-                    i["prediction"] = predict_trend(i)
-                except:
-                    i["prediction"] = {}
-
                 enriched.append(i)
 
             # -------------------------
@@ -237,10 +243,9 @@ class Orchestrator:
             if self.memory.seen_before(topic):
                 continue
 
-            # pattern intelligence
+            # pattern check
             try:
                 if self.memory.pattern_score(topic) > 3:
-                    logger.info(f"[SKIP PATTERN] {topic}")
                     continue
             except:
                 pass
@@ -287,5 +292,12 @@ class Orchestrator:
 
             logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
 
+        # 🔥 HARD FAIL SAFE
         if generated == 0:
-            logger.warning("[ORCHESTRATOR] Nothing generated")
+            topic = "forced fallback signal"
+            try:
+                save_post(topic, topic)
+            except:
+                pass
+
+            logger.warning("[ORCHESTRATOR] GENERATED (FORCED)")
