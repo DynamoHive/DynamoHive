@@ -13,6 +13,17 @@ TECH_KEYWORDS = ["robot", "automation", "chip", "gpu", "compute"]
 
 
 # -------------------------
+# HELPERS
+# -------------------------
+
+def safe_str(x):
+    try:
+        return str(x)
+    except:
+        return ""
+
+
+# -------------------------
 # MAIN
 # -------------------------
 
@@ -29,7 +40,7 @@ def enrich_intelligence(signals):
             if not isinstance(s, dict):
                 continue
 
-            topic_raw = str(s.get("topic", "")).strip()
+            topic_raw = safe_str(s.get("topic")).strip()
 
             if not topic_raw:
                 continue
@@ -91,7 +102,6 @@ def enrich_intelligence(signals):
                 "score": s.get("score", 1.0) + score_boost,
                 "insight": ", ".join(insight),
 
-                # 🔥 structured intelligence (ek)
                 "information_warfare": {
                     "narratives": insight
                 }
