@@ -28,49 +28,64 @@ try:
 except:
     def merge_ranked_signals(x): return x
 
+# EVENT
 try:
     from ai_engine.event_memory_engine import register_event, detect_event_spikes
 except:
     def register_event(*a, **k): pass
     def detect_event_spikes(): return []
 
+# TREND (DICT RETURN)
 try:
     from ai_engine.trend_engine import update_trends, get_trending
 except:
     def update_trends(*a, **k): pass
     def get_trending(*a, **k): return []
 
+# INTELLIGENCE
 try:
     from ai_engine.intelligence_layer import enrich_intelligence
 except:
     def enrich_intelligence(x): return x
 
+# IMPORTANCE
 try:
     from ai_engine.importance_engine import compute_importance
 except:
     def compute_importance(x): return x
 
+# DECISION (FULL PIPE)
+try:
+    from ai_engine.decision_engine import run_decision_pipeline
+except:
+    def run_decision_pipeline(x): return x
+
+# POWER
 try:
     from ai_engine.power_mapping_engine import map_power
 except:
     def map_power(x): return {}
 
+# USER
 try:
     from backend.user_profile_engine import get_user_profile, compute_final_score
 except:
     def get_user_profile(*a, **k): return {}
     def compute_final_score(s, p): return s.get("score", 1.0)
 
+# STORAGE
 try:
     from backend.storage import save_post
 except:
     def save_post(*a, **k): pass
 
+# DISTRIBUTION
 try:
     from backend.distribution_engine import distribute
 except:
     def distribute(*a, **k): pass
 
+# MEMORY
 try:
     from ai_engine.memory_pattern_engine import MemoryPatternEngine
 except:
@@ -81,17 +96,20 @@ except:
         def store(self, x): pass
         def pattern_score(self, x): return 0
 
+# FILTER
 try:
     from ai_engine.content_filter import is_low_quality
 except:
     def is_low_quality(x): return False
 
+# VECTOR
 try:
     from ai_engine.vector_memory import search_similar, store_vector
 except:
     def search_similar(*a, **k): return []
     def store_vector(*a, **k): pass
 
+# NARRATIVE
 try:
     from ai_engine.narrative_engine import generate_narrative
 except:
@@ -99,7 +117,7 @@ except:
 
 
 # -------------------------
-# GLOBAL FALLBACK STORAGE
+# GLOBAL
 # -------------------------
 
 LAST_DATA = []
@@ -176,6 +194,8 @@ class Orchestrator:
 
         logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
 
+        enriched = []
+
         try:
             # -------------------------
             # 1. DATA
@@ -210,7 +230,7 @@ class Orchestrator:
             signals = merge_ranked_signals(signals)
 
             # -------------------------
-            # 4. EVENT MEMORY
+            # 4. EVENT
             # -------------------------
             for s in signals:
                 register_event(s.get("topic"))
@@ -218,15 +238,15 @@ class Orchestrator:
             spikes = detect_event_spikes()
 
             # -------------------------
-            # 5. TREND MEMORY
+            # 5. TREND
             # -------------------------
             topics = [s.get("topic") for s in signals]
             update_trends(topics)
 
-            trending = get_trending(5)
+            trending = get_trending(5)  # dict list
 
             # -------------------------
-            # 6. PERSONALIZATION
+            # 6. PERSONAL SCORE
             # -------------------------
             profile = get_user_profile("global_user")
 
@@ -241,8 +261,6 @@ class Orchestrator:
             # -------------------------
             intel = enrich_intelligence(signals)
 
-            enriched = []
-
             for i in intel:
 
                 try:
@@ -252,27 +270,32 @@ class Orchestrator:
 
                 topic = str(i.get("topic", "")).lower()
 
-                # EVENT attach
+                # EVENT
                 for e in spikes:
                     if e.get("topic") == topic:
                         i["event_count"] = e.get("count")
                         i["event_velocity"] = e.get("velocity")
 
-                # TREND attach
+                # TREND (FIXED)
                 for t in trending:
                     if t.get("topic") == topic:
                         i["trend_score"] = t.get("score")
-                        i["trend_direction"] = t.get("direction")
+                        i["trend_direction"] = "rising" if t.get("score", 0) > 5 else "stable"
 
                 enriched.append(i)
 
             # -------------------------
-            # 8. IMPORTANCE (FINAL DECISION)
+            # 8. IMPORTANCE
             # -------------------------
             enriched = compute_importance(enriched)
 
             # -------------------------
-            # 9. GENERATE
+            # 9. DECISION
+            # -------------------------
+            enriched = run_decision_pipeline(enriched)
+
+            # -------------------------
+            # 10. GENERATE
             # -------------------------
             self._generate(enriched)
 
@@ -282,6 +305,10 @@ class Orchestrator:
         finally:
             duration = round(time.time() - start, 2)
             logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
+
+        # 🔥 CRITICAL RETURN (PLATFORM FIX)
+        return enriched
+
 
     # -------------------------
     # GENERATION
@@ -296,10 +323,6 @@ class Orchestrator:
 
             if generated >= MAX_POSTS:
                 break
-
-            # 🔥 OPTIONAL HARD FILTER (dominant only)
-            # if not intel.get("dominant"):
-            #     continue
 
             topic = str(intel.get("topic", "")).strip()
 
@@ -360,9 +383,8 @@ class Orchestrator:
             logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
 
         if generated == 0:
-            topic = "forced fallback signal"
             try:
-                save_post(topic, topic)
+                save_post("forced fallback signal", "forced fallback signal")
             except:
                 pass
 
