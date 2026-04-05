@@ -1,24 +1,72 @@
+# -------------------------
+# GLOBAL TREND STORAGE
+# -------------------------
+
 trend_scores = {}
 
+
+# -------------------------
+# HELPERS
+# -------------------------
+
+def normalize_topic(t):
+    try:
+        return str(t).lower().strip()
+    except:
+        return ""
+
+
+# -------------------------
+# UPDATE TRENDS
+# -------------------------
 
 def update_trends(topics):
 
     global trend_scores
 
-    for t in topics:
+    try:
+        if not isinstance(topics, list):
+            return
 
-        if t not in trend_scores:
-            trend_scores[t] = 0
+        for t in topics:
 
-        trend_scores[t] += 1
+            topic = normalize_topic(t)
 
+            if not topic:
+                continue
+
+            if topic not in trend_scores:
+                trend_scores[topic] = 0
+
+            trend_scores[topic] += 1
+
+    except:
+        pass
+
+
+# -------------------------
+# GET TRENDING
+# -------------------------
 
 def get_trending(top_n=5):
 
-    sorted_trends = sorted(
-        trend_scores.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )
+    try:
+        if not isinstance(top_n, int) or top_n <= 0:
+            top_n = 5
 
-    return sorted_trends[:top_n]
+        items = list(trend_scores.items())
+
+        # güvenli sort
+        try:
+            items.sort(key=lambda x: x[1], reverse=True)
+        except:
+            items = sorted(
+                items,
+                key=lambda x: x[1] if isinstance(x, tuple) and len(x) > 1 else 0,
+                reverse=True
+            )
+
+        return items[:top_n]
+
+    except:
+        return []
