@@ -37,7 +37,6 @@ def merge_ranked_signals(signals):
         if not isinstance(signals, list):
             return []
 
-        # önce score’a göre sırala
         ranked = sorted(
             signals,
             key=lambda x: x.get("score", 0),
@@ -66,12 +65,13 @@ def merge_ranked_signals(signals):
                 )
 
                 if similar(topic, existing_topic):
+
                     # 🔥 MERGE
                     existing["score"] += s.get("score", 0)
                     existing["count"] = existing.get("count", 1) + 1
 
-                    # daha güçlü topic’i koru
-                    if len(topic_raw) > len(existing.get("topic", "")):
+                    # daha iyi başlığı koru
+                    if len(str(topic_raw)) > len(str(existing.get("topic", ""))):
                         existing["topic"] = topic_raw
 
                     found = True
@@ -83,7 +83,6 @@ def merge_ranked_signals(signals):
                     "count": 1
                 })
 
-        # final sort
         merged.sort(key=lambda x: x.get("score", 0), reverse=True)
 
         return merged
