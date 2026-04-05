@@ -23,6 +23,12 @@ try:
 except:
     def detect_signals(x): return []
 
+# 🔥 EKLENEN (RANKING)
+try:
+    from ai_engine.ranking_engine import merge_ranked_signals
+except:
+    def merge_ranked_signals(x): return x
+
 try:
     from ai_engine.intelligence_layer import enrich_intelligence
 except:
@@ -182,6 +188,9 @@ class Orchestrator:
                 logger.warning("[ORCHESTRATOR] No signals → forcing")
                 signals = force_signals(raw)
 
+            # 🔥 KRİTİK: RANKING BURADA (HİÇBİR ŞEY DEĞİŞMEDİ)
+            signals = merge_ranked_signals(signals)
+
             # -------------------------
             # 3. PERSONALIZATION
             # -------------------------
@@ -243,14 +252,12 @@ class Orchestrator:
             if self.memory.seen_before(topic):
                 continue
 
-            # pattern check
             try:
                 if self.memory.pattern_score(topic) > 3:
                     continue
             except:
                 pass
 
-            # semantic duplicate
             try:
                 sims = search_similar(topic)
                 if sims and sims[0].get("score", 0) > 0.95:
@@ -292,7 +299,6 @@ class Orchestrator:
 
             logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
 
-        # 🔥 HARD FAIL SAFE
         if generated == 0:
             topic = "forced fallback signal"
             try:
