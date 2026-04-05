@@ -1,403 +1,145 @@
+📁 backend/orchestrator.py (FINAL)
 import time
 import traceback
-import hashlib
 
 from backend.logger import logger
 
 # -------------------------
-# SAFE IMPORTS
+# ENGINE IMPORTS
 # -------------------------
+from ai_engine.multi_crawler import crawl
+from ai_engine.data_pipeline import process_data
+from ai_engine.signal_detector import detect_signals
 
-try:
-    from ai_engine.multi_crawler import crawl
-except:
-    def crawl(): return []
+from ai_engine.intelligence.enrich_intelligence import enrich_intelligence
+from ai_engine.intelligence.decision_engine import should_generate
 
-try:
-    from ai_engine.data_pipeline import process_data
-except:
-    def process_data(x): return x
-
-try:
-    from ai_engine.signal_detector import detect_signals
-except:
-    def detect_signals(x): return []
-
-# 🔥 DOĞRU DOSYA
-try:
-    from ai_engine.signal_ranking_engine import merge_ranked_signals
-except:
-    def merge_ranked_signals(x): return x
-
-# EVENT
-try:
-    from ai_engine.event_memory_engine import register_event, detect_event_spikes
-except:
-    def register_event(*a, **k): pass
-    def detect_event_spikes(): return []
-
-# TREND
-try:
-    from ai_engine.trend_engine import update_trends, get_trending
-except:
-    def update_trends(*a, **k): pass
-    def get_trending(*a, **k): return []
-
-# INTELLIGENCE
-try:
-    from ai_engine.intelligence_layer import enrich_intelligence
-except:
-    def enrich_intelligence(x): return x
-
-# IMPORTANCE
-try:
-    from ai_engine.importance_engine import compute_importance
-except:
-    def compute_importance(x): return x
-
-# 🔥 REASONING
-try:
-    from ai_engine.reasoning_engine import add_reasoning
-except:
-    def add_reasoning(x): return x
-
-# DECISION
-try:
-    from ai_engine.decision_engine import run_decision_pipeline
-except:
-    def run_decision_pipeline(x): return x
-
-# POWER
-try:
-    from ai_engine.power_mapping_engine import map_power
-except:
-    def map_power(x): return {}
-
-# USER
-try:
-    from backend.user_profile_engine import get_user_profile, compute_final_score
-except:
-    def get_user_profile(*a, **k): return {}
-    def compute_final_score(s, p): return s.get("score", 1.0)
-
-# STORAGE
-try:
-    from backend.storage import save_post
-except:
-    def save_post(*a, **k): pass
-
-# DISTRIBUTION
-try:
-    from backend.distribution_engine import distribute
-except:
-    def distribute(*a, **k): pass
-
-# MEMORY
-try:
-    from ai_engine.memory_pattern_engine import MemoryPatternEngine
-except:
-    class MemoryPatternEngine:
-        def __init__(self):
-            self.memory = set()
-        def seen_before(self, x): return False
-        def store(self, x): pass
-        def pattern_score(self, x): return 0
-
-# FILTER
-try:
-    from ai_engine.content_filter import is_low_quality
-except:
-    def is_low_quality(x): return False
-
-# VECTOR
-try:
-    from ai_engine.vector_memory import search_similar, store_vector
-except:
-    def search_similar(*a, **k): return []
-    def store_vector(*a, **k): pass
-
-# NARRATIVE
-try:
-    from ai_engine.narrative_engine import generate_narrative
-except:
-    generate_narrative = None
-
+from ai_engine.intelligence.memory_engine import MemoryEngine
+from ai_engine.intelligence.learning_pipeline import LearningPipeline
 
 # -------------------------
-# GLOBAL
+# INIT SYSTEMS
 # -------------------------
+memory = MemoryEngine()
+learning = LearningPipeline(weights={
+    "geopolitical escalation": 2.5,
+    "system instability": 1.5,
+    "ai power shift": 2.2,
+    "technological acceleration": 1.3,
+    "economic expansion": 1.2,
+    "social unrest": 1.4,
+    "emerging pattern": 1.0
+})
 
-LAST_DATA = []
-duplicate_cache = {}
+# -------------------------
+# SAFE HELPERS
+# -------------------------
+def safe_list(x):
+    return x if isinstance(x, list) else []
 
-
-def is_duplicate(topic):
+def safe_log(msg):
     try:
-        h = hashlib.md5(topic.lower().encode()).hexdigest()
+        logger.info(msg)
     except:
-        return False
-
-    now = time.time()
-
-    if h in duplicate_cache and now - duplicate_cache[h] < 3600:
-        return True
-
-    duplicate_cache[h] = now
-    return False
-
+        print(msg)
 
 # -------------------------
-# SAFE GENERATE
+# MAIN ORCHESTRATOR
 # -------------------------
-
-def safe_generate(intel):
-
-    if generate_narrative:
-        try:
-            c = generate_narrative(intel)
-            if c and c.get("title") and c.get("content"):
-                return c
-        except:
-            pass
-
-    topic = str(intel.get("topic", ""))
-
-    return {
-        "title": topic[:80],
-        "content": f"{topic} is emerging as a significant global signal."
-    }
-
-
-# -------------------------
-# FORCE SIGNAL
-# -------------------------
-
-def force_signals(raw):
-    out = []
-    for item in raw[:5]:
-        text = item.get("title") or item.get("text")
-        if text:
-            out.append({
-                "topic": text,
-                "score": 1.0
-            })
-    return out
-
-
-# -------------------------
-# ORCHESTRATOR
-# -------------------------
-
 class Orchestrator:
 
-    def __init__(self):
-        self.cycle = 0
-        self.memory = MemoryPatternEngine()
+    def run(self):
 
-    def run_cycle(self):
-
-        start = time.time()
-        self.cycle += 1
-
-        logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
-
-        enriched = []
+        start_time = time.time()
 
         try:
-            # -------------------------
-            # 1. DATA
-            # -------------------------
-            raw = crawl()
-
-            if not raw:
-                if LAST_DATA:
-                    logger.warning("[ORCHESTRATOR] Using LAST_DATA")
-                    raw = LAST_DATA
-                else:
-                    raw = [{"title": "global fallback signal"}]
-
-            raw = process_data(raw)
-
-            LAST_DATA.clear()
-            LAST_DATA.extend(raw[:100])
+            safe_log("🚀 ORCHESTRATOR START")
 
             # -------------------------
-            # 2. SIGNALS
+            # 1. CRAWL
             # -------------------------
-            signals = detect_signals(raw)
+            raw_data = crawl()
+            raw_data = safe_list(raw_data)
+            safe_log(f"[1] Crawled: {len(raw_data)} items")
+
+            if not raw_data:
+                return []
+
+            # -------------------------
+            # 2. PROCESS
+            # -------------------------
+            processed = process_data(raw_data)
+            processed = safe_list(processed)
+            safe_log(f"[2] Processed: {len(processed)} items")
+
+            if not processed:
+                return []
+
+            # -------------------------
+            # 3. SIGNAL DETECTION
+            # -------------------------
+            signals = detect_signals(processed)
+            signals = safe_list(signals)
+            safe_log(f"[3] Signals: {len(signals)}")
 
             if not signals:
-                signals = force_signals(raw)
+                return []
 
             # -------------------------
-            # 3. MERGE (EVENT CORE)
+            # 4. INTELLIGENCE ENRICH
             # -------------------------
-            signals = merge_ranked_signals(signals)
+            enriched = enrich_intelligence(signals)
+            enriched = safe_list(enriched)
+            safe_log(f"[4] Enriched: {len(enriched)}")
+
+            if not enriched:
+                return []
 
             # -------------------------
-            # 4. EVENT MEMORY
+            # 5. MEMORY BOOST
             # -------------------------
-            for s in signals:
-                register_event(s.get("topic"))
-
-            spikes = detect_event_spikes()
+            enriched = memory.boost(enriched)
+            safe_log("[5] Memory boost applied")
 
             # -------------------------
-            # 5. TREND
+            # 6. LEARNING (KOD 7)
             # -------------------------
-            topics = [s.get("topic") for s in signals]
-            update_trends(topics)
-
-            trending = get_trending(5)
+            enriched = learning.run(enriched)
+            enriched = safe_list(enriched)
+            safe_log("[6] Learning pipeline applied")
 
             # -------------------------
-            # 6. PERSONAL SCORE
+            # 7. MEMORY LEARN
             # -------------------------
-            profile = get_user_profile("global_user")
+            memory.learn(enriched)
+            safe_log("[7] Memory updated")
 
-            for s in signals:
+            # -------------------------
+            # 8. DECISION FILTER
+            # -------------------------
+            final = []
+
+            for item in enriched:
                 try:
-                    s["score"] = compute_final_score(s, profile)
+                    if should_generate(item):
+                        final.append(item)
                 except:
-                    pass
-
-            # -------------------------
-            # 7. INTELLIGENCE
-            # -------------------------
-            intel = enrich_intelligence(signals)
-
-            for i in intel:
-
-                try:
-                    i["power"] = map_power(i)
-                except:
-                    i["power"] = {}
-
-                topic = str(i.get("topic", "")).lower()
-
-                # EVENT
-                for e in spikes:
-                    if e.get("topic") == topic:
-                        i["event_count"] = e.get("count")
-                        i["event_velocity"] = e.get("velocity")
-
-                # TREND
-                for t in trending:
-                    if t.get("topic") == topic:
-                        i["trend_score"] = t.get("score")
-                        i["trend_direction"] = "rising" if t.get("score", 0) > 5 else "stable"
-
-                enriched.append(i)
-
-            # -------------------------
-            # 8. IMPORTANCE
-            # -------------------------
-            enriched = compute_importance(enriched)
-
-            # -------------------------
-            # 9. REASONING (AI)
-            # -------------------------
-            enriched = add_reasoning(enriched)
-
-            # -------------------------
-            # 10. DECISION
-            # -------------------------
-            enriched = run_decision_pipeline(enriched)
-
-            # -------------------------
-            # 11. GENERATE
-            # -------------------------
-            self._generate(enriched)
-
-        except Exception:
-            traceback.print_exc()
-
-        finally:
-            duration = round(time.time() - start, 2)
-            logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
-
-        return enriched
-
-
-    # -------------------------
-    # GENERATION
-    # -------------------------
-
-    def _generate(self, items):
-
-        generated = 0
-
-        for intel in items:
-
-            if generated >= 5:
-                break
-
-            # 🔥 SADECE ÖNEMLİLER
-            if intel.get("importance_level") not in ["high", "critical"]:
-                continue
-
-            topic = str(intel.get("topic", "")).strip()
-
-            if len(topic) < 5:
-                continue
-
-            if is_duplicate(topic):
-                continue
-
-            if self.memory.seen_before(topic):
-                continue
-
-            try:
-                if self.memory.pattern_score(topic) > 3:
                     continue
-            except:
-                pass
 
-            try:
-                sims = search_similar(topic)
-                if sims and sims[0].get("score", 0) > 0.95:
-                    continue
-            except:
-                pass
+            safe_log(f"[8] Final Output: {len(final)}")
 
-            content = safe_generate(intel)
+            # -------------------------
+            # DONE
+            # -------------------------
+            elapsed = round(time.time() - start_time, 3)
+            safe_log(f"✅ DONE in {elapsed}s")
 
-            if not content:
-                continue
+            return final
 
-            title = content.get("title")
-            body = content.get("content")
+        except Exception as e:
 
-            if not title or not body:
-                continue
+            safe_log("❌ ORCHESTRATOR ERROR")
+            safe_log(str(e))
+            safe_log(traceback.format_exc())
 
-            if is_low_quality(body):
-                continue
-
-            try:
-                save_post(title, body)
-            except:
-                continue
-
-            try:
-                store_vector(content)
-            except:
-                pass
-
-            try:
-                distribute(content)
-            except:
-                pass
-
-            self.memory.store(topic)
-            generated += 1
-
-            logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
-
-        if generated == 0:
-            try:
-                save_post("fallback", "fallback")
-            except:
-                pass
-
-            logger.warning("[ORCHESTRATOR] GENERATED (FORCED)")
+            return []
