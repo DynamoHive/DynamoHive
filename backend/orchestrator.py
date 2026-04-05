@@ -23,8 +23,9 @@ try:
 except:
     def detect_signals(x): return []
 
+# 🔥 DOĞRU DOSYA
 try:
-    from ai_engine.ranking_engine import merge_ranked_signals
+    from ai_engine.signal_ranking_engine import merge_ranked_signals
 except:
     def merge_ranked_signals(x): return x
 
@@ -35,7 +36,7 @@ except:
     def register_event(*a, **k): pass
     def detect_event_spikes(): return []
 
-# TREND (DICT RETURN)
+# TREND
 try:
     from ai_engine.trend_engine import update_trends, get_trending
 except:
@@ -54,7 +55,13 @@ try:
 except:
     def compute_importance(x): return x
 
-# DECISION (FULL PIPE)
+# 🔥 REASONING
+try:
+    from ai_engine.reasoning_engine import add_reasoning
+except:
+    def add_reasoning(x): return x
+
+# DECISION
 try:
     from ai_engine.decision_engine import run_decision_pipeline
 except:
@@ -207,7 +214,6 @@ class Orchestrator:
                     logger.warning("[ORCHESTRATOR] Using LAST_DATA")
                     raw = LAST_DATA
                 else:
-                    logger.warning("[ORCHESTRATOR] No data → fallback")
                     raw = [{"title": "global fallback signal"}]
 
             raw = process_data(raw)
@@ -221,16 +227,15 @@ class Orchestrator:
             signals = detect_signals(raw)
 
             if not signals:
-                logger.warning("[ORCHESTRATOR] No signals → forcing")
                 signals = force_signals(raw)
 
             # -------------------------
-            # 3. RANKING
+            # 3. MERGE (EVENT CORE)
             # -------------------------
             signals = merge_ranked_signals(signals)
 
             # -------------------------
-            # 4. EVENT
+            # 4. EVENT MEMORY
             # -------------------------
             for s in signals:
                 register_event(s.get("topic"))
@@ -243,7 +248,7 @@ class Orchestrator:
             topics = [s.get("topic") for s in signals]
             update_trends(topics)
 
-            trending = get_trending(5)  # dict list
+            trending = get_trending(5)
 
             # -------------------------
             # 6. PERSONAL SCORE
@@ -276,7 +281,7 @@ class Orchestrator:
                         i["event_count"] = e.get("count")
                         i["event_velocity"] = e.get("velocity")
 
-                # TREND (FIXED)
+                # TREND
                 for t in trending:
                     if t.get("topic") == topic:
                         i["trend_score"] = t.get("score")
@@ -290,12 +295,17 @@ class Orchestrator:
             enriched = compute_importance(enriched)
 
             # -------------------------
-            # 9. DECISION
+            # 9. REASONING (AI)
+            # -------------------------
+            enriched = add_reasoning(enriched)
+
+            # -------------------------
+            # 10. DECISION
             # -------------------------
             enriched = run_decision_pipeline(enriched)
 
             # -------------------------
-            # 10. GENERATE
+            # 11. GENERATE
             # -------------------------
             self._generate(enriched)
 
@@ -306,7 +316,6 @@ class Orchestrator:
             duration = round(time.time() - start, 2)
             logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
-        # 🔥 CRITICAL RETURN (PLATFORM FIX)
         return enriched
 
 
@@ -317,12 +326,15 @@ class Orchestrator:
     def _generate(self, items):
 
         generated = 0
-        MAX_POSTS = 5
 
         for intel in items:
 
-            if generated >= MAX_POSTS:
+            if generated >= 5:
                 break
+
+            # 🔥 SADECE ÖNEMLİLER
+            if intel.get("importance_level") not in ["high", "critical"]:
+                continue
 
             topic = str(intel.get("topic", "")).strip()
 
@@ -350,6 +362,9 @@ class Orchestrator:
 
             content = safe_generate(intel)
 
+            if not content:
+                continue
+
             title = content.get("title")
             body = content.get("content")
 
@@ -358,9 +373,6 @@ class Orchestrator:
 
             if is_low_quality(body):
                 continue
-
-            if len(body) < 40:
-                body += "."
 
             try:
                 save_post(title, body)
@@ -384,7 +396,7 @@ class Orchestrator:
 
         if generated == 0:
             try:
-                save_post("forced fallback signal", "forced fallback signal")
+                save_post("fallback", "fallback")
             except:
                 pass
 
