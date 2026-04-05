@@ -5,7 +5,7 @@ import hashlib
 from backend.logger import logger
 
 # -------------------------
-# IMPORTS (SAFE)
+# SAFE IMPORTS
 # -------------------------
 
 try:
@@ -53,8 +53,10 @@ try:
     from ai_engine.memory_pattern_engine import MemoryPatternEngine
 except:
     class MemoryPatternEngine:
-        def seen_before(self, *a, **k): return False
-        def store(self, *a, **k): pass
+        def __init__(self): self.memory = set()
+        def seen_before(self, x): return False
+        def store(self, x): pass
+        def pattern_score(self, x): return 0
 
 try:
     from ai_engine.content_filter import is_low_quality
@@ -140,8 +142,8 @@ class Orchestrator:
             raw = crawl()
 
             if not raw:
-                logger.warning("[ORCHESTRATOR] No data")
-                return
+                logger.warning("[ORCHESTRATOR] No data → fallback")
+                raw = [{"title": "global fallback signal"}]
 
             raw = process_data(raw)
 
@@ -151,8 +153,16 @@ class Orchestrator:
             signals = detect_signals(raw)
 
             if not signals:
-                logger.warning("[ORCHESTRATOR] No signals")
-                return
+                logger.warning("[ORCHESTRATOR] No signals → forcing")
+
+                signals = []
+                for item in raw[:5]:
+                    text = item.get("title") or item.get("text")
+                    if text:
+                        signals.append({
+                            "topic": text,
+                            "score": 1.0
+                        })
 
             # -------------------------
             # 3. PERSONALIZATION
@@ -170,16 +180,19 @@ class Orchestrator:
             # -------------------------
             intel = enrich_intelligence(signals)
 
+            enriched = []
             for i in intel:
                 try:
                     i["power"] = map_power(i)
                 except:
                     i["power"] = {}
 
+                enriched.append(i)
+
             # -------------------------
             # 5. GENERATE
             # -------------------------
-            self._generate(intel)
+            self._generate(enriched)
 
         except Exception:
             traceback.print_exc()
@@ -213,6 +226,15 @@ class Orchestrator:
             if self.memory.seen_before(topic):
                 continue
 
+            # 🔥 pattern intelligence
+            try:
+                if self.memory.pattern_score(topic) > 3:
+                    logger.info(f"[SKIP PATTERN] {topic}")
+                    continue
+            except:
+                pass
+
+            # 🔥 semantic duplicate
             try:
                 sims = search_similar(topic)
                 if sims and sims[0].get("score", 0) > 0.95:
