@@ -1,70 +1,75 @@
-# -------------------------
-# IMPORTANCE ENGINE
-# -------------------------
-
-def compute_importance(signals):
+def compute_importance(items):
 
     try:
-        if not isinstance(signals, list):
+        if not isinstance(items, list):
             return []
 
-        output = []
+        out = []
 
-        for s in signals:
+        for i in items:
 
-            if not isinstance(s, dict):
+            if not isinstance(i, dict):
                 continue
 
-            base_score = s.get("score", 0)
-            event_count = s.get("event_count", 0)
-            velocity = s.get("event_velocity", 0)
-            trend_score = s.get("trend_score", 0)
+            score = i.get("score", 0)
+            count = i.get("count", 1)
+            velocity = i.get("event_velocity", 0)
+            trend = i.get("trend_direction", "stable")
+            insight = i.get("insight", "")
+
+            importance = score
 
             # -------------------------
-            # FINAL IMPORTANCE SCORE
+            # FREQUENCY BOOST
             # -------------------------
-            importance = (
-                base_score +
-                (event_count * 2) +
-                (velocity * 10) +
-                trend_score
-            )
+            if count > 1:
+                importance += count * 2
+
+            # -------------------------
+            # EVENT VELOCITY
+            # -------------------------
+            if velocity > 0.2:
+                importance += 5
+
+            # -------------------------
+            # TREND
+            # -------------------------
+            if trend == "rising":
+                importance += 3
+
+            # -------------------------
+            # DOMAIN WEIGHT
+            # -------------------------
+            if "geopolitical" in insight:
+                importance += 5
+
+            if "ai" in insight:
+                importance += 4
+
+            if "economic" in insight:
+                importance += 3
 
             # -------------------------
             # LEVEL
             # -------------------------
-            level = "low"
-
-            if importance >= 50:
+            if importance >= 25:
                 level = "critical"
-            elif importance >= 25:
+            elif importance >= 15:
                 level = "high"
-            elif importance >= 10:
+            elif importance >= 8:
                 level = "medium"
+            else:
+                level = "low"
 
-            # -------------------------
-            # DOMINANCE
-            # -------------------------
-            dominance = False
+            i["importance_score"] = importance
+            i["importance_level"] = level
 
-            if level == "critical" and velocity > 0.3:
-                dominance = True
+            # 🔥 DOMINANCE FLAG
+            i["dominant"] = True if importance >= 20 else False
 
-            # -------------------------
-            # UPDATE OBJECT
-            # -------------------------
-            s["importance_score"] = round(importance, 2)
-            s["importance_level"] = level
-            s["dominant"] = dominance
+            out.append(i)
 
-            output.append(s)
-
-        # -------------------------
-        # SORT
-        # -------------------------
-        output.sort(key=lambda x: x.get("importance_score", 0), reverse=True)
-
-        return output
+        return out
 
     except:
-        return signals if isinstance(signals, list) else []
+        return items if isinstance(items, list) else []
