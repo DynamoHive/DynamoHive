@@ -18,70 +18,86 @@ TECH_KEYWORDS = ["robot", "automation", "chip", "gpu", "compute"]
 
 def enrich_intelligence(signals):
 
-    enriched = []
+    try:
+        if not isinstance(signals, list):
+            return []
 
-    for s in signals:
+        enriched = []
 
-        topic_raw = str(s.get("topic", ""))
-        topic = topic_raw.lower()
+        for s in signals:
 
-        insight = []
-        score_boost = 0
+            if not isinstance(s, dict):
+                continue
 
-        # -------------------------
-        # GEOPOLITICAL
-        # -------------------------
-        if any(k in topic for k in GEO_KEYWORDS):
-            insight.append("geopolitical escalation")
-            score_boost += 2
+            topic_raw = str(s.get("topic", "")).strip()
 
-        if any(k in topic for k in CRISIS_KEYWORDS):
-            insight.append("system instability")
-            score_boost += 1
+            if not topic_raw:
+                continue
 
-        # -------------------------
-        # AI / TECH POWER
-        # -------------------------
-        if any(k in topic for k in AI_KEYWORDS):
-            insight.append("ai power shift")
-            score_boost += 2
+            topic = topic_raw.lower()
 
-        if any(k in topic for k in TECH_KEYWORDS):
-            insight.append("technological acceleration")
-            score_boost += 1
+            insight = []
+            score_boost = 0
 
-        # -------------------------
-        # ECONOMIC
-        # -------------------------
-        if any(k in topic for k in ECON_KEYWORDS):
-            insight.append("economic expansion")
-            score_boost += 1
+            # -------------------------
+            # GEOPOLITICAL
+            # -------------------------
+            if any(k in topic for k in GEO_KEYWORDS):
+                insight.append("geopolitical escalation")
+                score_boost += 2
 
-        # -------------------------
-        # SOCIAL
-        # -------------------------
-        if any(k in topic for k in SOCIAL_KEYWORDS):
-            insight.append("social unrest")
-            score_boost += 1
+            if any(k in topic for k in CRISIS_KEYWORDS):
+                insight.append("system instability")
+                score_boost += 1
 
-        # -------------------------
-        # DEFAULT
-        # -------------------------
-        if not insight:
-            insight.append("emerging pattern")
+            # -------------------------
+            # AI / TECH POWER
+            # -------------------------
+            if any(k in topic for k in AI_KEYWORDS):
+                insight.append("ai power shift")
+                score_boost += 2
 
-        # -------------------------
-        # BUILD INTEL OBJECT
-        # -------------------------
-        enriched.append({
-            "topic": topic_raw,
-            "score": s.get("score", 1.0) + score_boost,
-            "insight": ", ".join(insight),
+            if any(k in topic for k in TECH_KEYWORDS):
+                insight.append("technological acceleration")
+                score_boost += 1
 
-            # 🔥 orchestrator + narrative için kritik
-            "information_warfare": {
-                "narratives": insight
-            }
-        })
+            # -------------------------
+            # ECONOMIC
+            # -------------------------
+            if any(k in topic for k in ECON_KEYWORDS):
+                insight.append("economic expansion")
+                score_boost += 1
 
-    return enriched
+            # -------------------------
+            # SOCIAL
+            # -------------------------
+            if any(k in topic for k in SOCIAL_KEYWORDS):
+                insight.append("social unrest")
+                score_boost += 1
+
+            # -------------------------
+            # DEFAULT
+            # -------------------------
+            if not insight:
+                insight.append("emerging pattern")
+
+            # -------------------------
+            # BUILD INTEL OBJECT (NO DATA LOSS)
+            # -------------------------
+            enriched.append({
+                **s,  # 🔥 TÜM ESKİ VERİYİ KORUR
+
+                "topic": topic_raw,
+                "score": s.get("score", 1.0) + score_boost,
+                "insight": ", ".join(insight),
+
+                # 🔥 structured intelligence (ek)
+                "information_warfare": {
+                    "narratives": insight
+                }
+            })
+
+        return enriched
+
+    except:
+        return signals if isinstance(signals, list) else []
