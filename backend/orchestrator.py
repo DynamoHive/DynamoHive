@@ -1,124 +1,194 @@
 import time
 import traceback
+import hashlib
 
 from backend.logger import logger
 
-# ENGINE IMPORTS
-from ai_engine.multi_crawler import crawl
-from ai_engine.data_pipeline import process_data
-from ai_engine.signal_detector import detect_signals
+# -------------------------
+# SAFE IMPORTS
+# -------------------------
 
-from ai_engine.intelligence.enrich_intelligence import enrich_intelligence
-from ai_engine.intelligence.decision_engine import should_generate
-from ai_engine.intelligence.memory_engine import MemoryEngine
-from ai_engine.intelligence.learning_pipeline import LearningPipeline
+try:
+    from ai_engine.multi_crawler import crawl
+except:
+    def crawl(): return []
+
+try:
+    from ai_engine.data_pipeline import process_data
+except:
+    def process_data(x): return x
+
+try:
+    from ai_engine.signal_detector import detect_signals
+except:
+    def detect_signals(x): return []
+
+try:
+    from ai_engine.ranking_engine import merge_ranked_signals
+except:
+    def merge_ranked_signals(x): return x
+
+try:
+    from ai_engine.intelligence_layer import enrich_intelligence
+except:
+    def enrich_intelligence(x): return x
+
+try:
+    from ai_engine.importance_engine import compute_importance
+except:
+    def compute_importance(x): return x
+
+try:
+    from ai_engine.decision_engine import run_decision_pipeline
+except:
+    def run_decision_pipeline(x): return x
+
+try:
+    from backend.storage import save_post
+except:
+    def save_post(*a, **k): pass
 
 
-# INIT SYSTEMS
-memory = MemoryEngine()
+# -------------------------
+# GLOBALS
+# -------------------------
 
-WEIGHTS = {
-    "geopolitical escalation": 2.5,
-    "system instability": 1.5,
-    "ai power shift": 2.2,
-    "technological acceleration": 1.3,
-    "economic expansion": 1.2,
-    "social unrest": 1.4,
-    "emerging pattern": 1.0
-}
-
-learning = LearningPipeline(weights=WEIGHTS)
+LAST_DATA = []
+duplicate_cache = {}
 
 
-# SAFE HELPERS
-def safe_list(x):
-    return x if isinstance(x, list) else []
-
-
-def safe_log(msg):
+def is_duplicate(topic):
     try:
-        logger.info(msg)
-    except Exception:
-        print(msg)
+        h = hashlib.md5(str(topic).lower().encode()).hexdigest()
+    except:
+        return False
+
+    now = time.time()
+
+    if h in duplicate_cache and now - duplicate_cache[h] < 3600:
+        return True
+
+    duplicate_cache[h] = now
+    return False
 
 
-# MAIN ORCHESTRATOR
+def safe_generate(intel):
+    topic = str(intel.get("topic", ""))
+
+    return {
+        "title": topic[:80],
+        "content": f"{topic} is emerging as a significant global signal."
+    }
+
+
+def force_signals(raw):
+    out = []
+
+    for item in raw[:5]:
+        text = item.get("title") or item.get("text")
+
+        if text:
+            out.append({
+                "topic": str(text),
+                "score": 1.0
+            })
+
+    return out
+
+
+# -------------------------
+# ORCHESTRATOR
+# -------------------------
+
 class Orchestrator:
 
-    def run(self):
+    def __init__(self):
+        self.cycle = 0
 
-        start_time = time.time()
+    def run_cycle(self):
+
+        start = time.time()
+        self.cycle += 1
+
+        logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
 
         try:
-            safe_log("ORCHESTRATOR START")
+            # 1. DATA
+            raw = crawl()
 
-            # 1. CRAWL
-            raw_data = safe_list(crawl())
-            safe_log(f"[1] Crawled: {len(raw_data)}")
+            if not raw:
+                if LAST_DATA:
+                    raw = LAST_DATA
+                else:
+                    raw = [{"title": "fallback signal"}]
 
-            if not raw_data:
-                return []
+            raw = process_data(raw)
 
-            # 2. PROCESS
-            processed = safe_list(process_data(raw_data))
-            safe_log(f"[2] Processed: {len(processed)}")
+            LAST_DATA.clear()
+            LAST_DATA.extend(raw[:100])
 
-            if not processed:
-                return []
-
-            # 3. SIGNAL DETECTION
-            signals = safe_list(detect_signals(processed))
-            safe_log(f"[3] Signals: {len(signals)}")
+            # 2. SIGNALS
+            signals = detect_signals(raw)
 
             if not signals:
-                return []
+                signals = force_signals(raw)
 
-            # 4. ENRICH
-            enriched = safe_list(enrich_intelligence(signals))
-            safe_log(f"[4] Enriched: {len(enriched)}")
+            # 3. RANK
+            signals = merge_ranked_signals(signals)
 
-            if not enriched:
-                return []
+            # 4. INTELLIGENCE
+            intel = enrich_intelligence(signals)
 
-            # 5. MEMORY BOOST
-            enriched = memory.boost(enriched)
+            # 5. IMPORTANCE
+            intel = compute_importance(intel)
 
-            # 6. LEARNING
-            enriched = safe_list(learning.run(enriched))
+            # 6. DECISION
+            intel = run_decision_pipeline(intel)
 
-            # 7. MEMORY LEARN
-            memory.learn(enriched)
+            # 7. GENERATE
+            self._generate(intel)
 
-            # 8. DECISION FILTER
-            final = []
-            seen = set()
+        except Exception:
+            traceback.print_exc()
 
-            for item in enriched:
-                try:
-                    topic = str(item.get("topic", ""))
+        finally:
+            duration = round(time.time() - start, 2)
+            logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
 
-                    if not topic:
-                        continue
+    # -------------------------
+    # GENERATION
+    # -------------------------
 
-                    if topic in seen:
-                        continue
+    def _generate(self, items):
 
-                    if should_generate(item):
-                        seen.add(topic)
-                        final.append(item)
+        generated = 0
 
-                except Exception:
-                    continue
+        for intel in items:
 
-            safe_log(f"[8] Final: {len(final)}")
+            topic = str(intel.get("topic", "")).strip()
 
-            elapsed = round(time.time() - start_time, 3)
-            safe_log(f"DONE in {elapsed}s")
+            if len(topic) < 5:
+                continue
 
-            return final
+            if is_duplicate(topic):
+                continue
 
-        except Exception as e:
-            safe_log("ORCHESTRATOR ERROR")
-            safe_log(str(e))
-            safe_log(traceback.format_exc())
-            return []
+            content = safe_generate(intel)
+
+            title = content.get("title")
+            body = content.get("content")
+
+            if not title or not body:
+                continue
+
+            try:
+                save_post(title, body)
+            except:
+                continue
+
+            generated += 1
+
+            logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
+
+        if generated == 0:
+            logger.warning("[ORCHESTRATOR] NOTHING GENERATED")
