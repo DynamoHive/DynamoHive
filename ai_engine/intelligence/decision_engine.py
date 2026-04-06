@@ -10,4 +10,4 @@ def should_generate(signal):
     except:
         score = 0
 
-    return score >= 5
+   return score >= 2   
