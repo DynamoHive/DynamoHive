@@ -17,7 +17,6 @@ def run_decision_pipeline(items):
         except:
             score = 0
 
-        # ANA KARAR LOGIC
         if score >= 5:
             item["decision"] = "generate"
             item["dominant"] = True
