@@ -1,5 +1,4 @@
 def should_generate(signal):
-
     if not isinstance(signal, dict):
         return False
 
@@ -10,4 +9,4 @@ def should_generate(signal):
     except:
         score = 0
 
-   return score >= 2   
+    return score >= 2
