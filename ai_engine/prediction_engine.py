@@ -50,7 +50,7 @@ class PredictionEngine:
 
         try:
             intel = {
-                "topic": signal.get("topic"),
+                topic = signal.get("topic") or signal.get("title") or "",
                 "score": signal.get("score", 1.0),
                 "insight": context.get("insight", "")
             }
