@@ -22,16 +22,19 @@ class GlobalIntelligenceEngine:
             try:
                 topic = str(signal.get("topic", "")).strip()
 
+                if not topic:
+                    continue
+
                 mem = self.memory.load(signal) or {}
 
-                ctx = self.context.build(signal, mem)
+                ctx = self.context.build(signal, mem) or {}
 
-                reasoning = self.reasoning.analyze(signal, ctx)
+                reasoning = self.reasoning.analyze(signal, ctx) or {}
 
                 # 🔥 insight context'e yaz
                 ctx["insight"] = reasoning.get("insight", "")
 
-                prediction = self.prediction.forecast(signal, ctx)
+                prediction = self.prediction.forecast(signal, ctx) or {}
 
                 intel = {
                     "topic": topic,
@@ -47,12 +50,20 @@ class GlobalIntelligenceEngine:
 
                 narrative = generate_narrative(intel)
 
-                intel["narrative"] = narrative
+                # 🔥 EN KRİTİK FIX (ASLA DROP YOK)
+                intel["narrative"] = narrative or {
+                    "title": topic[:80],
+                    "content": topic,
+                    "meta": {
+                        "actors": [],
+                        "region": "global",
+                        "urgency": "low"
+                    }
+                }
 
-                if topic and narrative:
-                    results.append(intel)
+                results.append(intel)
 
-            except:
+            except Exception:
                 continue
 
         return results
