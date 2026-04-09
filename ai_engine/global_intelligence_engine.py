@@ -20,7 +20,13 @@ class GlobalIntelligenceEngine:
         for signal in signals:
 
             try:
-                topic = str(signal.get("topic", "")).strip()
+                # 🔥 FIX: topic fallback
+                topic = str(
+                    signal.get("topic") or
+                    signal.get("title") or
+                    signal.get("text") or
+                    ""
+                ).strip()
 
                 if not topic:
                     continue
@@ -31,7 +37,6 @@ class GlobalIntelligenceEngine:
 
                 reasoning = self.reasoning.analyze(signal, ctx) or {}
 
-                # 🔥 insight context'e yaz
                 ctx["insight"] = reasoning.get("insight", "")
 
                 prediction = self.prediction.forecast(signal, ctx) or {}
@@ -50,7 +55,6 @@ class GlobalIntelligenceEngine:
 
                 narrative = generate_narrative(intel)
 
-                # 🔥 EN KRİTİK FIX (ASLA DROP YOK)
                 intel["narrative"] = narrative or {
                     "title": topic[:80],
                     "content": topic,
