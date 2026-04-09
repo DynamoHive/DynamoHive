@@ -4,18 +4,58 @@ class DecisionEngine:
 
         output = []
 
+        if not isinstance(items, list):
+            return output
+
         for item in items:
 
-            score = item.get("signal", {}).get("score", 0)
+            try:
+                signal = item.get("signal", {})
+                prediction = item.get("prediction", {})
+                reasoning = item.get("reasoning", {})
 
-            impact = item.get("prediction", {}).get("impact_score", 0.5)
-            confidence = item.get("reasoning", {}).get("confidence", 0.5)
+                score = signal.get("score", 0)
+                impact = prediction.get("impact_score", 0.5)
 
-            priority = (score * 0.4) + (impact * 0.3) + (confidence * 0.3)
+                # güvenli confidence (dict değilse kırılmaz)
+                if isinstance(reasoning, dict):
+                    confidence = reasoning.get("confidence", 0.5)
+                else:
+                    confidence = 0.5
 
-            publish = priority > 0.6
+                # 🔥 YENİ: URGENCY
+                urgency = item.get("urgency", "low")
 
-            item["decision"] = {
-                "publish": publish,
-                "priority": priority
-            }
+                urgency_map = {
+                    "low": 0.3,
+                    "medium": 0.6,
+                    "high": 0.9
+                }
+
+                urgency_score = urgency_map.get(urgency, 0.3)
+
+                # 🔥 GELİŞMİŞ PRIORITY
+                priority = (
+                    (score * 0.3) +
+                    (impact * 0.25) +
+                    (confidence * 0.25) +
+                    (urgency_score * 0.2)
+                )
+
+                publish = priority > 0.55
+
+                item["decision"] = {
+                    "publish": publish,
+                    "priority": round(priority, 3),
+                    "score": score,
+                    "impact": impact,
+                    "confidence": confidence,
+                    "urgency": urgency
+                }
+
+                output.append(item)
+
+            except:
+                continue
+
+        return output
