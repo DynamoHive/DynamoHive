@@ -12,17 +12,11 @@ def predict_trend(intel):
     risk = "low"
     horizon = "short-term"
 
-    # -------------------------
-    # MOMENTUM
-    # -------------------------
     if score > 3:
         trend = "rising"
     if score > 6:
         trend = "explosive"
 
-    # -------------------------
-    # RISK DETECTION
-    # -------------------------
     if any(x in topic for x in ["war", "attack", "missile", "conflict"]):
         risk = "high"
         horizon = "immediate"
@@ -35,18 +29,12 @@ def predict_trend(intel):
         trend = "growth"
         horizon = "mid-term"
 
-    # -------------------------
-    # INTELLIGENCE BOOST
-    # -------------------------
     if "geopolitical" in insight:
         risk = "high"
 
     if "ai power shift" in insight:
         trend = "strategic"
 
-    # -------------------------
-    # OUTPUT
-    # -------------------------
     return {
         "trend": trend,
         "risk": risk,
@@ -54,3 +42,40 @@ def predict_trend(intel):
         "confidence": round(math.log1p(score), 2),
         "timestamp": int(time.time())
     }
+
+
+class PredictionEngine:
+
+    def forecast(self, signal, context):
+
+        try:
+            intel = {
+                "topic": signal.get("topic"),
+                "score": signal.get("score", 1.0),
+                "insight": context.get("insight", "")
+            }
+
+            result = predict_trend(intel)
+
+            result["impact_score"] = result.get("confidence", 0.5)
+
+            risk = result.get("risk", "low")
+            urgency_map = {
+                "low": "low",
+                "medium": "medium",
+                "high": "high"
+            }
+
+            result["urgency"] = urgency_map.get(risk, "low")
+
+            return result
+
+        except:
+            return {
+                "trend": "neutral",
+                "risk": "low",
+                "horizon": "short-term",
+                "confidence": 0.5,
+                "impact_score": 0.5,
+                "urgency": "low"
+            }
