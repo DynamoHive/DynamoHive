@@ -2,19 +2,15 @@ def generate_narrative(intel):
 
     try:
         topic = str(intel.get("topic", ""))
-        insight = intel.get("insight", "")
+        insight = str(intel.get("insight", ""))
         actors = intel.get("actors", [])
         region = intel.get("region", "global")
         urgency = intel.get("urgency", "low")
 
-        # -------------------------
         # WHAT
-        # -------------------------
-        what = topic
+        what = topic or "Unknown signal"
 
-        # -------------------------
         # WHY
-        # -------------------------
         if "geopolitical" in insight:
             why = "This reflects rising geopolitical tension and strategic positioning."
 
@@ -30,9 +26,7 @@ def generate_narrative(intel):
         else:
             why = "This is an emerging signal gaining structural relevance."
 
-        # -------------------------
         # IMPACT
-        # -------------------------
         if urgency == "high":
             impact = "High probability of escalation or broader systemic effects."
 
@@ -42,9 +36,7 @@ def generate_narrative(intel):
         else:
             impact = "Currently limited, but worth monitoring."
 
-        # -------------------------
         # NEXT
-        # -------------------------
         if "geopolitical" in insight:
             nxt = "Watch for escalation, alliances, or counter-actions."
 
@@ -57,14 +49,8 @@ def generate_narrative(intel):
         else:
             nxt = "Track signal frequency and cross-domain spread."
 
-        # -------------------------
-        # TITLE
-        # -------------------------
-        title = topic[:80]
+        title = (topic or "Signal")[:80]
 
-        # -------------------------
-        # CONTENT (REAL NARRATIVE)
-        # -------------------------
         content = (
             f"{what}\n\n"
             f"Why it matters:\n{why}\n\n"
@@ -82,5 +68,16 @@ def generate_narrative(intel):
             }
         }
 
-    except:
-        return None
+    except Exception as e:
+        # 🔥 ASLA NONE DÖNME
+        topic = str(intel.get("topic", "fallback"))
+
+        return {
+            "title": topic[:80] or "fallback",
+            "content": topic or "fallback content",
+            "meta": {
+                "actors": [],
+                "region": "global",
+                "urgency": "low"
+            }
+        }
