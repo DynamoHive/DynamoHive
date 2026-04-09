@@ -6,31 +6,57 @@ def add_reasoning(items):
 
         for i in items:
 
-            insight = i.get("insight", "")
-            level = i.get("importance_level", "low")
+            topic = str(i.get("topic", "")).lower()
 
-            reason = ""
+            # -------------------------
+            # INSIGHT (ASLA DIŞARIDAN ALMA)
+            # -------------------------
+            if any(x in topic for x in ["war", "military", "nato"]):
+                insight = "geopolitical"
 
-            if "geopolitical" in insight:
+            elif any(x in topic for x in ["ai", "technology"]):
+                insight = "technological"
+
+            elif any(x in topic for x in ["market", "economy"]):
+                insight = "economic"
+
+            else:
+                insight = "social"
+
+            # -------------------------
+            # REASON TEXT
+            # -------------------------
+            if insight == "geopolitical":
                 reason = "Rising geopolitical tension with potential escalation risk."
 
-            elif "ai" in insight:
-                reason = "Indicates acceleration in AI competition and capability shift."
+            elif insight == "technological":
+                reason = "Acceleration in technological competition and capability shift."
 
-            elif "economic" in insight:
-                reason = "Signals movement in capital or economic power structures."
+            elif insight == "economic":
+                reason = "Movement in capital and economic power structures."
 
             else:
                 reason = "Emerging pattern with unclear trajectory."
 
-            # önemle bağla
+            # -------------------------
+            # IMPORTANCE LINK
+            # -------------------------
+            level = i.get("importance_level", "low")
+
             if level == "critical":
                 reason += " High impact expected."
 
             elif level == "high":
                 reason += " Likely to influence broader systems."
 
-            i["reasoning"] = reason
+            # -------------------------
+            # OUTPUT (KRİTİK STRUCTURE)
+            # -------------------------
+            i["insight"] = insight
+            i["reasoning"] = {
+                "text": reason,
+                "confidence": 0.6
+            }
 
         return items
 
