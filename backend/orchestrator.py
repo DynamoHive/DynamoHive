@@ -4,65 +4,23 @@ import hashlib
 
 from backend.logger import logger
 
-# -------------------------
-# SAFE IMPORTS
-# -------------------------
+from ai_engine.multi_crawler import crawl
+from ai_engine.data_pipeline import process_data
+from ai_engine.signal_detector import detect_signals
+from ai_engine.signal_ranking_engine import merge_ranked_signals
 
-try:
-    from ai_engine.multi_crawler import crawl
-except:
-    def crawl(): return []
+from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
+from ai_engine.decision_engine import DecisionEngine
 
-try:
-    from ai_engine.data_pipeline import process_data
-except:
-    def process_data(x): return x
+from backend.storage import save_post
 
-try:
-    from ai_engine.signal_detector import detect_signals
-except:
-    def detect_signals(x): return []
-
-try:
-    from ai_engine.ranking_engine import merge_ranked_signals
-except:
-    def merge_ranked_signals(x): return x
-
-try:
-    from ai_engine.intelligence_layer import enrich_intelligence
-except:
-    def enrich_intelligence(x): return x
-
-try:
-    from ai_engine.importance_engine import compute_importance
-except:
-    def compute_importance(x): return x
-
-try:
-    from ai_engine.decision_engine import run_decision_pipeline
-except:
-    def run_decision_pipeline(x): return x
-
-try:
-    from backend.storage import save_post
-except:
-    def save_post(*a, **k): pass
-
-
-# -------------------------
-# GLOBALS
-# -------------------------
 
 LAST_DATA = []
 duplicate_cache = {}
 
 
 def is_duplicate(topic):
-    try:
-        h = hashlib.md5(str(topic).lower().encode()).hexdigest()
-    except:
-        return False
-
+    h = hashlib.md5(str(topic).lower().encode()).hexdigest()
     now = time.time()
 
     if h in duplicate_cache and now - duplicate_cache[h] < 3600:
@@ -72,123 +30,65 @@ def is_duplicate(topic):
     return False
 
 
-def safe_generate(intel):
-    topic = str(intel.get("topic", ""))
-
-    return {
-        "title": topic[:80],
-        "content": f"{topic} is emerging as a significant global signal."
-    }
-
-
-def force_signals(raw):
-    out = []
-
-    for item in raw[:5]:
-        text = item.get("title") or item.get("text")
-
-        if text:
-            out.append({
-                "topic": str(text),
-                "score": 1.0
-            })
-
-    return out
-
-
-# -------------------------
-# ORCHESTRATOR
-# -------------------------
-
 class Orchestrator:
 
     def __init__(self):
         self.cycle = 0
+        self.intelligence = GlobalIntelligenceEngine()
+        self.decision = DecisionEngine()
 
     def run_cycle(self):
 
-        start = time.time()
         self.cycle += 1
-
-        logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
+        start = time.time()
 
         try:
-            # 1. DATA
-            raw = crawl()
-
-            if not raw:
-                if LAST_DATA:
-                    raw = LAST_DATA
-                else:
-                    raw = [{"title": "fallback signal"}]
+            raw = crawl() or LAST_DATA or [{"title": "fallback signal"}]
 
             raw = process_data(raw)
-
             LAST_DATA.clear()
             LAST_DATA.extend(raw[:100])
 
-            # 2. SIGNALS
-            signals = detect_signals(raw)
+            signals = detect_signals(raw) or []
 
-            if not signals:
-                signals = force_signals(raw)
-
-            # 3. RANK
             signals = merge_ranked_signals(signals)
 
-            # 4. INTELLIGENCE
-            intel = enrich_intelligence(signals)
+            # 🔥 CORE INTELLIGENCE
+            intel_items = self.intelligence.run(signals)
 
-            # 5. IMPORTANCE
-            intel = compute_importance(intel)
+            # 🔥 DECISION
+            decisions = self.decision.evaluate(intel_items)
 
-            # 6. DECISION
-            intel = run_decision_pipeline(intel)
+            # 🔥 GENERATION
+            for item in decisions:
 
-            # 7. GENERATE
-            self._generate(intel)
+                if not item.get("decision", {}).get("publish"):
+                    continue
+
+                topic = item.get("topic", "")
+                if len(topic) < 5:
+                    continue
+
+                if is_duplicate(topic):
+                    continue
+
+                narrative = item.get("narrative")
+
+                if not narrative:
+                    continue
+
+                title = narrative.get("title")
+                content = narrative.get("content")
+
+                if not title or not content:
+                    continue
+
+                save_post(title, content)
+
+                logger.info(f"[GENERATED] {topic}")
 
         except Exception:
             traceback.print_exc()
 
         finally:
-            duration = round(time.time() - start, 2)
-            logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
-
-    # -------------------------
-    # GENERATION
-    # -------------------------
-
-    def _generate(self, items):
-
-        generated = 0
-
-        for intel in items:
-
-            topic = str(intel.get("topic", "")).strip()
-
-            if len(topic) < 5:
-                continue
-
-            if is_duplicate(topic):
-                continue
-
-            content = safe_generate(intel)
-
-            title = content.get("title")
-            body = content.get("content")
-
-            if not title or not body:
-                continue
-
-            try:
-                save_post(title, body)
-            except:
-                continue
-
-            generated += 1
-
-            logger.info(f"[ORCHESTRATOR] GENERATED: {topic}")
-
-        if generated == 0:
-            logger.warning("[ORCHESTRATOR] NOTHING GENERATED")
+            logger.info(f"[CYCLE DONE] {round(time.time()-start,2)}s")
