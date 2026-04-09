@@ -1,16 +1,33 @@
 def generate_narrative(intel):
 
     try:
-        topic = str(intel.get("topic", ""))
-        insight = str(intel.get("insight", ""))
-        actors = intel.get("actors", [])
-        region = intel.get("region", "global")
-        urgency = intel.get("urgency", "low")
+        # -------------------------
+        # SAFE INPUTS
+        # -------------------------
+        if not isinstance(intel, dict):
+            intel = {}
 
+        topic = str(intel.get("topic") or "").strip()
+        insight = str(intel.get("insight") or "").lower()
+
+        actors = intel.get("actors")
+        if not isinstance(actors, list):
+            actors = []
+
+        region = str(intel.get("region") or "global")
+
+        urgency = str(intel.get("urgency") or "low").lower()
+        if urgency not in ["low", "medium", "high"]:
+            urgency = "low"
+
+        # -------------------------
         # WHAT
-        what = topic or "Unknown signal"
+        # -------------------------
+        what = topic if topic else "Unknown signal"
 
+        # -------------------------
         # WHY
+        # -------------------------
         if "geopolitical" in insight:
             why = "This reflects rising geopolitical tension and strategic positioning."
 
@@ -26,7 +43,9 @@ def generate_narrative(intel):
         else:
             why = "This is an emerging signal gaining structural relevance."
 
+        # -------------------------
         # IMPACT
+        # -------------------------
         if urgency == "high":
             impact = "High probability of escalation or broader systemic effects."
 
@@ -36,7 +55,9 @@ def generate_narrative(intel):
         else:
             impact = "Currently limited, but worth monitoring."
 
+        # -------------------------
         # NEXT
+        # -------------------------
         if "geopolitical" in insight:
             nxt = "Watch for escalation, alliances, or counter-actions."
 
@@ -49,8 +70,14 @@ def generate_narrative(intel):
         else:
             nxt = "Track signal frequency and cross-domain spread."
 
-        title = (topic or "Signal")[:80]
+        # -------------------------
+        # TITLE SAFE
+        # -------------------------
+        title = (topic[:80] if topic else "Signal")
 
+        # -------------------------
+        # CONTENT SAFE
+        # -------------------------
         content = (
             f"{what}\n\n"
             f"Why it matters:\n{why}\n\n"
@@ -58,6 +85,9 @@ def generate_narrative(intel):
             f"What to watch:\n{nxt}"
         )
 
+        # -------------------------
+        # FINAL OUTPUT
+        # -------------------------
         return {
             "title": title,
             "content": content,
@@ -68,13 +98,18 @@ def generate_narrative(intel):
             }
         }
 
-    except Exception as e:
-        # 🔥 ASLA NONE DÖNME
-        topic = str(intel.get("topic", "fallback"))
+    except Exception:
+        # -------------------------
+        # HARD FAIL SAFE
+        # -------------------------
+        try:
+            topic = str(intel.get("topic") or "fallback")
+        except:
+            topic = "fallback"
 
         return {
-            "title": topic[:80] or "fallback",
-            "content": topic or "fallback content",
+            "title": topic[:80] if topic else "fallback",
+            "content": topic if topic else "fallback content",
             "meta": {
                 "actors": [],
                 "region": "global",
