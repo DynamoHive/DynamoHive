@@ -2,7 +2,9 @@ from ai_engine.memory_engine import MemoryEngine
 from ai_engine.context_analyzer import ContextAnalyzer
 from ai_engine.reasoning_engine import ReasoningEngine
 from ai_engine.prediction_engine import PredictionEngine
-from ai_engine.narrative_engine import NarrativeEngine
+
+# SENİN FONKSİYON
+from ai_engine.narrative_engine import generate_narrative
 
 
 class GlobalIntelligenceEngine:
@@ -12,7 +14,6 @@ class GlobalIntelligenceEngine:
         self.context = ContextAnalyzer()
         self.reasoning = ReasoningEngine()
         self.prediction = PredictionEngine()
-        self.narrative = NarrativeEngine()
 
     def run(self, signals):
 
@@ -20,26 +21,64 @@ class GlobalIntelligenceEngine:
 
         for signal in signals:
 
-            mem = self.memory.load(signal)
-            ctx = self.context.build(signal, mem)
+            try:
+                topic = str(signal.get("topic", "")).strip()
 
-            reasoning = self.reasoning.analyze(signal, ctx)
-            prediction = self.prediction.forecast(signal, ctx)
+                # -------------------------
+                # MEMORY
+                # -------------------------
+                mem = self.memory.load(signal) or {}
 
-            narrative = self.narrative.generate(
-                signal=signal,
-                context=ctx,
-                reasoning=reasoning,
-                prediction=prediction
-            )
+                # -------------------------
+                # CONTEXT
+                # -------------------------
+                ctx = self.context.build(signal, mem) or {}
 
-            results.append({
-                "topic": signal.get("topic"),
-                "signal": signal,
-                "context": ctx,
-                "reasoning": reasoning,
-                "prediction": prediction,
-                "narrative": narrative
-            })
+                # -------------------------
+                # REASONING
+                # -------------------------
+                reasoning = self.reasoning.analyze(signal, ctx) or {}
+
+                # -------------------------
+                # PREDICTION
+                # -------------------------
+                prediction = self.prediction.forecast(signal, ctx) or {}
+
+                # -------------------------
+                # INTEL OBJECT (MERKEZ)
+                # -------------------------
+                intel = {
+                    "topic": topic,
+                    "signal": signal,
+
+                    # CORE
+                    "context": ctx,
+                    "reasoning": reasoning,
+                    "prediction": prediction,
+
+                    # NARRATIVE INPUT (KRİTİK)
+                    "insight": reasoning.get("insight", ""),
+                    "actors": ctx.get("actors", []),
+                    "region": ctx.get("region", "global"),
+                    "urgency": prediction.get("urgency", "low"),
+                }
+
+                # -------------------------
+                # NARRATIVE (SENİN SİSTEM)
+                # -------------------------
+                narrative = generate_narrative(intel)
+
+                intel["narrative"] = narrative
+
+                # -------------------------
+                # GUARD (boşları at)
+                # -------------------------
+                if not topic or not narrative:
+                    continue
+
+                results.append(intel)
+
+            except Exception:
+                continue
 
         return results
