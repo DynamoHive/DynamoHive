@@ -1,5 +1,21 @@
-def build_context(signal):
-    topic = str(signal.get("topic", "")).lower()
-    context = str(signal.get("context", "")).lower()
+class ContextAnalyzer:
 
-    return f"{topic} {context}".strip()
+    def build(self, signal, memory):
+
+        try:
+            topic = str(signal.get("topic", ""))
+
+            return {
+                "actors": ["state actors"],
+                "region": "global",
+                "topic": topic,
+                "history": memory.get("history", [])
+            }
+
+        except:
+            return {
+                "actors": [],
+                "region": "global",
+                "topic": "",
+                "history": []
+            }
