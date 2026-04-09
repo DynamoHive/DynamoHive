@@ -1,148 +1,45 @@
-import re
-from datetime import datetime
+from ai_engine.memory_engine import MemoryEngine
+from ai_engine.context_analyzer import ContextAnalyzer
+from ai_engine.reasoning_engine import ReasoningEngine
+from ai_engine.prediction_engine import PredictionEngine
+from ai_engine.narrative_engine import NarrativeEngine
 
 
 class GlobalIntelligenceEngine:
 
     def __init__(self):
-        self.history = []
-        self.max_history = 300
+        self.memory = MemoryEngine()
+        self.context = ContextAnalyzer()
+        self.reasoning = ReasoningEngine()
+        self.prediction = PredictionEngine()
+        self.narrative = NarrativeEngine()
 
-    def process(self, signals):
+    def run(self, signals):
 
-        if not signals:
-            return []
+        results = []
 
-        enhanced = []
+        for signal in signals:
 
-        for s in signals:
+            mem = self.memory.load(signal)
+            ctx = self.context.build(signal, mem)
 
-            topic = str(s.get("topic", "")).strip()
-            if len(topic) < 5:
-                continue
+            reasoning = self.reasoning.analyze(signal, ctx)
+            prediction = self.prediction.forecast(signal, ctx)
 
-            score = self._safe_float(s.get("score", 1.0))
+            narrative = self.narrative.generate(
+                signal=signal,
+                context=ctx,
+                reasoning=reasoning,
+                prediction=prediction
+            )
 
-            category = self._categorize(topic)
-            insight = self._extract_insight(topic, category)
-            risk = self._compute_risk(topic, score)
-            trend = self._compute_trend(topic, score)
+            results.append({
+                "topic": signal.get("topic"),
+                "signal": signal,
+                "context": ctx,
+                "reasoning": reasoning,
+                "prediction": prediction,
+                "narrative": narrative
+            })
 
-            enriched = {
-                "topic": topic,
-                "score": round(score, 2),
-                "category": category,
-                "insight": insight,
-                "risk": risk,
-                "trend": trend,
-                "importance": self._importance(score, risk),
-                "summary": self._build_summary(insight, risk),
-                "timestamp": self._now()
-            }
-
-            enhanced.append(enriched)
-
-        self.history.extend(enhanced)
-        self.history = self.history[-self.max_history:]
-
-        return enhanced
-
-    # -------------------------
-    # 🧠 CATEGORY
-    # -------------------------
-    def _categorize(self, t):
-
-        t = t.lower()
-
-        if any(x in t for x in ["war","attack","military","missile"]):
-            return "geopolitics"
-
-        if any(x in t for x in ["ai","openai","spacex","robot"]):
-            return "technology"
-
-        if any(x in t for x in ["bank","ipo","market","billion"]):
-            return "economy"
-
-        return "general"
-
-    # -------------------------
-    # 🧠 REAL INSIGHT ENGINE
-    # -------------------------
-    def _extract_insight(self, topic, category):
-
-        t = topic.lower()
-
-        if category == "technology":
-            return "accelerating technological power shift"
-
-        if category == "geopolitics":
-            return "regional instability escalation"
-
-        if category == "economy":
-            return "capital concentration and market expansion"
-
-        return "emerging global signal"
-
-    # -------------------------
-    # ⚠️ RISK
-    # -------------------------
-    def _compute_risk(self, topic, score):
-
-        t = topic.lower()
-        risk = score
-
-        if any(x in t for x in ["war","attack","crisis"]):
-            risk += 3
-
-        return min(risk, 10)
-
-    # -------------------------
-    # 📈 TREND
-    # -------------------------
-    def _compute_trend(self, topic, score):
-
-        past = [
-            h["score"] for h in self.history
-            if topic[:30] in h.get("topic", "")
-        ]
-
-        if not past:
-            return "new"
-
-        avg = sum(past) / len(past)
-
-        if score > avg * 1.3:
-            return "surging"
-        elif score < avg * 0.7:
-            return "declining"
-
-        return "stable"
-
-    # -------------------------
-    # 🧠 IMPORTANCE
-    # -------------------------
-    def _importance(self, score, risk):
-
-        val = score + risk
-
-        if val > 12:
-            return "critical"
-        elif val > 8:
-            return "high"
-        elif val > 5:
-            return "medium"
-
-        return "low"
-
-    # -------------------------
-    def _build_summary(self, insight, risk):
-        return f"{insight} | risk={risk}"
-
-    def _safe_float(self, x, default=1.0):
-        try:
-            return float(x)
-        except:
-            return default
-
-    def _now(self):
-        return datetime.utcnow().isoformat()
+        return results
