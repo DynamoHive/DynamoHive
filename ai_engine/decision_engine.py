@@ -1,28 +1,21 @@
-def run_decision_pipeline(items):
+class DecisionEngine:
 
-    if not isinstance(items, list):
-        return []
+    def evaluate(self, items):
 
-    output = []
+        output = []
 
-    for item in items:
+        for item in items:
 
-        if not isinstance(item, dict):
-            continue
+            score = item.get("signal", {}).get("score", 0)
 
-        score = item.get("score", 0)
+            impact = item.get("prediction", {}).get("impact_score", 0.5)
+            confidence = item.get("reasoning", {}).get("confidence", 0.5)
 
-        try:
-            score = float(score)
-        except:
-            score = 0
+            priority = (score * 0.4) + (impact * 0.3) + (confidence * 0.3)
 
-        if score >= 5:
-            item["decision"] = "generate"
-            item["dominant"] = True
-            output.append(item)
-        else:
-            item["decision"] = "ignore"
-            item["dominant"] = False
+            publish = priority > 0.6
 
-    return output
+            item["decision"] = {
+                "publish": publish,
+                "priority": priority
+            }
