@@ -20,7 +20,11 @@ duplicate_cache = {}
 
 
 def is_duplicate(topic):
-    h = hashlib.md5(str(topic).lower().encode()).hexdigest()
+    try:
+        h = hashlib.md5(str(topic).lower().encode()).hexdigest()
+    except:
+        return False
+
     now = time.time()
 
     if h in duplicate_cache and now - duplicate_cache[h] < 3600:
@@ -39,33 +43,75 @@ class Orchestrator:
 
     def run_cycle(self):
 
-        self.cycle += 1
         start = time.time()
+        self.cycle += 1
+
+        logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
 
         try:
-            raw = crawl() or LAST_DATA or [{"title": "fallback signal"}]
+            # -------------------------
+            # 1. DATA
+            # -------------------------
+            raw = crawl()
+
+            if not raw:
+                if LAST_DATA:
+                    raw = LAST_DATA
+                else:
+                    raw = [{"title": "fallback signal"}]
 
             raw = process_data(raw)
+
             LAST_DATA.clear()
             LAST_DATA.extend(raw[:100])
 
-            signals = detect_signals(raw) or []
+            # -------------------------
+            # 2. SIGNALS
+            # -------------------------
+            signals = detect_signals(raw)
 
+            if not signals:
+                signals = [
+                    {"topic": str(x.get("title", "")), "score": 1.0}
+                    for x in raw[:5]
+                ]
+
+            # -------------------------
+            # 3. RANK
+            # -------------------------
             signals = merge_ranked_signals(signals)
 
-            # 🔥 CORE INTELLIGENCE
+            # -------------------------
+            # 4. INTELLIGENCE CORE
+            # -------------------------
             intel_items = self.intelligence.run(signals)
 
-            # 🔥 DECISION
+            if not intel_items:
+                logger.warning("[ORCHESTRATOR] No intelligence output")
+                return
+
+            # -------------------------
+            # 5. DECISION
+            # -------------------------
             decisions = self.decision.evaluate(intel_items)
 
-            # 🔥 GENERATION
+            if not decisions:
+                logger.warning("[ORCHESTRATOR] No decisions")
+                return
+
+            # -------------------------
+            # 6. GENERATION (KRİTİK)
+            # -------------------------
+            generated = 0
+
             for item in decisions:
 
+                # 🔥 EN KRİTİK SATIR
                 if not item.get("decision", {}).get("publish"):
                     continue
 
-                topic = item.get("topic", "")
+                topic = str(item.get("topic", "")).strip()
+
                 if len(topic) < 5:
                     continue
 
@@ -83,12 +129,23 @@ class Orchestrator:
                 if not title or not content:
                     continue
 
-                save_post(title, content)
+                try:
+                    save_post(title, content)
+                except:
+                    continue
 
-                logger.info(f"[GENERATED] {topic}")
+                generated += 1
+
+                logger.info(
+                    f"[GENERATED] {topic} | priority={item['decision'].get('priority')}"
+                )
+
+            if generated == 0:
+                logger.warning("[ORCHESTRATOR] NOTHING GENERATED")
 
         except Exception:
             traceback.print_exc()
 
         finally:
-            logger.info(f"[CYCLE DONE] {round(time.time()-start,2)}s")
+            duration = round(time.time() - start, 2)
+            logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
