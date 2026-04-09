@@ -9,7 +9,8 @@ class ContextAnalyzer:
                 "actors": ["state actors"],
                 "region": "global",
                 "topic": topic,
-                "history": memory.get("history", [])
+                "history": memory.get("history", []),
+                "insight": ""  # başlangıç boş, sonra doldurulacak
             }
 
         except:
@@ -17,5 +18,6 @@ class ContextAnalyzer:
                 "actors": [],
                 "region": "global",
                 "topic": "",
-                "history": []
+                "history": [],
+                "insight": ""
             }
