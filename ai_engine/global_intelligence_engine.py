@@ -2,8 +2,6 @@ from ai_engine.memory_engine import MemoryEngine
 from ai_engine.context_analyzer import ContextAnalyzer
 from ai_engine.reasoning_engine import ReasoningEngine
 from ai_engine.prediction_engine import PredictionEngine
-
-# SENİN FONKSİYON
 from ai_engine.narrative_engine import generate_narrative
 
 
@@ -24,61 +22,37 @@ class GlobalIntelligenceEngine:
             try:
                 topic = str(signal.get("topic", "")).strip()
 
-                # -------------------------
-                # MEMORY
-                # -------------------------
                 mem = self.memory.load(signal) or {}
 
-                # -------------------------
-                # CONTEXT
-                # -------------------------
-                ctx = self.context.build(signal, mem) or {}
+                ctx = self.context.build(signal, mem)
 
-                # -------------------------
-                # REASONING
-                # -------------------------
-                reasoning = self.reasoning.analyze(signal, ctx) or {}
+                reasoning = self.reasoning.analyze(signal, ctx)
 
-                # -------------------------
-                # PREDICTION
-                # -------------------------
-                prediction = self.prediction.forecast(signal, ctx) or {}
+                # 🔥 insight context'e yaz
+                ctx["insight"] = reasoning.get("insight", "")
 
-                # -------------------------
-                # INTEL OBJECT (MERKEZ)
-                # -------------------------
+                prediction = self.prediction.forecast(signal, ctx)
+
                 intel = {
                     "topic": topic,
                     "signal": signal,
-
-                    # CORE
                     "context": ctx,
                     "reasoning": reasoning,
                     "prediction": prediction,
-
-                    # NARRATIVE INPUT (KRİTİK)
                     "insight": reasoning.get("insight", ""),
                     "actors": ctx.get("actors", []),
                     "region": ctx.get("region", "global"),
                     "urgency": prediction.get("urgency", "low"),
                 }
 
-                # -------------------------
-                # NARRATIVE (SENİN SİSTEM)
-                # -------------------------
                 narrative = generate_narrative(intel)
 
                 intel["narrative"] = narrative
 
-                # -------------------------
-                # GUARD (boşları at)
-                # -------------------------
-                if not topic or not narrative:
-                    continue
+                if topic and narrative:
+                    results.append(intel)
 
-                results.append(intel)
-
-            except Exception:
+            except:
                 continue
 
         return results
