@@ -72,7 +72,10 @@ class Orchestrator:
 
             if not signals:
                 signals = [
-                    {"topic": str(x.get("title", "")), "score": 1.0}
+                    {
+                        "topic": str(x.get("title") or "fallback"),
+                        "score": 1.0
+                    }
                     for x in raw[:5]
                 ]
 
@@ -82,7 +85,7 @@ class Orchestrator:
             signals = merge_ranked_signals(signals)
 
             # -------------------------
-            # 4. INTELLIGENCE CORE
+            # 4. INTELLIGENCE
             # -------------------------
             intel_items = self.intelligence.run(signals)
 
@@ -95,50 +98,52 @@ class Orchestrator:
             # -------------------------
             decisions = self.decision.evaluate(intel_items)
 
+            # 🔥 fallback: decision yoksa raw intel kullan
             if not decisions:
-                logger.warning("[ORCHESTRATOR] No decisions")
-                return
+                logger.warning("[ORCHESTRATOR] No decisions → fallback publish")
+                decisions = intel_items
 
             # -------------------------
-            # 6. GENERATION (KRİTİK)
+            # 6. GENERATION (FIXED)
             # -------------------------
             generated = 0
 
             for item in decisions:
 
-                # 🔥 EN KRİTİK SATIR
-                if not item.get("decision", {}).get("publish"):
-                    continue
-
-                topic = str(item.get("topic", "")).strip()
-
-                if len(topic) < 5:
-                    continue
-
-                if is_duplicate(topic):
-                    continue
-
-                narrative = item.get("narrative")
-
-                if not narrative:
-                    continue
-
-                title = narrative.get("title")
-                content = narrative.get("content")
-
-                if not title or not content:
-                    continue
-
                 try:
+                    topic = str(item.get("topic") or "").strip()
+
+                    if not topic:
+                        continue
+
+                    if is_duplicate(topic):
+                        continue
+
+                    # 🔥 publish fallback (decision yoksa da üret)
+                    publish = item.get("decision", {}).get("publish", True)
+
+                    if not publish:
+                        continue
+
+                    narrative = item.get("narrative") or {}
+
+                    title = narrative.get("title") or topic[:80]
+                    content = narrative.get("content") or topic
+
+                    # 🔥 DEBUG
+                    print("GENERATING:", title)
+
                     save_post(title, content)
-                except:
+
+                    generated += 1
+
+                    logger.info(
+                        f"[GENERATED] {topic} | priority={item.get('decision', {}).get('priority', 'N/A')}"
+                    )
+
+                except Exception as e:
+                    print("GEN ERROR:", e)
                     continue
-
-                generated += 1
-
-                logger.info(
-                    f"[GENERATED] {topic} | priority={item['decision'].get('priority')}"
-                )
 
             if generated == 0:
                 logger.warning("[ORCHESTRATOR] NOTHING GENERATED")
