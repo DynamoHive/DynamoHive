@@ -1,5 +1,6 @@
 import React from "react";
 import Header from "./Header";
+import SignalCard from "./SignalCard";
 
 function App() {
   return (
@@ -7,12 +8,15 @@ function App() {
 
       <Header />
 
+      <SignalCard />
+
       <div style={{
         color: "white",
-        padding: "40px",
-        textAlign: "center"
+        padding: "20px",
+        textAlign: "center",
+        opacity: 0.6
       }}>
-        <h2>System Active</h2>
+        System Active
       </div>
 
     </div>
