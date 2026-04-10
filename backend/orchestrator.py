@@ -55,10 +55,7 @@ class Orchestrator:
             raw = crawl()
 
             if not raw:
-                if LAST_DATA:
-                    raw = LAST_DATA
-                else:
-                    raw = [{"title": "fallback signal"}]
+                raw = LAST_DATA or [{"title": "fallback signal"}]
 
             raw = process_data(raw)
 
@@ -72,10 +69,7 @@ class Orchestrator:
 
             if not signals:
                 signals = [
-                    {
-                        "topic": str(x.get("title") or "fallback"),
-                        "score": 1.0
-                    }
+                    {"topic": str(x.get("title") or "fallback"), "score": 1.0}
                     for x in raw[:5]
                 ]
 
@@ -89,6 +83,8 @@ class Orchestrator:
             # -------------------------
             intel_items = self.intelligence.run(signals)
 
+            print("INTEL COUNT:", len(intel_items))
+
             if not intel_items:
                 logger.warning("[ORCHESTRATOR] No intelligence output")
                 return
@@ -98,13 +94,13 @@ class Orchestrator:
             # -------------------------
             decisions = self.decision.evaluate(intel_items)
 
-            # 🔥 fallback: decision yoksa raw intel kullan
-            if not decisions:
-                logger.warning("[ORCHESTRATOR] No decisions → fallback publish")
-                decisions = intel_items
+            print("DECISIONS:", decisions)
+
+            # 🔥 FORCE MODE (KRİTİK)
+            decisions = decisions or intel_items
 
             # -------------------------
-            # 6. GENERATION (FIXED)
+            # 6. GENERATION
             # -------------------------
             generated = 0
 
@@ -119,10 +115,11 @@ class Orchestrator:
                     if is_duplicate(topic):
                         continue
 
-                    # 🔥 publish fallback (decision yoksa da üret)
-                    publish = item.get("decision", {}).get("publish", True)
+                    # 🔥 FORCE PUBLISH (TEST MODE)
+                    publish = True
 
                     if not publish:
+                        print("SKIPPED:", topic)
                         continue
 
                     narrative = item.get("narrative") or {}
@@ -130,7 +127,6 @@ class Orchestrator:
                     title = narrative.get("title") or topic[:80]
                     content = narrative.get("content") or topic
 
-                    # 🔥 DEBUG
                     print("GENERATING:", title)
 
                     save_post(title, content)
@@ -144,6 +140,8 @@ class Orchestrator:
                 except Exception as e:
                     print("GEN ERROR:", e)
                     continue
+
+            print("GENERATED COUNT:", generated)
 
             if generated == 0:
                 logger.warning("[ORCHESTRATOR] NOTHING GENERATED")
