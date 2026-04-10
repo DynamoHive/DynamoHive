@@ -22,13 +22,15 @@ duplicate_cache = {}
 
 def is_duplicate(topic):
     try:
-        h = hashlib.md5(str(topic).lower().encode()).hexdigest()
+        # 🔥 SMART DUPLICATE (time-based)
+        time_bucket = int(time.time() / 300)  # 5 dk segment
+        h = hashlib.md5((str(topic).lower() + str(time_bucket)).encode()).hexdigest()
     except:
         return False
 
     now = time.time()
 
-    # 🔥 FIX: 1 saat yerine 5 dakika
+    # 🔥 kısa süreli kontrol
     if h in duplicate_cache and now - duplicate_cache[h] < 300:
         return True
 
@@ -107,7 +109,7 @@ class Orchestrator:
                 logger.warning("[ORCHESTRATOR] No intelligence output")
                 return
 
-            # 🔥 FIX: decision kaybını engelle
+            # 🔥 DECISION FIX (kaybolmayı engeller)
             for i, item in enumerate(intel_items):
                 if i < len(decisions):
                     item["decision"] = decisions[i].get("decision", {})
@@ -130,11 +132,8 @@ class Orchestrator:
 
                     decision = item.get("decision")
 
-                    # 🔥 güvenlik: decision yoksa yine üret
-                    if not decision:
-                        publish = True
-                    else:
-                        publish = decision.get("publish", False)
+                    # 🔥 güvenlik fallback
+                    publish = True if not decision else decision.get("publish", False)
 
                     if not publish:
                         print("SKIPPED:", topic)
