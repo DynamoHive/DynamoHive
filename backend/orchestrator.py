@@ -80,18 +80,16 @@ class Orchestrator:
             signals = merge_ranked_signals(signals)
 
             # -------------------------
-            # 4. 🔥 CLUSTER (YENİ)
+            # 4. CLUSTER
             # -------------------------
             signals = cluster_signals(signals)
-
-            print("CLUSTERED SIGNALS:", len(signals))
 
             if not signals:
                 logger.warning("[ORCHESTRATOR] No signals after clustering")
                 return
 
             # -------------------------
-            # 5. 🔥 DECISION (ÖNCE!)
+            # 5. DECISION
             # -------------------------
             decisions = self.decision.evaluate(signals)
 
@@ -99,10 +97,8 @@ class Orchestrator:
                 logger.warning("[ORCHESTRATOR] No signals passed decision filter")
                 return
 
-            print("SELECTED SIGNALS:", len(decisions))
-
             # -------------------------
-            # 6. 🔥 INTELLIGENCE (SADECE SEÇİLENLER)
+            # 6. INTELLIGENCE
             # -------------------------
             intel_items = self.intelligence.run(decisions)
 
@@ -110,7 +106,10 @@ class Orchestrator:
                 logger.warning("[ORCHESTRATOR] No intelligence output")
                 return
 
-            print("INTEL COUNT:", len(intel_items))
+            # 🔥 CRITICAL FIX: decision kaybını engelle
+            for i, item in enumerate(intel_items):
+                if i < len(decisions):
+                    item["decision"] = decisions[i].get("decision", {})
 
             # -------------------------
             # 7. GENERATION
@@ -128,9 +127,13 @@ class Orchestrator:
                     if is_duplicate(topic):
                         continue
 
-                    # 🔥 ARTIK GERÇEK KARAR
-                    decision = item.get("decision", {})
-                    publish = decision.get("publish", False)
+                    decision = item.get("decision")
+
+                    # 🔥 fallback: decision yoksa publish et
+                    if not decision:
+                        publish = True
+                    else:
+                        publish = decision.get("publish", False)
 
                     if not publish:
                         print("SKIPPED:", topic)
@@ -148,7 +151,7 @@ class Orchestrator:
                     generated += 1
 
                     logger.info(
-                        f"[GENERATED] {topic} | priority={decision.get('priority', 'N/A')}"
+                        f"[GENERATED] {topic} | priority={decision.get('priority', 'N/A') if decision else 'FORCED'}"
                     )
 
                 except Exception as e:
