@@ -20,7 +20,7 @@ class GlobalIntelligenceEngine:
         for signal in signals:
 
             try:
-                # 🔥 FIX: topic fallback
+                # 🔥 KRİTİK FIX: topic fallback
                 topic = str(
                     signal.get("topic") or
                     signal.get("title") or
@@ -29,7 +29,10 @@ class GlobalIntelligenceEngine:
                 ).strip()
 
                 if not topic:
+                    print("SKIP EMPTY TOPIC:", signal)
                     continue
+
+                print("PROCESSING:", topic)
 
                 mem = self.memory.load(signal) or {}
 
@@ -55,19 +58,23 @@ class GlobalIntelligenceEngine:
 
                 narrative = generate_narrative(intel)
 
+                if not narrative:
+                    print("NO NARRATIVE:", topic)
+
                 intel["narrative"] = narrative or {
                     "title": topic[:80],
                     "content": topic,
-                    "meta": {
-                        "actors": [],
-                        "region": "global",
-                        "urgency": "low"
-                    }
+                    "meta": {}
                 }
 
                 results.append(intel)
 
-            except Exception:
+            except Exception as e:
+                # 🔥 EN KRİTİK SATIR
+                print("INTELLIGENCE ERROR:", e)
+                print("FAILED SIGNAL:", signal)
                 continue
+
+        print("INTEL OUTPUT COUNT:", len(results))
 
         return results
