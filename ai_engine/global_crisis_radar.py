@@ -30,30 +30,73 @@ def detect_crisis_signals(items):
 
     for item in items:
 
-        title = item.get("title", "").lower()
-        content = item.get("content", "").lower()
+        title = str(item.get("title", "")).lower()
+        content = str(item.get("content", "")).lower()
 
         text = title + " " + content
 
+        category_scores = {}
+        matched_keywords = []
+
+        # -------------------------
+        # 1. MULTI-KEYWORD SCAN
+        # -------------------------
         for keyword, (category, score) in CRISIS_KEYWORDS.items():
 
             if keyword in text:
 
-                signal = {
+                matched_keywords.append(keyword)
 
-                    "title": item.get("title"),
-                    "category": category,
-                    "score": score,
-                    "source": item.get("source"),
-                    "timestamp": datetime.utcnow().timestamp(),
+                if category not in category_scores:
+                    category_scores[category] = 0
 
-                    # varsayılan koordinatlar (dashboard haritası için)
-                    "lat": 0,
-                    "lon": 0
-                }
+                category_scores[category] += score
 
-                signals.append(signal)
+        if not category_scores:
+            continue
 
-                break
+        # -------------------------
+        # 2. EN GÜÇLÜ KATEGORİ
+        # -------------------------
+        category = max(category_scores, key=category_scores.get)
+        total_score = category_scores[category]
+
+        # normalize (çok uçmasın)
+        total_score = min(total_score, 100)
+
+        # -------------------------
+        # 3. URGENCY BELİRLE
+        # -------------------------
+        if total_score > 80:
+            urgency = "high"
+        elif total_score > 60:
+            urgency = "medium"
+        else:
+            urgency = "low"
+
+        # -------------------------
+        # 4. SIGNAL OBJECT
+        # -------------------------
+        signal = {
+
+            "title": item.get("title"),
+            "category": category,
+            "score": round(total_score / 100, 2),  # normalize 0-1
+            "raw_score": total_score,
+            "urgency": urgency,
+
+            "matched_keywords": matched_keywords,
+
+            "source": item.get("source") or "Public Data",
+            "timestamp": datetime.utcnow().timestamp(),
+
+            # basit koordinat placeholder
+            "lat": 0,
+            "lon": 0
+        }
+
+        signals.append(signal)
 
     return signals
+
+    
