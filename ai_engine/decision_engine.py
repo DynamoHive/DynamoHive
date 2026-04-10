@@ -45,8 +45,8 @@ class DecisionEngine:
                     (urgency_score * 0.20)
                 )
 
-                # 🔥 HARD FILTER (KILL)
-                if score < 0.2 and impact < 0.3:
+                # 🔥 HARD FILTER (yumuşatıldı)
+                if score < 0.15 and impact < 0.25:
                     continue
 
                 scored.append({
@@ -67,26 +67,34 @@ class DecisionEngine:
             return []
 
         # -------------------------
-        # 2. SORT (EN KRİTİK)
+        # 2. SORT
         # -------------------------
         scored = sorted(scored, key=lambda x: x["priority"], reverse=True)
 
         # -------------------------
-        # 3. SELECTION LOGIC
+        # 3. SELECTION (MULTI-SIGNAL)
         # -------------------------
-        TOP_K = 3   # maksimum publish
-        MIN_THRESHOLD = 0.45  # taban kalite
+        TOP_K = 5
+        MIN_THRESHOLD = 0.25
 
         selected = []
+        used_topics = set()
 
         for i, s in enumerate(scored):
+
+            if len(selected) >= TOP_K:
+                break
 
             if s["priority"] < MIN_THRESHOLD:
                 continue
 
-            if i >= TOP_K:
-                break
+            topic = str(s["item"].get("topic", "")).lower()
 
+            # 🔥 aynı topic tekrarını engelle
+            if topic in used_topics:
+                continue
+
+            used_topics.add(topic)
             selected.append(s)
 
         # fallback → en az 1 içerik
@@ -96,7 +104,7 @@ class DecisionEngine:
         # -------------------------
         # 4. ATTACH DECISION
         # -------------------------
-        for s in scored:
+        for idx, s in enumerate(scored):
 
             item = s["item"]
 
@@ -105,7 +113,7 @@ class DecisionEngine:
             item["decision"] = {
                 "publish": publish,
                 "priority": round(s["priority"], 3),
-                "rank": scored.index(s) + 1,
+                "rank": idx + 1,
                 **s["meta"]
             }
 
