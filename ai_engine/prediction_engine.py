@@ -6,7 +6,7 @@ def predict_trend(intel):
 
     topic = str(intel.get("topic", "")).lower()
     score = float(intel.get("score", 1.0))
-    insight = intel.get("insight", "")
+    insight = str(intel.get("insight", ""))
 
     trend = "neutral"
     risk = "low"
@@ -49,8 +49,11 @@ class PredictionEngine:
     def forecast(self, signal, context):
 
         try:
+            # 🔥 DOĞRU ŞEKİL (dict içinde assignment YOK)
+            topic = signal.get("topic") or signal.get("title") or ""
+
             intel = {
-                topic = signal.get("topic") or signal.get("title") or "",
+                "topic": topic,
                 "score": signal.get("score", 1.0),
                 "insight": context.get("insight", "")
             }
@@ -70,7 +73,9 @@ class PredictionEngine:
 
             return result
 
-        except:
+        except Exception as e:
+            print("PREDICTION ERROR:", e)
+
             return {
                 "trend": "neutral",
                 "risk": "low",
