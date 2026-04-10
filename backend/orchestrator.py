@@ -28,7 +28,8 @@ def is_duplicate(topic):
 
     now = time.time()
 
-    if h in duplicate_cache and now - duplicate_cache[h] < 3600:
+    # 🔥 FIX: 1 saat yerine 5 dakika
+    if h in duplicate_cache and now - duplicate_cache[h] < 300:
         return True
 
     duplicate_cache[h] = now
@@ -106,7 +107,7 @@ class Orchestrator:
                 logger.warning("[ORCHESTRATOR] No intelligence output")
                 return
 
-            # 🔥 CRITICAL FIX: decision kaybını engelle
+            # 🔥 FIX: decision kaybını engelle
             for i, item in enumerate(intel_items):
                 if i < len(decisions):
                     item["decision"] = decisions[i].get("decision", {})
@@ -129,7 +130,7 @@ class Orchestrator:
 
                     decision = item.get("decision")
 
-                    # 🔥 fallback: decision yoksa publish et
+                    # 🔥 güvenlik: decision yoksa yine üret
                     if not decision:
                         publish = True
                     else:
