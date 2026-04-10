@@ -12,6 +12,7 @@ from ai_engine.signal_ranking_engine import merge_ranked_signals
 from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
 from ai_engine.decision_engine import DecisionEngine
 from ai_engine.signal_cluster import cluster_signals
+
 from backend.storage import save_post
 
 
@@ -79,32 +80,44 @@ class Orchestrator:
             signals = merge_ranked_signals(signals)
 
             # -------------------------
-            # 4. INTELLIGENCE
+            # 4. 🔥 CLUSTER (YENİ)
             # -------------------------
-            intel_items = self.intelligence.run(signals)
+            signals = cluster_signals(signals)
 
-            print("INTEL COUNT:", len(intel_items))
+            print("CLUSTERED SIGNALS:", len(signals))
+
+            if not signals:
+                logger.warning("[ORCHESTRATOR] No signals after clustering")
+                return
+
+            # -------------------------
+            # 5. 🔥 DECISION (ÖNCE!)
+            # -------------------------
+            decisions = self.decision.evaluate(signals)
+
+            if not decisions:
+                logger.warning("[ORCHESTRATOR] No signals passed decision filter")
+                return
+
+            print("SELECTED SIGNALS:", len(decisions))
+
+            # -------------------------
+            # 6. 🔥 INTELLIGENCE (SADECE SEÇİLENLER)
+            # -------------------------
+            intel_items = self.intelligence.run(decisions)
 
             if not intel_items:
                 logger.warning("[ORCHESTRATOR] No intelligence output")
                 return
 
-            # -------------------------
-            # 5. DECISION
-            # -------------------------
-            decisions = self.decision.evaluate(intel_items)
-
-            print("DECISIONS:", decisions)
-
-            # 🔥 FORCE MODE (KRİTİK)
-            decisions = decisions or intel_items
+            print("INTEL COUNT:", len(intel_items))
 
             # -------------------------
-            # 6. GENERATION
+            # 7. GENERATION
             # -------------------------
             generated = 0
 
-            for item in decisions:
+            for item in intel_items:
 
                 try:
                     topic = str(item.get("topic") or "").strip()
@@ -115,8 +128,9 @@ class Orchestrator:
                     if is_duplicate(topic):
                         continue
 
-                    # 🔥 FORCE PUBLISH (TEST MODE)
-                    publish = True
+                    # 🔥 ARTIK GERÇEK KARAR
+                    decision = item.get("decision", {})
+                    publish = decision.get("publish", False)
 
                     if not publish:
                         print("SKIPPED:", topic)
@@ -134,7 +148,7 @@ class Orchestrator:
                     generated += 1
 
                     logger.info(
-                        f"[GENERATED] {topic} | priority={item.get('decision', {}).get('priority', 'N/A')}"
+                        f"[GENERATED] {topic} | priority={decision.get('priority', 'N/A')}"
                     )
 
                 except Exception as e:
