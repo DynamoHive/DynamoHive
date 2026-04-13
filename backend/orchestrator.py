@@ -69,7 +69,6 @@ class Orchestrator:
             # 2. 🔥 CRISIS DETECTION
             # -------------------------
             crisis_signals = detect_crisis_signals(raw)
-
             print("CRISIS SIGNALS:", len(crisis_signals))
 
             crisis_map = {}
