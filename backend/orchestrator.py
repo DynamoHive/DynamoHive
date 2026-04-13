@@ -12,6 +12,7 @@ from ai_engine.signal_ranking_engine import merge_ranked_signals
 from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
 from ai_engine.decision_engine import DecisionEngine
 from ai_engine.signal_cluster import cluster_signals
+from ai_engine.global_crisis_radar import detect_crisis_signals
 
 from backend.storage import save_post
 
@@ -22,15 +23,13 @@ duplicate_cache = {}
 
 def is_duplicate(topic):
     try:
-        # 🔥 SMART DUPLICATE (time-based)
-        time_bucket = int(time.time() / 300)  # 5 dk segment
+        time_bucket = int(time.time() / 300)
         h = hashlib.md5((str(topic).lower() + str(time_bucket)).encode()).hexdigest()
     except:
         return False
 
     now = time.time()
 
-    # 🔥 kısa süreli kontrol
     if h in duplicate_cache and now - duplicate_cache[h] < 300:
         return True
 
@@ -67,7 +66,19 @@ class Orchestrator:
             LAST_DATA.extend(raw[:100])
 
             # -------------------------
-            # 2. SIGNALS
+            # 2. 🔥 CRISIS DETECTION
+            # -------------------------
+            crisis_signals = detect_crisis_signals(raw)
+
+            print("CRISIS SIGNALS:", len(crisis_signals))
+
+            crisis_map = {}
+            for c in crisis_signals:
+                key = str(c.get("title", "")).lower()
+                crisis_map[key] = c
+
+            # -------------------------
+            # 3. SIGNALS
             # -------------------------
             signals = detect_signals(raw)
 
@@ -78,12 +89,12 @@ class Orchestrator:
                 ]
 
             # -------------------------
-            # 3. RANK
+            # 4. RANK
             # -------------------------
             signals = merge_ranked_signals(signals)
 
             # -------------------------
-            # 4. CLUSTER
+            # 5. CLUSTER
             # -------------------------
             signals = cluster_signals(signals)
 
@@ -92,7 +103,22 @@ class Orchestrator:
                 return
 
             # -------------------------
-            # 5. DECISION
+            # 6. 🔥 CRISIS ENRICHMENT
+            # -------------------------
+            for s in signals:
+
+                topic = str(s.get("topic", "")).lower()
+
+                if topic in crisis_map:
+                    crisis = crisis_map[topic]
+
+                    s["urgency"] = crisis.get("urgency", "high")
+
+                    # 🔥 priority boost
+                    s["score"] = min(s.get("score", 0.5) + 0.3, 1.0)
+
+            # -------------------------
+            # 7. DECISION
             # -------------------------
             decisions = self.decision.evaluate(signals)
 
@@ -101,7 +127,7 @@ class Orchestrator:
                 return
 
             # -------------------------
-            # 6. INTELLIGENCE
+            # 8. INTELLIGENCE
             # -------------------------
             intel_items = self.intelligence.run(decisions)
 
@@ -109,13 +135,13 @@ class Orchestrator:
                 logger.warning("[ORCHESTRATOR] No intelligence output")
                 return
 
-            # 🔥 DECISION FIX (kaybolmayı engeller)
+            # decision fix
             for i, item in enumerate(intel_items):
                 if i < len(decisions):
                     item["decision"] = decisions[i].get("decision", {})
 
             # -------------------------
-            # 7. GENERATION
+            # 9. GENERATION
             # -------------------------
             generated = 0
 
@@ -131,8 +157,6 @@ class Orchestrator:
                         continue
 
                     decision = item.get("decision")
-
-                    # 🔥 güvenlik fallback
                     publish = True if not decision else decision.get("publish", False)
 
                     if not publish:
