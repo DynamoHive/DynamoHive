@@ -1,181 +1,121 @@
-import time
-import traceback
-import hashlib
+class DecisionEngine:
 
-from backend.logger import logger
+    def evaluate(self, items):
 
-from ai_engine.multi_crawler import crawl
-from ai_engine.data_pipeline import process_data
-from ai_engine.signal_detector import detect_signals
-from ai_engine.signal_ranking_engine import merge_ranked_signals
+        output = []
 
-from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
-from ai_engine.decision_engine import DecisionEngine
-from ai_engine.signal_cluster import cluster_signals
+        if not isinstance(items, list) or not items:
+            return output
 
-from backend.storage import save_post
+        scored = []
 
+        # -------------------------
+        # 1. SCORING
+        # -------------------------
+        for item in items:
 
-LAST_DATA = []
-duplicate_cache = {}
+            try:
+                signal = item.get("signal", {})
+                prediction = item.get("prediction", {})
+                reasoning = item.get("reasoning", {})
 
+                score = signal.get("score", 0)
+                impact = prediction.get("impact_score", 0.5)
 
-def is_duplicate(topic):
-    try:
-        # 🔥 SMART DUPLICATE (time-based)
-        time_bucket = int(time.time() / 300)
-        h = hashlib.md5((str(topic).lower() + str(time_bucket)).encode()).hexdigest()
-    except:
-        return False
+                if isinstance(reasoning, dict):
+                    confidence = reasoning.get("confidence", 0.5)
+                else:
+                    confidence = 0.5
 
-    now = time.time()
+                urgency = item.get("urgency", "low")
 
-    if h in duplicate_cache and now - duplicate_cache[h] < 300:
-        return True
+                urgency_map = {
+                    "low": 0.3,
+                    "medium": 0.6,
+                    "high": 0.9
+                }
 
-    duplicate_cache[h] = now
-    return False
+                urgency_score = urgency_map.get(urgency, 0.3)
 
+                # 🔥 FINAL PRIORITY
+                priority = (
+                    (score * 0.30) +
+                    (impact * 0.25) +
+                    (confidence * 0.25) +
+                    (urgency_score * 0.20)
+                )
 
-class Orchestrator:
-
-    def __init__(self):
-        self.cycle = 0
-        self.intelligence = GlobalIntelligenceEngine()
-        self.decision = DecisionEngine()
-
-    def run_cycle(self):
-
-        start = time.time()
-        self.cycle += 1
-
-        logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
-
-        try:
-            # -------------------------
-            # 1. DATA
-            # -------------------------
-            raw = crawl()
-
-            if not raw:
-                raw = LAST_DATA or [{"title": "fallback signal"}]
-
-            raw = process_data(raw)
-
-            LAST_DATA.clear()
-            LAST_DATA.extend(raw[:100])
-
-            # -------------------------
-            # 2. SIGNALS
-            # -------------------------
-            signals = detect_signals(raw)
-
-            if not signals:
-                signals = [
-                    {"topic": str(x.get("title") or "fallback"), "score": 1.0}
-                    for x in raw[:5]
-                ]
-
-            # -------------------------
-            # 3. RANK
-            # -------------------------
-            signals = merge_ranked_signals(signals)
-
-            # -------------------------
-            # 4. CLUSTER
-            # -------------------------
-            signals = cluster_signals(signals)
-
-            if not signals:
-                logger.warning("[ORCHESTRATOR] No signals after clustering")
-                return
-
-            # -------------------------
-            # 5. DECISION
-            # -------------------------
-            decisions = self.decision.evaluate(signals)
-
-            if not decisions:
-                logger.warning("[ORCHESTRATOR] No signals passed decision filter")
-                return
-
-            # -------------------------
-            # 6. INTELLIGENCE
-            # -------------------------
-            intel_items = self.intelligence.run(decisions)
-
-            if not intel_items:
-                logger.warning("[ORCHESTRATOR] No intelligence output")
-                return
-
-            # 🔥 DECISION FIX
-            for i, item in enumerate(intel_items):
-                if i < len(decisions):
-                    item["decision"] = decisions[i].get("decision", {})
-
-            # -------------------------
-            # 7. GENERATION
-            # -------------------------
-            generated = 0
-
-            for item in intel_items:
-
-                try:
-                    topic = str(item.get("topic") or "").strip()
-
-                    if not topic:
-                        continue
-
-                    if is_duplicate(topic):
-                        continue
-
-                    decision = item.get("decision")
-
-                    publish = True if not decision else decision.get("publish", False)
-
-                    if not publish:
-                        print("SKIPPED:", topic)
-                        continue
-
-                    narrative = item.get("narrative") or {}
-
-                    title = narrative.get("title") or topic[:80]
-                    content = narrative.get("content") or topic
-
-                    # 🔥 LEGAL SAFE META
-                    source = item.get("source") or item.get("origin") or "Public Data"
-
-                    content = f"""
-{content}
-
----
-
-Source: {source}
-Disclaimer: This content is AI-generated analysis based on publicly available information.
-"""
-
-                    print("GENERATING:", title)
-
-                    save_post(title, content)
-
-                    generated += 1
-
-                    logger.info(
-                        f"[GENERATED] {topic} | priority={decision.get('priority', 'N/A') if decision else 'FORCED'}"
-                    )
-
-                except Exception as e:
-                    print("GEN ERROR:", e)
+                # 🔥 HARD FILTER (yumuşatılmış)
+                if score < 0.15 and impact < 0.25:
                     continue
 
-            print("GENERATED COUNT:", generated)
+                scored.append({
+                    "item": item,
+                    "priority": priority,
+                    "meta": {
+                        "score": score,
+                        "impact": impact,
+                        "confidence": confidence,
+                        "urgency": urgency
+                    }
+                })
 
-            if generated == 0:
-                logger.warning("[ORCHESTRATOR] NOTHING GENERATED")
+            except:
+                continue
 
-        except Exception:
-            traceback.print_exc()
+        if not scored:
+            return []
 
-        finally:
-            duration = round(time.time() - start, 2)
-            logger.info(f"[ORCHESTRATOR] Cycle finished in {duration}s")
+        # -------------------------
+        # 2. SORT
+        # -------------------------
+        scored = sorted(scored, key=lambda x: x["priority"], reverse=True)
+
+        # -------------------------
+        # 3. SELECTION
+        # -------------------------
+        TOP_K = 5
+        MIN_THRESHOLD = 0.25
+
+        selected = []
+        used_topics = set()
+
+        for s in scored:
+
+            if len(selected) >= TOP_K:
+                break
+
+            if s["priority"] < MIN_THRESHOLD:
+                continue
+
+            topic = str(s["item"].get("topic", "")).lower()
+
+            if topic in used_topics:
+                continue
+
+            used_topics.add(topic)
+            selected.append(s)
+
+        # fallback → en az 1 içerik
+        if not selected and scored:
+            selected = [scored[0]]
+
+        # -------------------------
+        # 4. ATTACH DECISION
+        # -------------------------
+        for idx, s in enumerate(scored):
+
+            item = s["item"]
+
+            publish = s in selected
+
+            item["decision"] = {
+                "publish": publish,
+                "priority": round(s["priority"], 3),
+                "rank": idx + 1,
+                **s["meta"]
+            }
+
+            output.append(item)
+
+        return output
