@@ -1,5 +1,6 @@
 from datetime import datetime
 
+
 CRISIS_KEYWORDS = {
 
     "war": ("military_conflict", 80),
@@ -39,7 +40,7 @@ def detect_crisis_signals(items):
         matched_keywords = []
 
         # -------------------------
-        # 1. MULTI-KEYWORD SCAN
+        # MULTI-KEYWORD SCAN
         # -------------------------
         for keyword, (category, score) in CRISIS_KEYWORDS.items():
 
@@ -56,16 +57,13 @@ def detect_crisis_signals(items):
             continue
 
         # -------------------------
-        # 2. EN GÜÇLÜ KATEGORİ
+        # EN GÜÇLÜ KATEGORİ
         # -------------------------
         category = max(category_scores, key=category_scores.get)
-        total_score = category_scores[category]
-
-        # normalize (çok uçmasın)
-        total_score = min(total_score, 100)
+        total_score = min(category_scores[category], 100)
 
         # -------------------------
-        # 3. URGENCY BELİRLE
+        # URGENCY
         # -------------------------
         if total_score > 80:
             urgency = "high"
@@ -75,22 +73,17 @@ def detect_crisis_signals(items):
             urgency = "low"
 
         # -------------------------
-        # 4. SIGNAL OBJECT
+        # SIGNAL OBJECT
         # -------------------------
         signal = {
-
             "title": item.get("title"),
             "category": category,
-            "score": round(total_score / 100, 2),  # normalize 0-1
+            "score": round(total_score / 100, 2),
             "raw_score": total_score,
             "urgency": urgency,
-
             "matched_keywords": matched_keywords,
-
             "source": item.get("source") or "Public Data",
             "timestamp": datetime.utcnow().timestamp(),
-
-            # basit koordinat placeholder
             "lat": 0,
             "lon": 0
         }
