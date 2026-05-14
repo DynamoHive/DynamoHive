@@ -1,26 +1,23 @@
 import sqlite3
-import os
 import time
+import json
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_DIR = os.path.join(BASE_DIR, "database")
-DB_PATH = os.path.join(DB_DIR, "dynamohive.db")
+DB_PATH = "dynamo.db"
 
 
 def init_db():
-
-    if not os.path.exists(DB_DIR):
-        os.makedirs(DB_DIR)
-
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    c = conn.cursor()
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS posts (
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS signals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
+            topic TEXT,
             content TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            priority REAL,
+            published INTEGER,
+            timestamp INTEGER
         )
     """)
 
@@ -28,65 +25,48 @@ def init_db():
     conn.close()
 
 
-def get_connection():
-    init_db()
-    return sqlite3.connect(DB_PATH)
+def save_signal(item):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+
+    c.execute("""
+        INSERT INTO signals (title, topic, content, priority, published, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        item.get("title"),
+        item.get("topic"),
+        item.get("content"),
+        item.get("priority", 0.5),
+        1 if item.get("published") else 0,
+        item.get("timestamp", int(time.time()))
+    ))
+
+    conn.commit()
+    conn.close()
 
 
-def save_post(title, content):
+def get_signals(limit=50):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
 
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
+    c.execute("""
+        SELECT title, topic, content, priority, published, timestamp
+        FROM signals
+        ORDER BY timestamp DESC
+        LIMIT ?
+    """, (limit,))
 
-        cursor.execute("""
-            INSERT INTO posts (title, content)
-            VALUES (?, ?)
-        """, (title, content))
+    rows = c.fetchall()
+    conn.close()
 
-        conn.commit()
-        conn.close()
-
-    except Exception as e:
-        print("DB write error:", e)
-
-
-def get_posts():
-
-    try:
-        conn = get_connection()
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT id, title, content, created_at
-            FROM posts
-            ORDER BY created_at DESC
-            LIMIT 50
-        """)
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        posts = []
-
-        for row in rows:
-            post = dict(row)
-
-            try:
-                post["timestamp"] = time.mktime(
-                    time.strptime(post["created_at"], "%Y-%m-%d %H:%M:%S")
-                )
-            except:
-                post["timestamp"] = time.time()
-
-            post["keywords"] = []
-            post["source"] = "internal"
-
-            posts.append(post)
-
-        return posts
-
-    except Exception as e:
-        print("DB read error:", e)
-        return []
+    return [
+        {
+            "title": r[0],
+            "topic": r[1],
+            "content": r[2],
+            "priority": r[3],
+            "published": r[4],
+            "timestamp": r[5]
+        }
+        for r in rows
+    ]
