@@ -7,49 +7,32 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const fetchData = () => {
-
     fetch("https://dynamohive-ktzh.onrender.com/intel")
       .then(res => res.json())
       .then(res => {
-
         setData(res);
         setLoading(false);
-
       })
-      .catch(err => {
-        console.log(err);
-        setLoading(false);
-      });
-
+      .catch(() => setLoading(false));
   };
 
   useEffect(() => {
-
     fetchData();
-
-    const interval = setInterval(() => {
-      fetchData();
-    }, 15000);
-
+    const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
-
   }, []);
 
   const signals = data?.data || [];
 
-  const getColor = (priority) => {
-
-    if (priority >= 0.7) return "#ff4d4d"; // high
-    if (priority >= 0.4) return "#ffa500"; // medium
-    return "#4da6ff"; // low
-
+  const getColor = (p) => {
+    if (p >= 0.7) return "#ff4d4d";
+    if (p >= 0.4) return "#ffa500";
+    return "#4da6ff";
   };
 
   return (
-
     <div style={{ background: "#0B0B0F", minHeight: "100vh", color: "white" }}>
 
-      {/* HEADER */}
       <div style={{
         maxWidth: "900px",
         margin: "0 auto",
@@ -68,25 +51,18 @@ function Dashboard() {
         </span>
       </div>
 
-      {/* BODY */}
       {loading ? (
-
         <div style={{ textAlign: "center", marginTop: 100 }}>
           Loading intelligence feed...
         </div>
-
       ) : signals.length === 0 ? (
-
         <div style={{ textAlign: "center", marginTop: 100, opacity: 0.6 }}>
           No signals detected
         </div>
-
       ) : (
-
         signals
           .sort((a, b) => (b.priority || 0) - (a.priority || 0))
           .map((s, i) => (
-
             <div key={i} style={{
               maxWidth: 800,
               margin: "15px auto",
@@ -97,12 +73,10 @@ function Dashboard() {
               borderLeft: `4px solid ${getColor(s.priority || 0)}`
             }}>
 
-              {/* TITLE */}
               <div style={{ fontSize: 16, fontWeight: "bold" }}>
                 {s.title}
               </div>
 
-              {/* META */}
               <div style={{
                 fontSize: 12,
                 opacity: 0.6,
@@ -114,7 +88,6 @@ function Dashboard() {
                 <span>{s.published ? "LIVE" : "DRAFT"}</span>
               </div>
 
-              {/* CONTENT */}
               <div style={{
                 marginTop: 12,
                 fontSize: 14,
@@ -125,9 +98,7 @@ function Dashboard() {
               </div>
 
             </div>
-
           ))
-
       )}
 
     </div>
@@ -135,12 +106,5 @@ function Dashboard() {
 }
 
 export default function App() {
-
-  const path = window.location.pathname;
-
-  if (path === "/dashboard") {
-    return <Dashboard />;
-  }
-
-  return <Landing />;
+  return <Dashboard />;
 }
