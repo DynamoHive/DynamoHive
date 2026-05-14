@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+
 import threading
 import time
+import traceback
 
 from backend.orchestrator import Orchestrator
 
@@ -12,14 +15,29 @@ from backend.orchestrator import Orchestrator
 
 app = FastAPI()
 
+
+# -------------------------
+# CORS FIX
+# -------------------------
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 # -------------------------
 # GLOBAL ORCHESTRATOR
 # -------------------------
 
 orchestrator = Orchestrator()
 
-# son sonuç cache
 LATEST_DATA = []
+LAST_UPDATE = 0
+CYCLE_COUNT = 0
 
 
 # -------------------------
@@ -29,6 +47,8 @@ LATEST_DATA = []
 def run_loop():
 
     global LATEST_DATA
+    global LAST_UPDATE
+    global CYCLE_COUNT
 
     print("🚀 FORCE START")
     print("🔥 ORCHESTRATOR READY")
@@ -36,16 +56,33 @@ def run_loop():
     while True:
 
         try:
-            print("🔁 LOOP TICK")
+
+            CYCLE_COUNT += 1
+
+            print(f"\n🔁 LOOP TICK #{CYCLE_COUNT}")
 
             data = orchestrator.run_cycle()
 
             # güvenli cache
             if isinstance(data, list):
-                LATEST_DATA = data
+
+                if len(data) > 0:
+
+                    LATEST_DATA = data
+                    LAST_UPDATE = int(time.time())
+
+                    print(f"✅ CACHE UPDATED: {len(data)} items")
+
+                else:
+                    print("⚠️ EMPTY LIST")
+
+            else:
+                print("⚠️ INVALID DATA FORMAT")
 
         except Exception as e:
-            print("❌ LOOP ERROR:", e)
+
+            print("❌ LOOP ERROR")
+            traceback.print_exc()
 
         time.sleep(20)
 
@@ -57,8 +94,16 @@ def run_loop():
 @app.on_event("startup")
 def startup_event():
 
-    thread = threading.Thread(target=run_loop, daemon=True)
+    print("🔥 STARTUP EVENT")
+
+    thread = threading.Thread(
+        target=run_loop,
+        daemon=True
+    )
+
     thread.start()
+
+    print("✅ BACKGROUND THREAD STARTED")
 
 
 # -------------------------
@@ -67,9 +112,12 @@ def startup_event():
 
 @app.get("/")
 def root():
+
     return {
         "status": "DynamoHive running",
-        "items": len(LATEST_DATA)
+        "items": len(LATEST_DATA),
+        "cycle": CYCLE_COUNT,
+        "last_update": LAST_UPDATE
     }
 
 
@@ -80,13 +128,36 @@ def root():
 @app.get("/intel")
 def get_intel():
 
-    if not LATEST_DATA:
-        return JSONResponse({
-            "status": "warming up",
-            "data": []
-        })
+    return JSONResponse({
+        "status": "ok",
+        "items": len(LATEST_DATA),
+        "cycle": CYCLE_COUNT,
+        "last_update": LAST_UPDATE,
+        "data": LATEST_DATA
+    })
 
-    return JSONResponse(LATEST_DATA)
+
+# -------------------------
+# EVENT FIX
+# -------------------------
+
+@app.get("/event")
+def event(
+    user_id: str = "",
+    type: str = "",
+    topic: str = ""
+):
+
+    print(
+        f"📡 EVENT | user={user_id} | type={type} | topic={topic}"
+    )
+
+    return {
+        "status": "received",
+        "user_id": user_id,
+        "type": type,
+        "topic": topic
+    }
 
 
 # -------------------------
@@ -95,4 +166,10 @@ def get_intel():
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+
+    return {
+        "status": "ok",
+        "orchestrator": "active",
+        "cycle": CYCLE_COUNT,
+        "cached_items": len(LATEST_DATA)
+    }
