@@ -9,16 +9,19 @@ import traceback
 from backend.orchestrator import Orchestrator
 
 
-# -------------------------
+# =====================================================
 # APP
-# -------------------------
+# =====================================================
 
-app = FastAPI()
+app = FastAPI(
+    title="DynamoHive",
+    version="1.0.0"
+)
 
 
-# -------------------------
-# CORS FIX
-# -------------------------
+# =====================================================
+# CORS
+# =====================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,29 +32,35 @@ app.add_middleware(
 )
 
 
-# -------------------------
-# GLOBAL ORCHESTRATOR
-# -------------------------
+# =====================================================
+# GLOBALS
+# =====================================================
 
 orchestrator = Orchestrator()
 
 LATEST_DATA = []
 LAST_UPDATE = 0
 CYCLE_COUNT = 0
+SYSTEM_STATUS = "starting"
+
+LOCK = threading.Lock()
 
 
-# -------------------------
-# BACKGROUND LOOP
-# -------------------------
+# =====================================================
+# LOOP
+# =====================================================
 
 def run_loop():
 
     global LATEST_DATA
     global LAST_UPDATE
     global CYCLE_COUNT
+    global SYSTEM_STATUS
 
-    print("🚀 FORCE START")
+    print("🚀 DYNAMOHIVE STARTED")
     print("🔥 ORCHESTRATOR READY")
+
+    SYSTEM_STATUS = "running"
 
     while True:
 
@@ -61,35 +70,54 @@ def run_loop():
 
             print(f"\n🔁 LOOP TICK #{CYCLE_COUNT}")
 
+            started = time.time()
+
             data = orchestrator.run_cycle()
 
-            # güvenli cache
+            duration = round(time.time() - started, 2)
+
+            # -------------------------------------------------
+            # CACHE UPDATE
+            # -------------------------------------------------
+
             if isinstance(data, list):
 
                 if len(data) > 0:
 
-                    LATEST_DATA = data
-                    LAST_UPDATE = int(time.time())
+                    with LOCK:
 
-                    print(f"✅ CACHE UPDATED: {len(data)} items")
+                        LATEST_DATA = data
+                        LAST_UPDATE = int(time.time())
+
+                    print(
+                        f"✅ CACHE UPDATED: "
+                        f"{len(data)} items | "
+                        f"{duration}s"
+                    )
 
                 else:
-                    print("⚠️ EMPTY LIST")
+
+                    print("⚠️ EMPTY LIST RETURNED")
 
             else:
+
                 print("⚠️ INVALID DATA FORMAT")
 
         except Exception as e:
 
-            print("❌ LOOP ERROR")
+            SYSTEM_STATUS = "error"
+
+            print("\n❌ LOOP ERROR")
+            print(str(e))
+
             traceback.print_exc()
 
         time.sleep(20)
 
 
-# -------------------------
-# STARTUP EVENT
-# -------------------------
+# =====================================================
+# STARTUP
+# =====================================================
 
 @app.on_event("startup")
 def startup_event():
@@ -106,40 +134,62 @@ def startup_event():
     print("✅ BACKGROUND THREAD STARTED")
 
 
-# -------------------------
+# =====================================================
 # ROOT
-# -------------------------
+# =====================================================
 
 @app.get("/")
 def root():
 
-    return {
-        "status": "DynamoHive running",
-        "items": len(LATEST_DATA),
-        "cycle": CYCLE_COUNT,
-        "last_update": LAST_UPDATE
-    }
+    with LOCK:
+
+        return {
+            "status": SYSTEM_STATUS,
+            "engine": "DynamoHive",
+            "cycles": CYCLE_COUNT,
+            "items": len(LATEST_DATA),
+            "last_update": LAST_UPDATE
+        }
 
 
-# -------------------------
-# INTELLIGENCE FEED
-# -------------------------
+# =====================================================
+# INTEL FEED
+# =====================================================
 
 @app.get("/intel")
 def get_intel():
 
-    return JSONResponse({
-        "status": "ok",
-        "items": len(LATEST_DATA),
-        "cycle": CYCLE_COUNT,
-        "last_update": LAST_UPDATE,
-        "data": LATEST_DATA
-    })
+    with LOCK:
+
+        return JSONResponse({
+            "status": SYSTEM_STATUS,
+            "items": len(LATEST_DATA),
+            "cycle": CYCLE_COUNT,
+            "last_update": LAST_UPDATE,
+            "data": LATEST_DATA
+        })
 
 
-# -------------------------
-# EVENT FIX
-# -------------------------
+# =====================================================
+# STATS
+# =====================================================
+
+@app.get("/stats")
+def stats():
+
+    with LOCK:
+
+        return {
+            "status": SYSTEM_STATUS,
+            "cycles": CYCLE_COUNT,
+            "cached_items": len(LATEST_DATA),
+            "last_update": LAST_UPDATE
+        }
+
+
+# =====================================================
+# EVENT ENDPOINT
+# =====================================================
 
 @app.get("/event")
 def event(
@@ -149,27 +199,60 @@ def event(
 ):
 
     print(
-        f"📡 EVENT | user={user_id} | type={type} | topic={topic}"
+        f"📡 EVENT | "
+        f"user={user_id} | "
+        f"type={type} | "
+        f"topic={topic}"
     )
 
     return {
         "status": "received",
         "user_id": user_id,
         "type": type,
-        "topic": topic
+        "topic": topic,
+        "timestamp": int(time.time())
     }
 
 
-# -------------------------
+# =====================================================
 # HEALTH
-# -------------------------
+# =====================================================
 
 @app.get("/health")
 def health():
 
     return {
         "status": "ok",
+        "system": SYSTEM_STATUS,
         "orchestrator": "active",
         "cycle": CYCLE_COUNT,
         "cached_items": len(LATEST_DATA)
     }
+
+
+# =====================================================
+# DEBUG
+# =====================================================
+
+@app.get("/debug")
+def debug():
+
+    with LOCK:
+
+        preview = []
+
+        for item in LATEST_DATA[:5]:
+
+            if isinstance(item, dict):
+
+                preview.append({
+                    "title": item.get("title", ""),
+                    "score": item.get("priority", 0),
+                    "topic": item.get("topic", "")
+                })
+
+        return {
+            "status": SYSTEM_STATUS,
+            "preview_count": len(preview),
+            "preview": preview
+        }
