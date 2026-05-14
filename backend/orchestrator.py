@@ -63,7 +63,9 @@ class Orchestrator:
 
         try:
 
+            # ----------------------------
             # 1. CRAWL
+            # ----------------------------
             raw = crawl()
 
             if not raw:
@@ -72,7 +74,9 @@ class Orchestrator:
                     "content": "fallback"
                 }]
 
+            # ----------------------------
             # 2. PROCESS
+            # ----------------------------
             raw = process_data(raw)
 
             if not raw:
@@ -81,7 +85,9 @@ class Orchestrator:
             LAST_DATA.clear()
             LAST_DATA.extend(raw[:100])
 
-            # 3. CRISIS
+            # ----------------------------
+            # 3. CRISIS DETECTION
+            # ----------------------------
             crisis_signals = detect_crisis_signals(raw)
 
             crisis_map = {
@@ -89,7 +95,9 @@ class Orchestrator:
                 for c in crisis_signals
             }
 
+            # ----------------------------
             # 4. SIGNAL DETECTION
+            # ----------------------------
             signals = detect_signals(raw)
 
             if not signals:
@@ -98,46 +106,53 @@ class Orchestrator:
                     "score": 0.5
                 } for x in raw[:10]]
 
-            # 5. RANK
-            signals = merge_ranked_signals(signals)
+            # ----------------------------
+            # 5. RANK + CLUSTER (FIXED ORDER)
+            # ----------------------------
+            signals = merge_ranked_signals(signals or [])
+            signals = cluster_signals(signals or [])
 
             if not signals:
                 return []
 
-            # 6. CLUSTER
-            signals = cluster_signals(signals)
-
-            if not signals:
-                return []
-
-            # 7. CRISIS BOOST
+            # ----------------------------
+            # 6. CRISIS BOOST
+            # ----------------------------
             for s in signals:
+
                 topic = str(s.get("topic", "")).lower()
 
                 if topic in crisis_map:
+
                     c = crisis_map[topic]
 
                     s["urgency"] = c.get("urgency", "high")
-                    s["score"] = min(s.get("score", 0.5) + 0.3, 1.0)
+                    s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
 
-            # 8. DECISION
+            # ----------------------------
+            # 7. DECISION ENGINE
+            # ----------------------------
             decisions = self.decision.evaluate(signals)
 
             if not decisions:
                 return []
 
-            # 9. INTELLIGENCE
+            # ----------------------------
+            # 8. INTELLIGENCE LAYER
+            # ----------------------------
             intel = self.intelligence.run(decisions)
 
             if not intel:
                 return []
 
-            # merge decision
+            # merge decisions safely
             for i, item in enumerate(intel):
                 if i < len(decisions):
                     item["decision"] = decisions[i]
 
-            # 10. GENERATION + PERSISTENCE
+            # ----------------------------
+            # 9. GENERATION + PERSISTENCE
+            # ----------------------------
             output = []
 
             for item in intel:
@@ -147,40 +162,32 @@ class Orchestrator:
                     continue
 
                 decision = item.get("decision", {})
+
                 if not decision.get("publish", True):
                     continue
 
                 if is_duplicate(topic):
                     continue
 
-                narrative = item.get("narrative", {})
+                narrative = item.get("narrative") or {}
 
-                title = narrative.get("title", topic[:80])
-                content = narrative.get("content", topic)
+                title = narrative.get("title") or topic[:80]
+                content = narrative.get("content") or topic
 
-                save_signal({
+                payload = {
                     "title": title,
                     "topic": topic,
                     "content": content,
                     "priority": decision.get("priority", 0.5),
                     "published": True,
                     "timestamp": int(time.time())
-                })
+                }
 
-                output.append({
-                    "title": title,
-                    "topic": topic,
-                    "content": content,
-                    "priority": decision.get("priority", 0.5),
-                    "published": True,
-                    "timestamp": int(time.time())
-                })
+                save_signal(payload)
+
+                output.append(payload)
 
                 logger.info(f"[GENERATED] {topic}")
-
-            # fallback
-            if not output:
-                return []
 
             return output
 
