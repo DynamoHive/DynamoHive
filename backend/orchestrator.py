@@ -63,9 +63,7 @@ class Orchestrator:
 
         try:
 
-            # ----------------------------
             # 1. CRAWL
-            # ----------------------------
             raw = crawl()
 
             if not raw:
@@ -74,9 +72,7 @@ class Orchestrator:
                     "content": "fallback"
                 }]
 
-            # ----------------------------
             # 2. PROCESS
-            # ----------------------------
             raw = process_data(raw)
 
             if not raw:
@@ -85,9 +81,7 @@ class Orchestrator:
             LAST_DATA.clear()
             LAST_DATA.extend(raw[:100])
 
-            # ----------------------------
             # 3. CRISIS DETECTION
-            # ----------------------------
             crisis_signals = detect_crisis_signals(raw)
 
             crisis_map = {
@@ -95,9 +89,7 @@ class Orchestrator:
                 for c in crisis_signals
             }
 
-            # ----------------------------
             # 4. SIGNAL DETECTION
-            # ----------------------------
             signals = detect_signals(raw)
 
             if not signals:
@@ -106,18 +98,14 @@ class Orchestrator:
                     "score": 0.5
                 } for x in raw[:10]]
 
-            # ----------------------------
-            # 5. RANK + CLUSTER (FIXED ORDER)
-            # ----------------------------
+            # 5. RANK + CLUSTER
             signals = merge_ranked_signals(signals or [])
             signals = cluster_signals(signals or [])
 
             if not signals:
                 return []
 
-            # ----------------------------
             # 6. CRISIS BOOST
-            # ----------------------------
             for s in signals:
 
                 topic = str(s.get("topic", "")).lower()
@@ -129,30 +117,24 @@ class Orchestrator:
                     s["urgency"] = c.get("urgency", "high")
                     s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
 
-            # ----------------------------
             # 7. DECISION ENGINE
-            # ----------------------------
             decisions = self.decision.evaluate(signals)
 
             if not decisions:
                 return []
 
-            # ----------------------------
             # 8. INTELLIGENCE LAYER
-            # ----------------------------
             intel = self.intelligence.run(decisions)
 
             if not intel:
                 return []
 
-            # merge decisions safely
+            # merge decisions
             for i, item in enumerate(intel):
                 if i < len(decisions):
                     item["decision"] = decisions[i]
 
-            # ----------------------------
             # 9. GENERATION + PERSISTENCE
-            # ----------------------------
             output = []
 
             for item in intel:
@@ -189,11 +171,24 @@ class Orchestrator:
 
                 logger.info(f"[GENERATED] {topic}")
 
-            return output
+            # ============================
+            # FINAL API CONTRACT (EKLENDİ)
+            # ============================
+            return {
+                "cycle": self.cycle,
+                "timestamp": int(time.time()),
+                "count": len(output),
+                "signals": output
+            }
 
         except Exception:
             traceback.print_exc()
-            return []
+            return {
+                "cycle": self.cycle,
+                "timestamp": int(time.time()),
+                "count": 0,
+                "signals": []
+            }
 
         finally:
             logger.info(
