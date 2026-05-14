@@ -5,15 +5,26 @@ def get_topics():
 
     cursor = get_cursor()
 
-    cursor.execute(
-        """
-        SELECT topic, COUNT(*) as count
-        FROM posts
-        GROUP BY topic
-        ORDER BY count DESC
-        """
-    )
+    try:
 
-    topics = cursor.fetchall()
+        cursor.execute(
+            """
+            SELECT topic, COUNT(*) as count
+            FROM posts
+            GROUP BY topic
+            ORDER BY count DESC
+            """
+        )
 
-    return topics
+        rows = cursor.fetchall() or []
+
+        return [
+            {
+                "topic": r[0],
+                "count": r[1]
+            }
+            for r in rows
+        ]
+
+    finally:
+        cursor.close()
