@@ -1,123 +1,125 @@
 import React, { useEffect, useState } from "react";
-import Header from "./Header";
+import Landing from "./Landing";
 
-function App() {
+function Dashboard() {
 
-  const [signals, setSignals] = useState([]);
-  const [system, setSystem] = useState({});
+  const [signal, setSignal] = useState(null);
 
   useEffect(() => {
 
-    const fetchData = async () => {
-      try {
+    fetch("https://dynamohive-ktzh.onrender.com/intel")
+      .then(res => res.json())
+      .then(data => {
 
-        const res = await fetch("https://dynamohive-ktzh.onrender.com/intel");
-        const data = await res.json();
+        if (data && data.data && data.data.length > 0) {
 
-        // system info
-        setSystem({
-          status: data.status,
-          cycle: data.cycle,
-          last_update: data.last_update,
-          items: data.items
-        });
+          setSignal(data.data[0]);
 
-        // signals list (delta merge)
-        setSignals(prev => {
+        }
 
-          const existing = new Set(prev.map(i => i.id || i.title));
-
-          const incoming = (data.data || []).filter(i => {
-            return !existing.has(i.id || i.title);
-          });
-
-          return [...incoming, ...prev].slice(0, 100);
-        });
-
-      } catch (err) {
-        console.log("fetch error:", err);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 3000);
-
-    return () => clearInterval(interval);
+      })
+      .catch(err => console.log(err));
 
   }, []);
 
   return (
-    <div style={{ background: "#0B0B0F", minHeight: "100vh", color: "white" }}>
 
-      <Header />
+    <div style={{ background: "#0B0B0F", minHeight: "100vh" }}>
 
-      {/* SYSTEM BAR */}
-      <div style={{
-        maxWidth: "900px",
-        margin: "20px auto",
-        fontSize: "12px",
-        opacity: 0.7,
-        display: "flex",
-        justifyContent: "space-between"
-      }}>
-        <span>Status: {system.status}</span>
-        <span>Cycle: {system.cycle}</span>
-        <span>Items: {system.items}</span>
-      </div>
+      {!signal ? (
 
-      {/* FEED */}
-      <div style={{
-        maxWidth: "900px",
-        margin: "40px auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: "12px"
-      }}>
+        <div
+          style={{
+            color: "white",
+            textAlign: "center",
+            paddingTop: "100px"
+          }}
+        >
+          Loading intelligence...
+        </div>
 
-        {signals.length === 0 ? (
-          <div style={{ textAlign: "center", opacity: 0.6 }}>
-            Waiting for intelligence stream...
+      ) : (
+
+        <div
+          style={{
+            maxWidth: "700px",
+            margin: "60px auto",
+            padding: "30px",
+            background: "#111117",
+            border: "1px solid #1f1f2a",
+            borderRadius: "10px",
+            color: "white"
+          }}
+        >
+
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#888",
+              marginBottom: "10px",
+              letterSpacing: "1px"
+            }}
+          >
+            DETECTED SIGNAL
           </div>
-        ) : (
-          signals.map((signal, idx) => (
-            <div key={signal.id || idx} style={{
-              padding: "16px",
-              background: "#111117",
-              border: "1px solid #1f1f2a",
-              borderRadius: "8px"
-            }}>
 
-              <div style={{ fontSize: "11px", opacity: 0.6 }}>
-                SIGNAL #{idx + 1}
-              </div>
+          <h2
+            style={{
+              fontSize: "24px",
+              marginBottom: "20px"
+            }}
+          >
+            {signal.title || "No title"}
+          </h2>
 
-              <h3 style={{ margin: "8px 0" }}>
-                {signal.title}
-              </h3>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "14px",
+              marginBottom: "20px",
+              color: "#999"
+            }}
+          >
+            <span>
+              Priority: {signal.priority || "N/A"}
+            </span>
 
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "12px",
-                opacity: 0.7,
-                marginBottom: "8px"
-              }}>
-                <span>Priority: {signal.priority || "N/A"}</span>
-                <span>Urgency: {signal.urgency || "N/A"}</span>
-              </div>
+            <span>
+              Published: {signal.published ? "YES" : "NO"}
+            </span>
+          </div>
 
-              <p style={{ fontSize: "13px", opacity: 0.8 }}>
-                {signal.content}
-              </p>
+          <p
+            style={{
+              fontSize: "15px",
+              lineHeight: "1.7",
+              opacity: 0.85
+            }}
+          >
+            {signal.content || ""}
+          </p>
 
-            </div>
-          ))
-        )}
+        </div>
 
-      </div>
+      )}
 
     </div>
+
   );
+
 }
 
-export default App;
+export default function App() {
+
+  const path = window.location.pathname;
+
+  if (path === "/dashboard") {
+
+    return <Dashboard />;
+
+  }
+
+  return <Landing />;
+
+}
