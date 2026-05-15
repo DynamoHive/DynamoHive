@@ -3,13 +3,12 @@ import hashlib
 import time
 
 from datetime import datetime
+from backend.storage import save_signal
 
-from backend.storage import save_post
 
-
-# -------------------------
+# =====================================================
 # RSS SOURCES
-# -------------------------
+# =====================================================
 RSS_SOURCES = [
     "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
     "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
@@ -21,246 +20,177 @@ RSS_SOURCES = [
 ]
 
 
-# -------------------------
+# =====================================================
 # CACHE
-# -------------------------
+# =====================================================
 CACHE = {}
 CACHE_TTL = 300
 
 
-# -------------------------
+# =====================================================
 # DUPLICATE CACHE
-# -------------------------
-SEEN_HASHES = {}
+# =====================================================
+SEEN = {}
 DUP_TTL = 1800
 
 
-# -------------------------
-# SIGNAL KEYWORDS
-# -------------------------
+# =====================================================
+# SIGNAL KEYWORDS (RELAXED)
+# =====================================================
 KEYWORDS = [
-    "ai",
-    "technology",
-    "chip",
-    "semiconductor",
-    "market",
-    "energy",
-    "war",
-    "conflict",
-    "cyber",
-    "security",
-    "crisis",
-    "economy"
+    "ai", "technology", "tech",
+    "market", "economy", "stock",
+    "war", "conflict", "crisis",
+    "security", "cyber",
+    "energy", "oil",
+    "politics", "china", "usa", "europe"
 ]
 
 
-# -------------------------
-# HASHING
-# -------------------------
-def make_hash(text):
-
-    return hashlib.md5(
-        text.encode("utf-8")
-    ).hexdigest()
+# =====================================================
+# HASH
+# =====================================================
+def make_hash(text: str) -> str:
+    return hashlib.md5(text.encode("utf-8")).hexdigest()
 
 
-# -------------------------
-# DUPLICATE CHECK
-# -------------------------
-def is_duplicate(text):
-
+# =====================================================
+# DUPLICATE CHECK (SAFE)
+# =====================================================
+def is_duplicate(text: str) -> bool:
     h = make_hash(text)
-
     now = time.time()
 
-    if h in SEEN_HASHES:
+    if h in SEEN and now - SEEN[h] < DUP_TTL:
+        return True
 
-        if now - SEEN_HASHES[h] < DUP_TTL:
-            return True
+    SEEN[h] = now
 
-    SEEN_HASHES[h] = now
+    # memory cleanup
+    if len(SEEN) > 5000:
+        SEEN.clear()
 
     return False
 
 
-# -------------------------
-# FEED CACHE
-# -------------------------
-def get_feed(url):
-
+# =====================================================
+# CACHE FEED
+# =====================================================
+def get_feed(url: str):
     now = time.time()
 
     if url in CACHE:
-
         cached_time, cached_feed = CACHE[url]
-
         if now - cached_time < CACHE_TTL:
             return cached_feed
 
-    feed = feedparser.parse(
-        url,
-        request_headers={
-            "User-Agent": "Mozilla/5.0"
-        }
-    )
+    feed = feedparser.parse(url)
 
-    CACHE[url] = (
-        now,
-        feed
-    )
-
+    CACHE[url] = (now, feed)
     return feed
 
 
-# -------------------------
-# SIGNAL DETECTION
-# -------------------------
-def is_signal(title, content):
-
+# =====================================================
+# SIGNAL CHECK (RELAXED + SAFE FALLBACK)
+# =====================================================
+def is_signal(title: str, content: str) -> bool:
     text = f"{title} {content}".lower()
 
-    return any(
-        keyword in text
-        for keyword in KEYWORDS
-    )
+    keyword_hit = any(k in text for k in KEYWORDS)
+
+    # fallback: long meaningful content still counts
+    fallback = len(text) > 120
+
+    return keyword_hit or fallback
 
 
-# -------------------------
+# =====================================================
 # SCORE ENGINE
-# -------------------------
-def calculate_score(title, content):
-
+# =====================================================
+def calculate_score(title: str, content: str) -> float:
     text = f"{title} {content}".lower()
 
     score = 0.5
 
-    high_impact = [
-        "war",
-        "conflict",
-        "crisis",
-        "collapse",
-        "cyberattack"
-    ]
+    high = ["war", "conflict", "crisis", "attack", "collapse"]
+    medium = ["ai", "market", "economy", "energy", "security"]
 
-    medium_impact = [
-        "ai",
-        "market",
-        "energy",
-        "chip",
-        "security"
-    ]
-
-    for word in high_impact:
-
-        if word in text:
+    for w in high:
+        if w in text:
             score += 1.0
 
-    for word in medium_impact:
-
-        if word in text:
+    for w in medium:
+        if w in text:
             score += 0.4
 
-    return round(score, 2)
+    return round(min(score, 2.5), 2)
 
 
-# -------------------------
+# =====================================================
 # MAIN CRAWLER
-# -------------------------
+# =====================================================
 def crawl():
-
     results = []
 
     for url in RSS_SOURCES:
 
         try:
-
             feed = get_feed(url)
-
-            print(
-                f"[CRAWL] {url} entries:",
-                len(feed.entries)
-            )
 
             if not feed.entries:
                 continue
 
-            for entry in feed.entries[:10]:
+            for entry in feed.entries[:15]:
 
-                title = (
-                    entry.get("title", "")
-                    .strip()
-                )
-
+                title = (entry.get("title") or "").strip()
                 content = (
                     entry.get("summary")
                     or entry.get("description")
                     or ""
-                )
+                ).strip()
 
                 if not title:
                     continue
 
-                text = f"{title} {content}"
+                full_text = f"{title} {content}"
 
-                # DUPLICATE FILTER
-                if is_duplicate(text):
+                # duplicate filter
+                if is_duplicate(full_text):
                     continue
 
-                # SIGNAL FILTER
+                # signal filter (RELAXED)
                 if not is_signal(title, content):
                     continue
 
-                score = calculate_score(
-                    title,
-                    content
-                )
+                score = calculate_score(title, content)
 
                 item = {
+                    "title": title,
                     "topic": title,
-                    "text": (
-                        content.strip()
-                        if content else title
-                    ),
+                    "text": content or title,
                     "score": score,
                     "sources": [url],
-                    "timestamp": (
-                        datetime.utcnow().isoformat() + "Z"
-                    )
+                    "timestamp": datetime.utcnow().isoformat() + "Z"
                 }
 
-                # DB WRITE
+                # DB SAVE (SAFE STRUCTURE)
                 try:
-                    save_post(
-                        item["topic"],
-                        item["text"]
-                    )
-
-                except Exception as db_error:
-
-                    print(
-                        "DB write error:",
-                        db_error
-                    )
+                    save_signal({
+                        "title": item["title"],
+                        "topic": item["topic"],
+                        "content": item["text"],
+                        "priority": item["score"],
+                        "published": 1,
+                        "timestamp": int(time.time())
+                    })
+                except Exception as e:
+                    print("[DB ERROR]", e)
 
                 results.append(item)
 
-                print(
-                    "ADD:",
-                    title[:60]
-                )
-
         except Exception as e:
+            print("[RSS ERROR]", url, e)
 
-            print(
-                "rss error:",
-                url,
-                e
-            )
-
-    print(
-        "crawler collected:",
-        len(results)
-    )
+    print("[CRAWLER DONE]", len(results))
 
     return results
-    
