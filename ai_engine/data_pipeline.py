@@ -1,5 +1,11 @@
 import re
 
+from backend.logger import logger
+
+
+# =====================================================
+# CLEAN
+# =====================================================
 
 def clean_text(text):
 
@@ -15,31 +21,43 @@ def clean_text(text):
     return text.strip()
 
 
+# =====================================================
+# PROCESS
+# =====================================================
+
 def process_data(raw_data):
 
     processed = []
 
     for item in raw_data:
 
-        title = clean_text(item.get("title", ""))
-        content = clean_text(item.get("content", ""))
+        title = clean_text(item.get("title"))
 
-        # fallback
-        if not content:
-            content = title
+        # SAFE FALLBACKS
+        content = clean_text(
+            item.get("content")
+            or item.get("summary")
+            or item.get("description")
+            or item.get("text")
+            or ""
+        )
 
+        # title yoksa skip
         if not title:
             continue
 
-        processed.append({
+        # content boşsa title kullan
+        if not content:
+            content = title
 
+        processed.append({
             "title": title,
             "content": content,
             "text": f"{title} {content}",
-            "source": item.get("source", "unknown")
-
+            "source": item.get("source", "unknown"),
+            "link": item.get("link", "")
         })
 
-    print("pipeline processed:", len(processed))
+    logger.info(f"[DATA PIPELINE] processed: {len(processed)}")
 
     return processed
