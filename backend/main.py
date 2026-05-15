@@ -2,15 +2,15 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-import threading
-import time
-import traceback
-
 from backend.orchestrator import Orchestrator
+from backend.services.scheduler import Scheduler
+from backend.storage import init_db
+
+import threading
 
 
 # =====================================================
-# APP
+# APP INIT
 # =====================================================
 
 app = FastAPI(
@@ -33,64 +33,13 @@ app.add_middleware(
 
 
 # =====================================================
-# GLOBAL STATE
+# CORE COMPONENTS
 # =====================================================
 
 orchestrator = Orchestrator()
-
-STATE = {
-    "data": [],
-    "last_update": 0,
-    "cycles": 0,
-    "status": "starting"
-}
+scheduler = Scheduler(interval=20)
 
 LOCK = threading.Lock()
-
-
-# =====================================================
-# LOOP
-# =====================================================
-
-def run_loop():
-
-    print("🚀 DYNAMOHIVE STARTED")
-    STATE["status"] = "running"
-
-    while True:
-        try:
-            STATE["cycles"] += 1
-
-            print(f"🔁 CYCLE #{STATE['cycles']}")
-
-            start = time.time()
-            result = orchestrator.run_cycle()
-            duration = round(time.time() - start, 2)
-
-            # normalize output (SAFE)
-            if isinstance(result, list):
-                data = result
-            elif isinstance(result, dict):
-                data = result.get("signals", [])
-            else:
-                data = []
-
-            # update cache
-            if data:
-                with LOCK:
-                    STATE["data"] = data
-                    STATE["last_update"] = int(time.time())
-
-                print(f"✅ CACHE UPDATED | {len(data)} items | {duration}s")
-            else:
-                print("⚠️ NOTHING GENERATED")
-
-        except Exception as e:
-            STATE["status"] = "error"
-            print("❌ LOOP ERROR:", str(e))
-            traceback.print_exc()
-
-        time.sleep(20)
 
 
 # =====================================================
@@ -98,17 +47,11 @@ def run_loop():
 # =====================================================
 
 @app.on_event("startup")
-def startup_event():
+def startup():
 
-    print("🔥 STARTUP EVENT")
+    init_db()
 
-    t = threading.Thread(
-        target=run_loop,
-        daemon=True
-    )
-    t.start()
-
-    print("✅ BACKGROUND LOOP STARTED")
+    scheduler.start()
 
 
 # =====================================================
@@ -117,24 +60,28 @@ def startup_event():
 
 @app.get("/")
 def root():
-    with LOCK:
-        return STATE
+    return {
+        "status": "running",
+        "service": "DynamoHive"
+    }
 
 
 # =====================================================
-# INTEL
+# INTEL (LIVE DATA)
 # =====================================================
 
 @app.get("/intel")
 def intel():
-    with LOCK:
-        return {
-            "status": STATE["status"],
-            "cycles": STATE["cycles"],
-            "last_update": STATE["last_update"],
-            "count": len(STATE["data"]),
-            "data": STATE["data"]
-        }
+
+    # scheduler already updates storage/cache via orchestrator
+    from backend.storage import get_signals
+
+    data = get_signals(limit=50)
+
+    return {
+        "count": len(data),
+        "data": data
+    }
 
 
 # =====================================================
@@ -143,14 +90,11 @@ def intel():
 
 @app.get("/health")
 def health():
-    with LOCK:
-        return {
-            "status": "ok",
-            "engine": STATE["status"],
-            "cycles": STATE["cycles"],
-            "cached_items": len(STATE["data"]),
-            "last_update": STATE["last_update"]
-        }
+    return {
+        "status": "ok",
+        "engine": "running",
+        "scheduler": "active"
+    }
 
 
 # =====================================================
@@ -159,19 +103,20 @@ def health():
 
 @app.get("/debug")
 def debug():
-    with LOCK:
-        preview = []
 
-        for item in STATE["data"][:5]:
-            if isinstance(item, dict):
-                preview.append({
-                    "title": item.get("title", ""),
-                    "priority": item.get("priority", 0),
-                    "topic": item.get("topic", "")
-                })
+    from backend.storage import get_signals
 
-        return {
-            "status": STATE["status"],
-            "preview": preview,
-            "cycles": STATE["cycles"]
+    data = get_signals(limit=5)
+
+    preview = [
+        {
+            "title": i.get("title"),
+            "topic": i.get("topic"),
+            "priority": i.get("priority")
         }
+        for i in data
+    ]
+
+    return {
+        "preview": preview
+    }
