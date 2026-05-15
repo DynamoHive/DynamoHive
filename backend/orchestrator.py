@@ -67,14 +67,21 @@ class Orchestrator:
 
         try:
 
+            # =================================================
             # 1. CRAWL
+            # =================================================
             raw = crawl()
 
             if not raw:
-                raw = LAST_DATA or []
+                raw = LAST_DATA.copy() if LAST_DATA else []
 
+            if not raw:
+                return []
+
+            # =================================================
             # 2. PROCESS
-            raw = process_data(raw)
+            # =================================================
+            raw = process_data(raw) or []
 
             if not raw:
                 return []
@@ -82,60 +89,80 @@ class Orchestrator:
             LAST_DATA.clear()
             LAST_DATA.extend(raw[:100])
 
+            # =================================================
             # 3. CRISIS DETECTION
-            crisis_signals = detect_crisis_signals(raw)
+            # =================================================
+            crisis_signals = detect_crisis_signals(raw) or []
 
             crisis_map = {
                 str(c.get("title", "")).lower(): c
                 for c in crisis_signals
             }
 
-            # 4. SIGNAL DETECTION
-            signals = detect_signals(raw)
+            # =================================================
+            # 4. SIGNAL DETECTION (SAFE FALLBACK)
+            # =================================================
+            signals = detect_signals(raw) or []
 
             if not signals:
                 signals = [
                     {
-                        "topic": x.get("title", "fallback"),
-                        "score": 0.5
+                        "topic": x.get("title", "unknown"),
+                        "signal": {"score": 0.5},
+                        "prediction": {"impact_score": 0.5},
+                        "reasoning": {"confidence": 0.5}
                     }
                     for x in raw[:10]
                 ]
 
+            # =================================================
             # 5. RANK + CLUSTER
-            signals = merge_ranked_signals(signals or [])
-            signals = cluster_signals(signals or [])
+            # =================================================
+            signals = merge_ranked_signals(signals) or []
+            signals = cluster_signals(signals) or []
 
             if not signals:
                 return []
 
+            # =================================================
             # 6. CRISIS BOOST
+            # =================================================
             for s in signals:
-
                 topic = str(s.get("topic", "")).lower()
 
                 if topic in crisis_map:
                     c = crisis_map[topic]
                     s["urgency"] = c.get("urgency", "high")
-                    s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
+                    s["signal"] = s.get("signal", {})
+                    s["signal"]["score"] = min(
+                        float(s["signal"].get("score", 0.5)) + 0.3,
+                        1.0
+                    )
 
+            # =================================================
             # 7. DECISION ENGINE
-            decisions = self.decision.evaluate(signals)
+            # =================================================
+            decisions = self.decision.evaluate(signals) or []
 
             if not decisions:
                 return []
 
+            # =================================================
             # 8. INTELLIGENCE LAYER
-            intel = self.intelligence.run(decisions)
+            # =================================================
+            intel = self.intelligence.run(decisions) or []
 
             if not intel:
                 return []
 
+            # attach decisions safely
             for i, item in enumerate(intel):
                 if i < len(decisions):
                     item["decision"] = decisions[i]
 
+            # =================================================
             # 9. OUTPUT
+            # =================================================
             output = []
 
             for item in intel:
@@ -146,7 +173,8 @@ class Orchestrator:
 
                 decision = item.get("decision", {})
 
-                if not decision.get("publish", True):
+                # IMPORTANT: default publish TRUE (engine stability)
+                if decision.get("publish", True) is False:
                     continue
 
                 if is_duplicate(topic):
@@ -162,7 +190,7 @@ class Orchestrator:
                     "topic": topic,
                     "content": content,
                     "priority": float(decision.get("priority", 0.5)),
-                    "published": True,
+                    "published": 1,
                     "timestamp": int(time.time())
                 }
 
@@ -170,10 +198,6 @@ class Orchestrator:
                 output.append(payload)
 
                 logger.info(f"[GENERATED] {topic}")
-
-            # =====================================================
-            # SAFE RETURN CONTRACT
-            # =====================================================
 
             return output
 
