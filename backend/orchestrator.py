@@ -25,6 +25,7 @@ duplicate_cache = {}
 
 
 def is_duplicate(topic: str) -> bool:
+
     try:
         time_bucket = int(time.time() / 300)
         key = hashlib.md5(
@@ -41,7 +42,7 @@ def is_duplicate(topic: str) -> bool:
 
     duplicate_cache[key] = now
 
-    # 🔥 MEMORY SAFETY
+    # memory safety
     if len(duplicate_cache) > 10000:
         duplicate_cache.clear()
 
@@ -49,7 +50,7 @@ def is_duplicate(topic: str) -> bool:
 
 
 # =====================================================
-# ORCHESTRATOR
+# ORCHESTRATOR CORE
 # =====================================================
 
 class Orchestrator:
@@ -68,7 +69,9 @@ class Orchestrator:
 
         try:
 
+            # -------------------------
             # 1. CRAWL
+            # -------------------------
             raw = crawl()
 
             if not raw:
@@ -77,7 +80,9 @@ class Orchestrator:
                     "content": "fallback"
                 }]
 
+            # -------------------------
             # 2. PROCESS
+            # -------------------------
             raw = process_data(raw)
 
             if not raw:
@@ -86,7 +91,9 @@ class Orchestrator:
             LAST_DATA.clear()
             LAST_DATA.extend(raw[:100])
 
+            # -------------------------
             # 3. CRISIS DETECTION
+            # -------------------------
             crisis_signals = detect_crisis_signals(raw)
 
             crisis_map = {
@@ -94,23 +101,32 @@ class Orchestrator:
                 for c in crisis_signals
             }
 
+            # -------------------------
             # 4. SIGNAL DETECTION
+            # -------------------------
             signals = detect_signals(raw)
 
             if not signals:
-                signals = [{
-                    "topic": x.get("title", "fallback"),
-                    "score": 0.5
-                } for x in raw[:10]]
+                signals = [
+                    {
+                        "topic": x.get("title", "fallback"),
+                        "score": 0.5
+                    }
+                    for x in raw[:10]
+                ]
 
+            # -------------------------
             # 5. RANK + CLUSTER
+            # -------------------------
             signals = merge_ranked_signals(signals or [])
             signals = cluster_signals(signals or [])
 
             if not signals:
                 return []
 
+            # -------------------------
             # 6. CRISIS BOOST
+            # -------------------------
             for s in signals:
 
                 topic = str(s.get("topic", "")).lower()
@@ -120,24 +136,29 @@ class Orchestrator:
                     s["urgency"] = c.get("urgency", "high")
                     s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
 
+            # -------------------------
             # 7. DECISION ENGINE
+            # -------------------------
             decisions = self.decision.evaluate(signals)
 
             if not decisions:
                 return []
 
+            # -------------------------
             # 8. INTELLIGENCE LAYER
+            # -------------------------
             intel = self.intelligence.run(decisions)
 
             if not intel:
                 return []
 
-            # merge decisions
             for i, item in enumerate(intel):
                 if i < len(decisions):
                     item["decision"] = decisions[i]
 
+            # -------------------------
             # 9. GENERATION + PERSISTENCE
+            # -------------------------
             output = []
 
             for item in intel:
@@ -156,13 +177,10 @@ class Orchestrator:
 
                 narrative = item.get("narrative") or {}
 
-                title = narrative.get("title") or topic[:80]
-                content = narrative.get("content") or topic
-
                 payload = {
-                    "title": title,
+                    "title": narrative.get("title") or topic[:80],
                     "topic": topic,
-                    "content": content,
+                    "content": narrative.get("content") or topic,
                     "priority": decision.get("priority", 0.5),
                     "published": True,
                     "timestamp": int(time.time())
@@ -173,18 +191,14 @@ class Orchestrator:
 
                 logger.info(f"[GENERATED] {topic}")
 
-            # =====================================================
-            # FINAL CONTRACT (FIXED)
-            # 👉 MUST BE LIST (backend expects this)
-            # =====================================================
-
+            # -------------------------
+            # FINAL CONTRACT (STABLE)
+            # -------------------------
             return output
 
         except Exception as e:
             traceback.print_exc()
-
             logger.error(f"[ORCHESTRATOR ERROR] {str(e)}")
-
             return []
 
         finally:
