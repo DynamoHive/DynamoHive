@@ -13,8 +13,8 @@ _lock = threading.Lock()
 # CONNECTION
 # =====================================================
 def get_connection():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    return conn
+    # safer + consistent config
+    return sqlite3.connect(DB_PATH, check_same_thread=False)
 
 
 # =====================================================
@@ -51,7 +51,6 @@ def init_db():
 # SAVE SIGNAL
 # =====================================================
 def save_signal(item: dict):
-
     try:
         with _lock:
             conn = get_connection()
@@ -81,7 +80,6 @@ def save_signal(item: dict):
 # GET SIGNALS
 # =====================================================
 def get_signals(limit: int = 50):
-
     try:
         with _lock:
             conn = get_connection()
@@ -118,7 +116,6 @@ def get_signals(limit: int = 50):
 # CLEANUP OLD DATA
 # =====================================================
 def cleanup(max_age_seconds: int = 86400):
-
     try:
         cutoff = int(time.time()) - max_age_seconds
 
@@ -144,7 +141,6 @@ def cleanup(max_age_seconds: int = 86400):
 # COUNT
 # =====================================================
 def count_signals():
-
     try:
         with _lock:
             conn = get_connection()
