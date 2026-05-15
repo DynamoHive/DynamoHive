@@ -2,7 +2,7 @@ import time
 import traceback
 
 from backend.logger import logger
-from backend.cache import get_last_data, set_last_data, is_duplicate
+from backend.cache import is_duplicate
 from backend.storage import save_signal
 
 from ai_engine.multi_crawler import crawl
@@ -23,9 +23,6 @@ class Orchestrator:
         self.decision = DecisionEngine()
         self.intelligence = GlobalIntelligenceEngine()
 
-    # =====================================================
-    # MAIN PIPELINE
-    # =====================================================
     def run_cycle(self):
 
         start = time.time()
@@ -35,12 +32,13 @@ class Orchestrator:
 
         try:
             # =================================================
-            # 1. CRAWL
+            # 1. CRAWL (NO FALLBACK = IMPORTANT FIX)
             # =================================================
             raw = crawl()
 
             if not raw:
-                raw = get_last_data() or []
+                logger.warning("[ORCHESTRATOR] crawler empty - skipping cycle")
+                return []
 
             # =================================================
             # 2. PROCESS
@@ -48,12 +46,11 @@ class Orchestrator:
             raw = process_data(raw)
 
             if not raw:
+                logger.warning("[ORCHESTRATOR] processed data empty")
                 return []
 
-            set_last_data(raw[:100])
-
             # =================================================
-            # 3. CRISIS DETECTION (OPTIMIZED MAP)
+            # 3. CRISIS DETECTION
             # =================================================
             crisis_list = detect_crisis_signals(raw)
 
@@ -78,10 +75,11 @@ class Orchestrator:
             signals = cluster_signals(signals)
 
             if not signals:
+                logger.warning("[ORCHESTRATOR] no signals generated")
                 return []
 
             # =================================================
-            # 5. CRISIS BOOST (SAFE MATCH)
+            # 5. CRISIS BOOST
             # =================================================
             for s in signals:
                 topic = str(s.get("topic", "")).lower()
@@ -97,6 +95,7 @@ class Orchestrator:
             decisions = self.decision.evaluate(signals)
 
             if not decisions:
+                logger.warning("[ORCHESTRATOR] no decisions")
                 return []
 
             # =================================================
@@ -105,6 +104,7 @@ class Orchestrator:
             intel = self.intelligence.run(decisions)
 
             if not intel:
+                logger.warning("[ORCHESTRATOR] no intelligence output")
                 return []
 
             for i in range(min(len(intel), len(decisions))):
