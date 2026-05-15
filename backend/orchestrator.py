@@ -19,26 +19,38 @@ from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
 
 
 # =====================================================
-# BACKFILL ENGINE (lightweight)
+# BACKFILL ENGINE (SAFE VERSION)
 # =====================================================
 class BackfillEngine:
 
     def __init__(self):
         self.last_hash = None
-        self.backfill_used = False
+        self.lock = threading.Lock()
 
     def hash_data(self, data):
-        raw = str([d.get("title", "") for d in data]).encode("utf-8")
+        if not data:
+            return None
+
+        raw = str(sorted([d.get("title", "") for d in data])).encode("utf-8")
         return hashlib.md5(raw).hexdigest()
 
     def should_process(self, data):
-        h = self.hash_data(data)
-        if h == self.last_hash:
+        new_hash = self.hash_data(data)
+
+        if not new_hash:
             return False
-        self.last_hash = h
-        return True
+
+        with self.lock:
+            if new_hash == self.last_hash:
+                return False
+
+            self.last_hash = new_hash
+            return True
 
 
+# =====================================================
+# ORCHESTRATOR
+# =====================================================
 class Orchestrator:
 
     def __init__(self):
@@ -51,15 +63,14 @@ class Orchestrator:
         self._running = False
 
     # =====================================================
-    # SINGLE CYCLE PROTECTION
+    # MAIN CYCLE
     # =====================================================
     def run_cycle(self):
 
-        with self._lock:
-            if self._running:
-                logger.warning("[ORCHESTRATOR] cycle skipped (already running)")
-                return []
-            self._running = True
+        # ---- prevent concurrent cycles (FIXED SAFETY)
+        if not self._lock.acquire(blocking=False):
+            logger.warning("[ORCHESTRATOR] skipped (cycle in progress)")
+            return []
 
         start = time.time()
         self.cycle += 1
@@ -73,24 +84,24 @@ class Orchestrator:
             raw = crawl()
 
             # =================================================
-            # 2. AUTO BACKFILL (ONLY IF EMPTY)
+            # 2. BACKFILL SAFETY
             # =================================================
             if not raw:
                 raw = get_last_data() or []
 
-                if not raw:
-                    logger.warning("[ORCHESTRATOR] no data (skip cycle)")
-                    return []
-
-            # =================================================
-            # 3. DUPLICATE CYCLE PROTECTION
-            # =================================================
-            if not self.backfill.should_process(raw):
-                logger.info("[ORCHESTRATOR] duplicate dataset skipped")
+            if not raw:
+                logger.warning("[ORCHESTRATOR] empty dataset")
                 return []
 
             # =================================================
-            # 4. PROCESS
+            # 3. DUPLICATE CYCLE GUARD
+            # =================================================
+            if not self.backfill.should_process(raw):
+                logger.info("[ORCHESTRATOR] duplicate cycle skipped")
+                return []
+
+            # =================================================
+            # 4. PROCESS DATA
             # =================================================
             raw = process_data(raw)
 
@@ -130,6 +141,7 @@ class Orchestrator:
             # =================================================
             for s in signals:
                 topic = str(s.get("topic", "")).lower()
+
                 if topic in crisis_map:
                     s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
                     s["urgency"] = crisis_map[topic].get("urgency", "high")
@@ -138,6 +150,7 @@ class Orchestrator:
             # 8. DECISION ENGINE
             # =================================================
             decisions = self.decision.evaluate(signals)
+
             if not decisions:
                 return []
 
@@ -145,6 +158,7 @@ class Orchestrator:
             # 9. INTELLIGENCE ENGINE
             # =================================================
             intel = self.intelligence.run(decisions)
+
             if not intel:
                 return []
 
@@ -194,7 +208,7 @@ class Orchestrator:
             return []
 
         finally:
-            self._running = False
+            self._lock.release()
             logger.info(
                 f"[ORCHESTRATOR] cycle done in {round(time.time() - start, 2)}s"
             )
