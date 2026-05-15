@@ -8,6 +8,7 @@ import traceback
 
 from backend.orchestrator import Orchestrator
 
+
 # =====================================================
 # APP
 # =====================================================
@@ -16,6 +17,7 @@ app = FastAPI(
     title="DynamoHive",
     version="1.0.0"
 )
+
 
 # =====================================================
 # CORS
@@ -28,6 +30,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # =====================================================
 # GLOBAL STATE
@@ -64,7 +67,7 @@ def run_loop():
             result = orchestrator.run_cycle()
             duration = round(time.time() - start, 2)
 
-            # normalize output
+            # normalize output (SAFE)
             if isinstance(result, list):
                 data = result
             elif isinstance(result, dict):
@@ -72,6 +75,7 @@ def run_loop():
             else:
                 data = []
 
+            # update cache
             if data:
                 with LOCK:
                     STATE["data"] = data
@@ -143,4 +147,31 @@ def health():
         return {
             "status": "ok",
             "engine": STATE["status"],
+            "cycles": STATE["cycles"],
+            "cached_items": len(STATE["data"]),
+            "last_update": STATE["last_update"]
+        }
+
+
+# =====================================================
+# DEBUG
+# =====================================================
+
+@app.get("/debug")
+def debug():
+    with LOCK:
+        preview = []
+
+        for item in STATE["data"][:5]:
+            if isinstance(item, dict):
+                preview.append({
+                    "title": item.get("title", ""),
+                    "priority": item.get("priority", 0),
+                    "topic": item.get("topic", "")
+                })
+
+        return {
+            "status": STATE["status"],
+            "preview": preview,
             "cycles": STATE["cycles"]
+        }
