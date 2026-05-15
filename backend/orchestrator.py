@@ -16,10 +16,6 @@ from ai_engine.decision_engine import DecisionEngine
 from ai_engine.global_crisis_radar import detect_crisis_signals
 
 
-# =====================================================
-# MEMORY
-# =====================================================
-
 LAST_DATA = []
 duplicate_cache = {}
 
@@ -27,17 +23,14 @@ duplicate_cache = {}
 def is_duplicate(topic: str) -> bool:
     try:
         bucket = int(time.time() / 300)
-        key = hashlib.md5(
-            (str(topic).lower() + str(bucket)).encode()
-        ).hexdigest()
+        key = hashlib.md5((str(topic).lower() + str(bucket)).encode()).hexdigest()
     except Exception:
         return False
 
     now = time.time()
 
-    if key in duplicate_cache:
-        if now - duplicate_cache[key] < 300:
-            return True
+    if key in duplicate_cache and now - duplicate_cache[key] < 300:
+        return True
 
     duplicate_cache[key] = now
 
@@ -46,10 +39,6 @@ def is_duplicate(topic: str) -> bool:
 
     return False
 
-
-# =====================================================
-# ORCHESTRATOR
-# =====================================================
 
 class Orchestrator:
 
@@ -66,22 +55,12 @@ class Orchestrator:
         logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
 
         try:
-
-            # =================================================
-            # 1. CRAWL
-            # =================================================
             raw = crawl()
 
             if not raw:
-                raw = LAST_DATA.copy() if LAST_DATA else []
+                raw = LAST_DATA or []
 
-            if not raw:
-                return []
-
-            # =================================================
-            # 2. PROCESS
-            # =================================================
-            raw = process_data(raw) or []
+            raw = process_data(raw)
 
             if not raw:
                 return []
@@ -89,80 +68,48 @@ class Orchestrator:
             LAST_DATA.clear()
             LAST_DATA.extend(raw[:100])
 
-            # =================================================
-            # 3. CRISIS DETECTION
-            # =================================================
-            crisis_signals = detect_crisis_signals(raw) or []
+            crisis_signals = detect_crisis_signals(raw)
 
             crisis_map = {
                 str(c.get("title", "")).lower(): c
                 for c in crisis_signals
             }
 
-            # =================================================
-            # 4. SIGNAL DETECTION (SAFE FALLBACK)
-            # =================================================
-            signals = detect_signals(raw) or []
+            signals = detect_signals(raw)
 
             if not signals:
                 signals = [
-                    {
-                        "topic": x.get("title", "unknown"),
-                        "signal": {"score": 0.5},
-                        "prediction": {"impact_score": 0.5},
-                        "reasoning": {"confidence": 0.5}
-                    }
+                    {"topic": x.get("title", ""), "score": 0.5}
                     for x in raw[:10]
                 ]
 
-            # =================================================
-            # 5. RANK + CLUSTER
-            # =================================================
-            signals = merge_ranked_signals(signals) or []
-            signals = cluster_signals(signals) or []
+            signals = merge_ranked_signals(signals or [])
+            signals = cluster_signals(signals or [])
 
             if not signals:
                 return []
 
-            # =================================================
-            # 6. CRISIS BOOST
-            # =================================================
             for s in signals:
                 topic = str(s.get("topic", "")).lower()
 
                 if topic in crisis_map:
-                    c = crisis_map[topic]
-                    s["urgency"] = c.get("urgency", "high")
-                    s["signal"] = s.get("signal", {})
-                    s["signal"]["score"] = min(
-                        float(s["signal"].get("score", 0.5)) + 0.3,
-                        1.0
-                    )
+                    s["urgency"] = crisis_map[topic].get("urgency", "high")
+                    s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
 
-            # =================================================
-            # 7. DECISION ENGINE
-            # =================================================
-            decisions = self.decision.evaluate(signals) or []
+            decisions = self.decision.evaluate(signals)
 
             if not decisions:
                 return []
 
-            # =================================================
-            # 8. INTELLIGENCE LAYER
-            # =================================================
-            intel = self.intelligence.run(decisions) or []
+            intel = self.intelligence.run(decisions)
 
             if not intel:
                 return []
 
-            # attach decisions safely
             for i, item in enumerate(intel):
                 if i < len(decisions):
                     item["decision"] = decisions[i]
 
-            # =================================================
-            # 9. OUTPUT
-            # =================================================
             output = []
 
             for item in intel:
@@ -173,8 +120,7 @@ class Orchestrator:
 
                 decision = item.get("decision", {})
 
-                # IMPORTANT: default publish TRUE (engine stability)
-                if decision.get("publish", True) is False:
+                if not decision.get("publish", True):
                     continue
 
                 if is_duplicate(topic):
@@ -182,15 +128,12 @@ class Orchestrator:
 
                 narrative = item.get("narrative") or {}
 
-                title = narrative.get("title") or topic[:80]
-                content = narrative.get("content") or topic
-
                 payload = {
-                    "title": title,
+                    "title": narrative.get("title") or topic[:80],
                     "topic": topic,
-                    "content": content,
+                    "content": narrative.get("content") or topic,
                     "priority": float(decision.get("priority", 0.5)),
-                    "published": 1,
+                    "published": True,
                     "timestamp": int(time.time())
                 }
 
@@ -207,6 +150,4 @@ class Orchestrator:
             return []
 
         finally:
-            logger.info(
-                f"[ORCHESTRATOR] Cycle finished in {round(time.time() - start, 2)}s"
-            )
+            logger.info(f"[ORCHESTRATOR] Cycle finished in {round(time.time() - start, 2)}s")
