@@ -7,31 +7,25 @@ class DecisionEngine:
 
         scored = []
 
-        # =====================================================
-        # 1. SAFE NORMALIZATION
-        # =====================================================
         def normalize(item):
             if not isinstance(item, dict):
                 return {}
 
             return {
                 "topic": item.get("topic") or item.get("title") or "unknown",
-                "score": item.get("score", 0.5),
-                "impact": item.get("impact", 0.5),
+                "score": float(item.get("score", 0.5)),
+                "impact": float(item.get("impact", 0.5)),
                 "urgency": item.get("urgency", "medium"),
                 "raw": item
             }
 
-        # =====================================================
-        # 2. SCORING
-        # =====================================================
+        # -------------------------
+        # SCORING
+        # -------------------------
         for item in items:
 
             try:
                 n = normalize(item)
-
-                score = float(n["score"])
-                impact = float(n["impact"])
 
                 urgency_map = {
                     "low": 0.3,
@@ -40,26 +34,24 @@ class DecisionEngine:
                 }
 
                 urgency_score = urgency_map.get(n["urgency"], 0.6)
-
-                confidence = 0.5  # default safe
+                confidence = 0.55  # slightly increased stability
 
                 priority = (
-                    (score * 0.40) +
-                    (impact * 0.30) +
+                    (n["score"] * 0.40) +
+                    (n["impact"] * 0.30) +
                     (confidence * 0.10) +
                     (urgency_score * 0.20)
                 )
 
-                # relaxed filter (CRITICAL FIX)
-                if score < 0.05 and impact < 0.1:
+                if n["score"] < 0.05 and n["impact"] < 0.1:
                     continue
 
                 scored.append({
                     "item": n,
                     "priority": priority,
                     "meta": {
-                        "score": score,
-                        "impact": impact,
+                        "score": n["score"],
+                        "impact": n["impact"],
                         "confidence": confidence,
                         "urgency": n["urgency"]
                     }
@@ -68,34 +60,35 @@ class DecisionEngine:
             except Exception:
                 continue
 
-        # =====================================================
-        # 3. FALLBACK (NO EMPTY OUTPUT GUARANTEE)
-        # =====================================================
+        # -------------------------
+        # HARD FALLBACK FIX (IMPORTANT)
+        # -------------------------
         if not scored:
             return [
                 {
-                    "item": {
-                        "topic": i.get("topic", "fallback"),
-                        "score": i.get("score", 0.5)
-                    },
-                    "priority": 0.5,
+                    "topic": i.get("topic", "fallback"),
+                    "score": i.get("score", 0.5),
                     "decision": {
                         "publish": True,
                         "priority": 0.5,
-                        "rank": idx + 1
+                        "rank": idx + 1,
+                        "score": i.get("score", 0.5),
+                        "impact": 0.5,
+                        "confidence": 0.5,
+                        "urgency": "medium"
                     }
                 }
                 for idx, i in enumerate(items[:10])
             ]
 
-        # =====================================================
-        # 4. SORT
-        # =====================================================
+        # -------------------------
+        # SORT
+        # -------------------------
         scored.sort(key=lambda x: x["priority"], reverse=True)
 
-        # =====================================================
-        # 5. SELECT TOP
-        # =====================================================
+        # -------------------------
+        # SELECT TOP
+        # -------------------------
         TOP_K = 5
         MIN_THRESHOLD = 0.2
 
@@ -118,17 +111,20 @@ class DecisionEngine:
             used_topics.add(topic)
             selected.append(s)
 
-        selected_set = set(id(x["item"]) for x in selected)
+        # 🔥 FIX: no id() dependency anymore
+        selected_topics = set(str(x["item"]["topic"]).lower() for x in selected)
 
-        # =====================================================
-        # 6. ATTACH DECISION
-        # =====================================================
+        # -------------------------
+        # ATTACH DECISION
+        # -------------------------
         output = []
 
         for idx, s in enumerate(scored):
 
             item = s["item"]
-            is_selected = id(item) in selected_set
+            topic = str(item["topic"]).lower()
+
+            is_selected = topic in selected_topics
 
             item["decision"] = {
                 "publish": is_selected,
