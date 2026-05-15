@@ -40,6 +40,11 @@ def is_duplicate(topic: str) -> bool:
             return True
 
     duplicate_cache[key] = now
+
+    # 🔥 MEMORY SAFETY
+    if len(duplicate_cache) > 10000:
+        duplicate_cache.clear()
+
     return False
 
 
@@ -111,9 +116,7 @@ class Orchestrator:
                 topic = str(s.get("topic", "")).lower()
 
                 if topic in crisis_map:
-
                     c = crisis_map[topic]
-
                     s["urgency"] = c.get("urgency", "high")
                     s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
 
@@ -166,29 +169,23 @@ class Orchestrator:
                 }
 
                 save_signal(payload)
-
                 output.append(payload)
 
                 logger.info(f"[GENERATED] {topic}")
 
-            # ============================
-            # FINAL API CONTRACT (EKLENDİ)
-            # ============================
-            return {
-                "cycle": self.cycle,
-                "timestamp": int(time.time()),
-                "count": len(output),
-                "signals": output
-            }
+            # =====================================================
+            # FINAL CONTRACT (FIXED)
+            # 👉 MUST BE LIST (backend expects this)
+            # =====================================================
 
-        except Exception:
+            return output
+
+        except Exception as e:
             traceback.print_exc()
-            return {
-                "cycle": self.cycle,
-                "timestamp": int(time.time()),
-                "count": 0,
-                "signals": []
-            }
+
+            logger.error(f"[ORCHESTRATOR ERROR] {str(e)}")
+
+            return []
 
         finally:
             logger.info(
