@@ -34,17 +34,17 @@ class Orchestrator:
         logger.info(f"[ORCHESTRATOR] cycle {self.cycle} start")
 
         try:
-            # -----------------------------
+            # =================================================
             # 1. CRAWL
-            # -----------------------------
+            # =================================================
             raw = crawl()
 
             if not raw:
                 raw = get_last_data() or []
 
-            # -----------------------------
+            # =================================================
             # 2. PROCESS
-            # -----------------------------
+            # =================================================
             raw = process_data(raw)
 
             if not raw:
@@ -52,20 +52,20 @@ class Orchestrator:
 
             set_last_data(raw[:100])
 
-            # -----------------------------
-            # 3. CRISIS DETECTION
-            # -----------------------------
-            crisis = detect_crisis_signals(raw)
+            # =================================================
+            # 3. CRISIS DETECTION (OPTIMIZED MAP)
+            # =================================================
+            crisis_list = detect_crisis_signals(raw)
 
-            crisis_map = {
-                str(c.get("title", "")).lower(): c
-                for c in crisis
-                if c.get("title")
-            }
+            crisis_map = {}
+            for c in crisis_list:
+                title = c.get("title")
+                if title:
+                    crisis_map[title.lower()] = c
 
-            # -----------------------------
+            # =================================================
             # 4. SIGNAL DETECTION
-            # -----------------------------
+            # =================================================
             signals = detect_signals(raw)
 
             if not signals:
@@ -80,46 +80,44 @@ class Orchestrator:
             if not signals:
                 return []
 
-            # -----------------------------
-            # 5. CRISIS BOOST
-            # -----------------------------
+            # =================================================
+            # 5. CRISIS BOOST (SAFE MATCH)
+            # =================================================
             for s in signals:
                 topic = str(s.get("topic", "")).lower()
 
-                for k, v in crisis_map.items():
-                    if k and k in topic:
-                        s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
-                        s["urgency"] = v.get("urgency", "high")
-                        break
+                matched = crisis_map.get(topic)
+                if matched:
+                    s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
+                    s["urgency"] = matched.get("urgency", "high")
 
-            # -----------------------------
+            # =================================================
             # 6. DECISION ENGINE
-            # -----------------------------
+            # =================================================
             decisions = self.decision.evaluate(signals)
 
             if not decisions:
                 return []
 
-            # -----------------------------
+            # =================================================
             # 7. INTELLIGENCE ENGINE
-            # -----------------------------
+            # =================================================
             intel = self.intelligence.run(decisions)
 
             if not intel:
                 return []
 
-            for i, item in enumerate(intel):
-                if i < len(decisions):
-                    item["decision"] = decisions[i]
+            for i in range(min(len(intel), len(decisions))):
+                intel[i]["decision"] = decisions[i]
 
-            # -----------------------------
+            # =================================================
             # 8. OUTPUT
-            # -----------------------------
+            # =================================================
             output = []
 
             for item in intel:
 
-                topic = str(item.get("topic", "")).strip()
+                topic = (item.get("topic") or "").strip()
                 if not topic:
                     continue
 
@@ -128,7 +126,6 @@ class Orchestrator:
                 if not decision.get("publish", True):
                     continue
 
-                # duplicate protection
                 if is_duplicate(topic):
                     continue
 
@@ -150,7 +147,7 @@ class Orchestrator:
 
             return output
 
-        except Exception as e:
+        except Exception:
             logger.error("[ORCHESTRATOR ERROR]")
             logger.error(traceback.format_exc())
             return []
