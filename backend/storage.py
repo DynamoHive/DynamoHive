@@ -1,11 +1,9 @@
 import sqlite3
 import time
-import json
 import threading
 
 DB_PATH = "dynamo.db"
 
-# thread safety
 LOCK = threading.Lock()
 
 
@@ -34,20 +32,9 @@ def init_db():
 
 
 # =====================================================
-# SAVE SIGNAL (PRIMARY WRITE METHOD)
+# SAVE SIGNAL
 # =====================================================
 def save_signal(item: dict):
-    """
-    Expected format:
-    {
-        "title": str,
-        "topic": str,
-        "content": str,
-        "priority": float,
-        "published": int (0/1),
-        "timestamp": int
-    }
-    """
 
     try:
         with LOCK:
@@ -78,6 +65,7 @@ def save_signal(item: dict):
 # GET SIGNALS
 # =====================================================
 def get_signals(limit: int = 50):
+
     try:
         with LOCK:
             conn = sqlite3.connect(DB_PATH)
@@ -111,12 +99,10 @@ def get_signals(limit: int = 50):
 
 
 # =====================================================
-# CLEAR OLD DATA (OPTIONAL MAINTENANCE)
+# CLEANUP
 # =====================================================
 def cleanup(max_age_seconds: int = 86400):
-    """
-    Remove old signals (default: 24h)
-    """
+
     try:
         cutoff = int(time.time()) - max_age_seconds
 
@@ -137,9 +123,10 @@ def cleanup(max_age_seconds: int = 86400):
 
 
 # =====================================================
-# COUNT SIGNALS
+# COUNT
 # =====================================================
 def count_signals():
+
     try:
         with LOCK:
             conn = sqlite3.connect(DB_PATH)
