@@ -5,35 +5,36 @@ const theme = {
   // -------------------------
   colors: {
 
-    // Core
-    background: "#0B0B0F",
-    surface: "#12121A",
-    surfaceAlt: "#181824",
+    // Core Backgrounds
+    background: "#050505",
+    surface: "#0F0F10",
+    surfaceAlt: "#171717",
 
     // Borders
-    border: "#1F2937",
+    border: "#242424",
+    borderSoft: "#303030",
 
-    // Brand
-    primary: "#00D1FF",
-    primaryDark: "#0099CC",
-    primarySoft: "#163340",
+    // Brand (Gold Identity)
+    primary: "#D4AF37",
+    primarySoft: "#F1D27A",
+    primaryDark: "#A67C1B",
 
-    // Text
-    text: "#EAEAEA",
-    muted: "#9CA3AF",
+    // Typography
+    text: "#F5F5F5",
+    muted: "#A1A1AA",
     dim: "#6B7280",
 
     // Signal Severity
-    low: "#22C55E",
-    medium: "#F59E0B",
-    high: "#EF4444",
+    low: "#4ADE80",
+    medium: "#FBBF24",
+    high: "#F87171",
 
     // Status
-    success: "#10B981",
+    success: "#22C55E",
     warning: "#F59E0B",
-    danger: "#DC2626",
+    danger: "#EF4444",
 
-    // Misc
+    // Utility
     white: "#FFFFFF",
     black: "#000000"
   },
@@ -44,32 +45,36 @@ const theme = {
   // -------------------------
   typography: {
 
-    fontFamily: "Arial, sans-serif",
+    fontFamily: "'Inter', Arial, sans-serif",
 
     hero: {
       fontSize: "72px",
       fontWeight: "700",
-      lineHeight: "1.05"
+      lineHeight: "1.05",
+      letterSpacing: "-2px"
     },
 
     h1: {
-      fontSize: "48px",
-      fontWeight: "700"
+      fontSize: "52px",
+      fontWeight: "700",
+      lineHeight: "1.1"
     },
 
     h2: {
-      fontSize: "32px",
-      fontWeight: "600"
+      fontSize: "34px",
+      fontWeight: "600",
+      lineHeight: "1.2"
     },
 
     h3: {
       fontSize: "24px",
-      fontWeight: "600"
+      fontWeight: "600",
+      lineHeight: "1.3"
     },
 
     body: {
       fontSize: "16px",
-      lineHeight: "1.7"
+      lineHeight: "1.8"
     },
 
     small: {
@@ -84,9 +89,9 @@ const theme = {
   // -------------------------
   radius: {
 
-    card: "18px",
+    card: "20px",
 
-    button: "10px",
+    button: "12px",
 
     pill: "999px"
   },
@@ -107,9 +112,9 @@ const theme = {
 
     xl: "80px",
 
-    section: "100px",
+    section: "120px",
 
-    container: "1100px"
+    container: "1200px"
   },
 
 
@@ -118,9 +123,11 @@ const theme = {
   // -------------------------
   shadows: {
 
-    card: "0 0 20px rgba(0,209,255,0.05)",
+    card: "0 10px 30px rgba(0,0,0,0.35)",
 
-    glow: "0 0 30px rgba(0,209,255,0.15)"
+    glow: "0 0 30px rgba(212,175,55,0.18)",
+
+    soft: "0 4px 12px rgba(0,0,0,0.2)"
   },
 
 
@@ -129,9 +136,9 @@ const theme = {
   // -------------------------
   transitions: {
 
-    default: "all 0.2s ease",
+    default: "all 0.25s ease",
 
-    slow: "all 0.4s ease"
+    slow: "all 0.45s ease"
   },
 
 
@@ -141,29 +148,39 @@ const theme = {
   components: {
 
     card: {
-      background: "#12121A",
-      border: "1px solid #1F2937",
-      borderRadius: "18px",
-      padding: "24px"
+      background: "#0F0F10",
+      border: "1px solid #242424",
+      borderRadius: "20px",
+      padding: "28px",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.35)"
     },
 
     buttonPrimary: {
-      background: "#00D1FF",
+      background: "#D4AF37",
       color: "#000000",
       border: "none",
-      borderRadius: "10px",
-      padding: "14px 28px",
+      borderRadius: "12px",
+      padding: "14px 30px",
       cursor: "pointer",
-      fontWeight: "600"
+      fontWeight: "700",
+      transition: "all 0.25s ease"
     },
 
     buttonSecondary: {
       background: "transparent",
-      color: "#00D1FF",
-      border: "1px solid #00D1FF",
-      borderRadius: "10px",
-      padding: "14px 28px",
-      cursor: "pointer"
+      color: "#D4AF37",
+      border: "1px solid #D4AF37",
+      borderRadius: "12px",
+      padding: "14px 30px",
+      cursor: "pointer",
+      fontWeight: "600",
+      transition: "all 0.25s ease"
+    },
+
+    navbar: {
+      background: "rgba(5,5,5,0.9)",
+      borderBottom: "1px solid #242424",
+      backdropFilter: "blur(12px)"
     }
   }
 };
