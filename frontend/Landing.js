@@ -1,86 +1,93 @@
-import React from "react";
+   <a
+            href="/legal.html"
+            style={footerLink}
+          >
+            Legal
+          </a>
 
-export default function Landing() {
+          <a
+            href="/privacy.html"
+            style={footerLink}
+          >
+            Privacy
+          </a>
+
+        </div>
+
+      </footer>
+
+    </div>
+  );
+}
+
+
+function FeatureCard({ title, text }) {
+
   return (
+
     <div
       style={{
-        background: "#0B0B0F",
-        color: "white",
-        minHeight: "100vh",
-        padding: "60px",
-        fontFamily: "Arial"
+        background: "#12121A",
+        border: "1px solid #1F2937",
+        borderRadius: "18px",
+        padding: "28px"
       }}
     >
-      <h1
+
+      <h3
         style={{
-          fontSize: "48px",
-          marginBottom: "10px",
-          letterSpacing: "2px"
+          marginBottom: "14px"
         }}
       >
-        DynamoHive
-      </h1>
+        {title}
+      </h3>
 
       <p
         style={{
-          color: "#888",
-          fontSize: "18px",
-          maxWidth: "700px",
+          color: "#9CA3AF",
           lineHeight: "1.6"
         }}
       >
-        Real-time geopolitical intelligence, crisis detection,
-        narrative monitoring and AI-driven signal analysis platform.
+        {text}
       </p>
 
-      <div style={{ marginTop: "40px" }}>
-        <a
-          href="/dashboard"
-          style={{
-            color: "#00D1FF",
-            textDecoration: "none",
-            fontSize: "18px",
-            border: "1px solid #00D1FF",
-            padding: "12px 24px",
-            borderRadius: "8px"
-          }}
-        >
-          Enter Dashboard
-        </a>
+    </div>
+  );
+}
+
+
+function StatusItem({ label, value }) {
+
+  return (
+
+    <div>
+
+      <div
+        style={{
+          color: "#777",
+          marginBottom: "8px",
+          fontSize: "14px"
+        }}
+      >
+        {label}
       </div>
 
       <div
         style={{
-          marginTop: "80px",
-          color: "#555",
-          fontSize: "13px"
+          color: "#00D1FF",
+          fontWeight: "bold"
         }}
       >
-        Experimental Intelligence Infrastructure
+        {value}
       </div>
 
-      <div style={{ marginTop: "20px" }}>
-        <a
-          href="/legal.html"
-          style={{
-            color: "#666",
-            marginRight: "20px",
-            textDecoration: "none"
-          }}
-        >
-          Legal
-        </a>
-
-        <a
-          href="/privacy.html"
-          style={{
-            color: "#666",
-            textDecoration: "none"
-          }}
-        >
-          Privacy
-        </a>
-      </div>
     </div>
   );
 }
+
+
+const footerLink = {
+  color: "#666",
+  textDecoration: "none",
+  marginLeft: "20px"
+};
