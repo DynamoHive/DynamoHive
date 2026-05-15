@@ -1,6 +1,5 @@
 import time
 import traceback
-import hashlib
 
 from backend.logger import logger
 from backend.storage import save_signal
@@ -19,40 +18,28 @@ from ai_engine.global_crisis_radar import detect_crisis_signals
 # =====================================================
 # MEMORY
 # =====================================================
-
 LAST_DATA = []
 duplicate_cache = {}
 
 
 def is_duplicate(topic: str) -> bool:
-
-    try:
-        time_bucket = int(time.time() / 300)
-        key = hashlib.md5(
-            (str(topic).lower() + str(time_bucket)).encode()
-        ).hexdigest()
-    except Exception:
-        return False
-
     now = time.time()
 
-    if key in duplicate_cache:
-        if now - duplicate_cache[key] < 300:
-            return True
-
-    duplicate_cache[key] = now
-
-    # memory safety
-    if len(duplicate_cache) > 10000:
+    # simple TTL cleanup
+    if len(duplicate_cache) > 5000:
         duplicate_cache.clear()
 
+    if topic in duplicate_cache:
+        if now - duplicate_cache[topic] < 300:
+            return True
+
+    duplicate_cache[topic] = now
     return False
 
 
 # =====================================================
-# ORCHESTRATOR CORE
+# ORCHESTRATOR
 # =====================================================
-
 class Orchestrator:
 
     def __init__(self):
@@ -69,66 +56,76 @@ class Orchestrator:
 
         try:
 
-            # -------------------------
+            # =================================================
             # 1. CRAWL
-            # -------------------------
+            # =================================================
             raw = crawl()
 
             if not raw:
                 raw = LAST_DATA or [{
-                    "title": "fallback signal",
-                    "content": "fallback"
+                    "title": "system fallback signal",
+                    "content": "no external data available",
+                    "score": 0.3
                 }]
 
-            # -------------------------
+            # =================================================
             # 2. PROCESS
-            # -------------------------
-            raw = process_data(raw)
+            # =================================================
+            raw = process_data(raw) if raw else raw
 
             if not raw:
-                return []
+                raw = [{
+                    "title": "processed fallback signal",
+                    "content": "pipeline recovery mode",
+                    "score": 0.4
+                }]
 
             LAST_DATA.clear()
             LAST_DATA.extend(raw[:100])
 
-            # -------------------------
+            # =================================================
             # 3. CRISIS DETECTION
-            # -------------------------
-            crisis_signals = detect_crisis_signals(raw)
+            # =================================================
+            try:
+                crisis_signals = detect_crisis_signals(raw)
+            except:
+                crisis_signals = []
 
             crisis_map = {
                 str(c.get("title", "")).lower(): c
                 for c in crisis_signals
             }
 
-            # -------------------------
+            # =================================================
             # 4. SIGNAL DETECTION
-            # -------------------------
+            # =================================================
             signals = detect_signals(raw)
 
             if not signals:
                 signals = [
                     {
-                        "topic": x.get("title", "fallback"),
+                        "topic": x.get("title", "fallback signal"),
                         "score": 0.5
                     }
                     for x in raw[:10]
                 ]
 
-            # -------------------------
+            # =================================================
             # 5. RANK + CLUSTER
-            # -------------------------
+            # =================================================
             signals = merge_ranked_signals(signals or [])
             signals = cluster_signals(signals or [])
 
             if not signals:
-                return []
+                signals = [{
+                    "topic": "system fallback cluster",
+                    "score": 0.5
+                }]
 
-            # -------------------------
+            # =================================================
             # 6. CRISIS BOOST
-            # -------------------------
+            # =================================================
             for s in signals:
-
                 topic = str(s.get("topic", "")).lower()
 
                 if topic in crisis_map:
@@ -136,29 +133,39 @@ class Orchestrator:
                     s["urgency"] = c.get("urgency", "high")
                     s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
 
-            # -------------------------
+            # =================================================
             # 7. DECISION ENGINE
-            # -------------------------
+            # =================================================
             decisions = self.decision.evaluate(signals)
 
             if not decisions:
-                return []
+                decisions = [{
+                    "publish": True,
+                    "priority": 0.5
+                }]
 
-            # -------------------------
+            # =================================================
             # 8. INTELLIGENCE LAYER
-            # -------------------------
+            # =================================================
             intel = self.intelligence.run(decisions)
 
             if not intel:
-                return []
+                intel = [{
+                    "topic": "intelligence fallback",
+                    "narrative": {
+                        "title": "System Active",
+                        "content": "Fallback intelligence generated"
+                    }
+                }]
 
+            # merge decisions
             for i, item in enumerate(intel):
                 if i < len(decisions):
                     item["decision"] = decisions[i]
 
-            # -------------------------
+            # =================================================
             # 9. GENERATION + PERSISTENCE
-            # -------------------------
+            # =================================================
             output = []
 
             for item in intel:
@@ -177,29 +184,47 @@ class Orchestrator:
 
                 narrative = item.get("narrative") or {}
 
+                title = narrative.get("title") or topic[:80]
+                content = narrative.get("content") or topic
+
                 payload = {
-                    "title": narrative.get("title") or topic[:80],
+                    "title": title,
                     "topic": topic,
-                    "content": narrative.get("content") or topic,
+                    "content": content,
                     "priority": decision.get("priority", 0.5),
-                    "published": True,
+                    "published": 1,
                     "timestamp": int(time.time())
                 }
 
-                save_signal(payload)
+                try:
+                    save_signal(payload)
+                except Exception as e:
+                    logger.error(f"[STORAGE ERROR] {e}")
+
                 output.append(payload)
 
                 logger.info(f"[GENERATED] {topic}")
 
-            # -------------------------
-            # FINAL CONTRACT (STABLE)
-            # -------------------------
-            return output
+            # =================================================
+            # FINAL RETURN (API SAFE)
+            # =================================================
+            return {
+                "cycle": self.cycle,
+                "timestamp": int(time.time()),
+                "count": len(output),
+                "signals": output
+            }
 
         except Exception as e:
             traceback.print_exc()
             logger.error(f"[ORCHESTRATOR ERROR] {str(e)}")
-            return []
+
+            return {
+                "cycle": self.cycle,
+                "timestamp": int(time.time()),
+                "count": 0,
+                "signals": []
+            }
 
         finally:
             logger.info(
