@@ -19,8 +19,16 @@ def process_data(raw_data):
 
     for item in raw_data:
 
-        title = clean_text(item.get("title", ""))
-        content = clean_text(item.get("content", ""))
+        title = clean_text(
+            item.get("title", "")
+        )
+
+        # RSS fallback support
+        content = clean_text(
+            item.get("content", "") or
+            item.get("summary", "") or
+            item.get("description", "")
+        )
 
         if not title or not content:
             continue
