@@ -1,35 +1,35 @@
 import time
 from backend.logger import logger
 
+
 class CycleGuard:
 
     def __init__(self):
-        self.last_valid_cycle_time = 0
-        self.consecutive_empty_cycles = 0
+        self.empty_cycles = 0
         self.max_empty_cycles = 3
         self.cooldown_seconds = 60
+        self.last_valid_cycle = time.time()
 
-    def should_skip_cycle(self, data):
+    def should_block(self, data):
         """
-        TRUE → cycle SKIP
-        FALSE → cycle OK
+        True  → cycle BLOCKED
+        False → cycle ALLOWED
         """
 
         if data:
-            self.consecutive_empty_cycles = 0
-            self.last_valid_cycle_time = time.time()
+            self.empty_cycles = 0
+            self.last_valid_cycle = time.time()
             return False
 
-        self.consecutive_empty_cycles += 1
+        self.empty_cycles += 1
 
         logger.warning(
-            f"[CYCLE GUARD] empty cycle #{self.consecutive_empty_cycles}"
+            f"[CYCLE GUARD] empty cycle {self.empty_cycles}"
         )
 
-        # too many empty cycles → cooldown mode
-        if self.consecutive_empty_cycles >= self.max_empty_cycles:
-            if time.time() - self.last_valid_cycle_time < self.cooldown_seconds:
-                logger.warning("[CYCLE GUARD] cooldown active → skipping cycle")
+        if self.empty_cycles >= self.max_empty_cycles:
+            if time.time() - self.last_valid_cycle < self.cooldown_seconds:
+                logger.warning("[CYCLE GUARD] cooldown active → blocking cycle")
                 return True
 
         return False
