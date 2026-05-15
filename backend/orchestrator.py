@@ -1,5 +1,6 @@
 import time
 import traceback
+import hashlib
 
 from backend.logger import logger
 from backend.storage import save_signal
@@ -18,28 +19,43 @@ from ai_engine.global_crisis_radar import detect_crisis_signals
 # =====================================================
 # MEMORY
 # =====================================================
+
 LAST_DATA = []
 duplicate_cache = {}
 
+DEBUG_MODE = True
+FORCE_OUTPUT = False
+
 
 def is_duplicate(topic: str) -> bool:
+    try:
+        time_bucket = int(time.time() / 300)
+        key = hashlib.md5(
+            (str(topic).lower() + str(time_bucket)).encode()
+        ).hexdigest()
+    except Exception:
+        return False
+
     now = time.time()
 
-    # simple TTL cleanup
-    if len(duplicate_cache) > 5000:
-        duplicate_cache.clear()
-
-    if topic in duplicate_cache:
-        if now - duplicate_cache[topic] < 300:
+    if key in duplicate_cache:
+        if now - duplicate_cache[key] < 300:
+            if DEBUG_MODE:
+                logger.info(f"[DUPLICATE BLOCKED] {topic}")
             return True
 
-    duplicate_cache[topic] = now
+    duplicate_cache[key] = now
+
+    if len(duplicate_cache) > 10000:
+        duplicate_cache.clear()
+
     return False
 
 
 # =====================================================
 # ORCHESTRATOR
 # =====================================================
+
 class Orchestrator:
 
     def __init__(self):
@@ -52,7 +68,9 @@ class Orchestrator:
         start = time.time()
         self.cycle += 1
 
-        logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
+        logger.info(f"\n==============================")
+        logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} START")
+        logger.info(f"==============================")
 
         try:
 
@@ -61,24 +79,26 @@ class Orchestrator:
             # =================================================
             raw = crawl()
 
+            logger.info(f"[DEBUG] RAW CRAWL COUNT: {len(raw) if raw else 0}")
+
             if not raw:
                 raw = LAST_DATA or [{
-                    "title": "system fallback signal",
-                    "content": "no external data available",
-                    "score": 0.3
+                    "title": "fallback signal",
+                    "content": "fallback"
                 }]
+
+            logger.info(f"[DEBUG] RAW SAMPLE: {raw[:1]}")
 
             # =================================================
             # 2. PROCESS
             # =================================================
-            raw = process_data(raw) if raw else raw
+            raw = process_data(raw)
+
+            logger.info(f"[DEBUG] AFTER PROCESS: {len(raw) if raw else 0}")
 
             if not raw:
-                raw = [{
-                    "title": "processed fallback signal",
-                    "content": "pipeline recovery mode",
-                    "score": 0.4
-                }]
+                logger.warning("[PIPELINE STOP] process_data returned empty")
+                return []
 
             LAST_DATA.clear()
             LAST_DATA.extend(raw[:100])
@@ -86,10 +106,9 @@ class Orchestrator:
             # =================================================
             # 3. CRISIS DETECTION
             # =================================================
-            try:
-                crisis_signals = detect_crisis_signals(raw)
-            except:
-                crisis_signals = []
+            crisis_signals = detect_crisis_signals(raw)
+
+            logger.info(f"[DEBUG] CRISIS SIGNALS: {len(crisis_signals)}")
 
             crisis_map = {
                 str(c.get("title", "")).lower(): c
@@ -101,14 +120,13 @@ class Orchestrator:
             # =================================================
             signals = detect_signals(raw)
 
+            logger.info(f"[DEBUG] SIGNALS FOUND: {len(signals) if signals else 0}")
+
             if not signals:
-                signals = [
-                    {
-                        "topic": x.get("title", "fallback signal"),
-                        "score": 0.5
-                    }
-                    for x in raw[:10]
-                ]
+                signals = [{
+                    "topic": x.get("title", "fallback"),
+                    "score": 0.5
+                } for x in raw[:10]]
 
             # =================================================
             # 5. RANK + CLUSTER
@@ -116,16 +134,17 @@ class Orchestrator:
             signals = merge_ranked_signals(signals or [])
             signals = cluster_signals(signals or [])
 
+            logger.info(f"[DEBUG] AFTER CLUSTER: {len(signals)}")
+
             if not signals:
-                signals = [{
-                    "topic": "system fallback cluster",
-                    "score": 0.5
-                }]
+                logger.warning("[PIPELINE STOP] no signals after clustering")
+                return []
 
             # =================================================
             # 6. CRISIS BOOST
             # =================================================
             for s in signals:
+
                 topic = str(s.get("topic", "")).lower()
 
                 if topic in crisis_map:
@@ -138,25 +157,22 @@ class Orchestrator:
             # =================================================
             decisions = self.decision.evaluate(signals)
 
+            logger.info(f"[DEBUG] DECISIONS: {len(decisions) if decisions else 0}")
+
             if not decisions:
-                decisions = [{
-                    "publish": True,
-                    "priority": 0.5
-                }]
+                logger.warning("[PIPELINE STOP] no decisions")
+                return []
 
             # =================================================
-            # 8. INTELLIGENCE LAYER
+            # 8. INTELLIGENCE
             # =================================================
             intel = self.intelligence.run(decisions)
 
+            logger.info(f"[DEBUG] INTELLIGENCE OUTPUT: {len(intel) if intel else 0}")
+
             if not intel:
-                intel = [{
-                    "topic": "intelligence fallback",
-                    "narrative": {
-                        "title": "System Active",
-                        "content": "Fallback intelligence generated"
-                    }
-                }]
+                logger.warning("[PIPELINE STOP] no intelligence output")
+                return []
 
             # merge decisions
             for i, item in enumerate(intel):
@@ -164,19 +180,22 @@ class Orchestrator:
                     item["decision"] = decisions[i]
 
             # =================================================
-            # 9. GENERATION + PERSISTENCE
+            # 9. GENERATION
             # =================================================
             output = []
 
             for item in intel:
 
                 topic = str(item.get("topic", "")).strip()
+
                 if not topic:
                     continue
 
                 decision = item.get("decision", {})
 
                 if not decision.get("publish", True):
+                    if DEBUG_MODE:
+                        logger.info(f"[SKIP PUBLISH] {topic}")
                     continue
 
                 if is_duplicate(topic):
@@ -192,39 +211,39 @@ class Orchestrator:
                     "topic": topic,
                     "content": content,
                     "priority": decision.get("priority", 0.5),
-                    "published": 1,
+                    "published": True,
                     "timestamp": int(time.time())
                 }
 
-                try:
-                    save_signal(payload)
-                except Exception as e:
-                    logger.error(f"[STORAGE ERROR] {e}")
+                save_signal(payload)
 
                 output.append(payload)
 
-                logger.info(f"[GENERATED] {topic}")
+                logger.info(f"[GENERATED] {topic} | priority={payload['priority']}")
 
             # =================================================
-            # FINAL RETURN (API SAFE)
+            # FINAL OUTPUT
             # =================================================
-            return {
-                "cycle": self.cycle,
-                "timestamp": int(time.time()),
-                "count": len(output),
-                "signals": output
-            }
+            logger.info(f"[DEBUG] FINAL OUTPUT COUNT: {len(output)}")
+
+            if FORCE_OUTPUT and not output:
+                logger.warning("[FORCE OUTPUT ENABLED] injecting fallback signal")
+
+                output = [{
+                    "title": "FORCED DEBUG SIGNAL",
+                    "topic": "debug",
+                    "content": "forced pipeline output",
+                    "priority": 1.0,
+                    "published": True,
+                    "timestamp": int(time.time())
+                }]
+
+            return output
 
         except Exception as e:
             traceback.print_exc()
             logger.error(f"[ORCHESTRATOR ERROR] {str(e)}")
-
-            return {
-                "cycle": self.cycle,
-                "timestamp": int(time.time()),
-                "count": 0,
-                "signals": []
-            }
+            return []
 
         finally:
             logger.info(
