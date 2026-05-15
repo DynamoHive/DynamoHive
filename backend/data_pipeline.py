@@ -1,42 +1,87 @@
 import threading
 import queue
-import time
+import traceback
 
+from backend.logger import logger
 from backend.trust_engine import update_trust
 
+
+# =====================================================
+# GLOBAL EVENT QUEUE
+# =====================================================
 event_queue = queue.Queue()
 
+_worker_started = False
+_lock = threading.Lock()
 
+
+# =====================================================
+# ADD EVENT
+# =====================================================
 def add_event(event):
 
-    event_queue.put(event)
+    try:
+        event_queue.put(event)
+
+    except Exception:
+        logger.error("[EVENT PIPELINE] add_event failed")
+        logger.error(traceback.format_exc())
 
 
+# =====================================================
+# PROCESS EVENTS
+# =====================================================
 def process_events():
+
+    logger.info("[EVENT PIPELINE] worker started")
 
     while True:
 
-        event = event_queue.get()
+        try:
+
+            event = event_queue.get(timeout=5)
+
+        except queue.Empty:
+            continue
 
         try:
 
             update_trust(event)
 
-            print("Processing event:", event)
+            logger.info(
+                f"[EVENT PIPELINE] processed: "
+                f"{event.get('title', 'unknown')}"
+            )
 
-        except Exception as e:
+        except Exception:
 
-            print("Pipeline error:", e)
+            logger.error("[EVENT PIPELINE ERROR]")
+            logger.error(traceback.format_exc())
 
-        event_queue.task_done()
+        finally:
+
+            event_queue.task_done()
 
 
+# =====================================================
+# START PIPELINE
+# =====================================================
 def start_pipeline():
 
-    worker = threading.Thread(target=process_events)
+    global _worker_started
 
-    worker.daemon = True
+    with _lock:
 
-    worker.start()
+        if _worker_started:
+            return
 
-    print("Event pipeline started")
+        worker = threading.Thread(
+            target=process_events,
+            daemon=True
+        )
+
+        worker.start()
+
+        _worker_started = True
+
+        logger.info("[EVENT PIPELINE] started")
