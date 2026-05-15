@@ -40,14 +40,4 @@ class Scheduler:
     def _loop(self):
         while self.running:
             try:
-                logger.info("[SCHEDULER] cycle start")
-
-                result = self.orchestrator.run_cycle()
-
-                logger.info(f"[SCHEDULER] cycle done | items: {len(result)}")
-
-            except Exception:
-                logger.error("[SCHEDULER ERROR]")
-                logger.error(traceback.format_exc())
-
-            time.sleep(self.interval)
+               
