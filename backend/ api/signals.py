@@ -1,133 +1,81 @@
-from fastapi import APIRouter, Query
-from ai_engine.signal_engine import run_signal_engine
-import time
-import threading
-
-router = APIRouter()
+from ai_engine.signal_ranking_engine import merge_ranked_signals
 
 
 # =====================================================
-# THREAD SAFE CACHE
+# MOCK / INPUT COMPATIBILITY SAFE
 # =====================================================
-CACHE = {
-    "signals": [],
-    "last_update": 0,
-    "loading": False
-}
-
-CACHE_TTL = 30
-LOCK = threading.Lock()
-
-
-# =====================================================
-# NORMALIZER (CRITICAL FIX)
-# =====================================================
-def normalize_result(result):
+def fetch_raw_signals():
     """
-    run_signal_engine bazen dict bazen list döndürüyor.
-    bunu tek formata sokuyoruz.
+    Eğer crawler / upstream boş gelirse bile sistem çökmesin.
     """
-
-    if isinstance(result, dict):
-        return result.get("signals", [])
-
-    if isinstance(result, list):
-        return result
 
     return []
 
 
 # =====================================================
-# REFRESH CACHE (SAFE)
+# SIGNAL NORMALIZER
 # =====================================================
-def refresh_cache():
+def normalize_signal(s):
+    """
+    Her engine farklı format döndürebilir.
+    bunu tek standarda sokuyoruz.
+    """
 
-    with LOCK:
+    if not isinstance(s, dict):
+        return None
 
-        if CACHE["loading"]:
-            return
+    topic = (
+        s.get("topic")
+        or s.get("title")
+        or s.get("text")
+        or "unknown"
+    )
 
-        CACHE["loading"] = True
-
-        try:
-            result = run_signal_engine()
-
-            signals = normalize_result(result)
-
-            CACHE["signals"] = signals
-            CACHE["last_update"] = int(time.time())
-
-        except Exception as e:
-            print("[CACHE ERROR]", e)
-
-        finally:
-            CACHE["loading"] = False
-
-
-# =====================================================
-# ENSURE CACHE FRESH
-# =====================================================
-def ensure_cache_fresh():
-
-    if time.time() - CACHE["last_update"] > CACHE_TTL:
-        refresh_cache()
-
-
-# =====================================================
-# GET CACHE
-# =====================================================
-def get_cached_signals():
-    ensure_cache_fresh()
-    return CACHE["signals"]
-
-
-# =====================================================
-# LIVE SIGNALS
-# =====================================================
-@router.get("/live")
-def get_live_signals(limit: int = Query(10, ge=1, le=50)):
-
-    signals = get_cached_signals()[:limit]
+    score = s.get("score", 0.5)
 
     return {
-        "status": "ok",
-        "engine": "DynamoHive",
-        "count": len(signals),
-        "signals": signals
+        "topic": str(topic),
+        "signal": {"score": float(score)},
+        "prediction": {"impact_score": 0.5},
+        "reasoning": {"confidence": 0.5}
     }
 
 
 # =====================================================
-# FILTER
+# MAIN ENGINE
 # =====================================================
-@router.get("/filter")
-def filter_signals(severity: str = None):
+def run_signal_engine():
 
-    signals = get_cached_signals()
+    raw = fetch_raw_signals()
 
-    if severity:
-        signals = [
-            s for s in signals
-            if s.get("severity") == severity
-        ]
+    # upstream fallback (IMPORTANT)
+    if not raw or len(raw) == 0:
+        return {
+            "signals": []
+        }
 
+    normalized = []
+
+    for r in raw:
+        n = normalize_signal(r)
+        if n:
+            normalized.append(n)
+
+    # safety fallback if everything failed
+    if not normalized:
+        return {
+            "signals": []
+        }
+
+    # ranking layer
+    try:
+        ranked = merge_ranked_signals(normalized) or normalized
+    except Exception:
+        ranked = normalized
+
+    # FINAL GUARANTEE: always structured output
     return {
         "status": "ok",
-        "count": len(signals),
-        "signals": signals
-    }
-
-
-# =====================================================
-# HISTORY
-# =====================================================
-@router.get("/history")
-def get_history():
-
-    return {
-        "status": "ok",
-        "mode": "cached_snapshot",
-        "last_update": CACHE["last_update"],
-        "count": len(CACHE["signals"]),
-        "signals": CACHE["signals"]
+        "count": len(ranked),
+        "signals": ranked
     }
