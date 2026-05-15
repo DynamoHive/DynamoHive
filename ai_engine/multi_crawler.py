@@ -1,13 +1,13 @@
 import feedparser
 import hashlib
 import time
-
 from datetime import datetime
+
 from backend.storage import save_signal
 
 
 # =====================================================
-# RSS SOURCES
+# SOURCES
 # =====================================================
 RSS_SOURCES = [
     "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
@@ -28,14 +28,14 @@ CACHE_TTL = 300
 
 
 # =====================================================
-# DUPLICATE CACHE
+# DUPLICATE
 # =====================================================
 SEEN = {}
 DUP_TTL = 1800
 
 
 # =====================================================
-# SIGNAL KEYWORDS
+# KEYWORDS (soft signal mode)
 # =====================================================
 KEYWORDS = [
     "ai", "technology", "tech",
@@ -55,18 +55,18 @@ def make_hash(text: str) -> str:
 
 
 # =====================================================
-# DUPLICATE CHECK
+# DUPLICATE CHECK (safe)
 # =====================================================
 def is_duplicate(text: str) -> bool:
     h = make_hash(text)
     now = time.time()
 
-    if h in SEEN and now - SEEN[h] < DUP_TTL:
+    last = SEEN.get(h)
+    if last and now - last < DUP_TTL:
         return True
 
     SEEN[h] = now
 
-    # memory safety
     if len(SEEN) > 5000:
         SEEN.clear()
 
@@ -74,37 +74,38 @@ def is_duplicate(text: str) -> bool:
 
 
 # =====================================================
-# CACHE FEED
+# FEED CACHE
 # =====================================================
 def get_feed(url: str):
     now = time.time()
 
     if url in CACHE:
-        cached_time, cached_feed = CACHE[url]
-        if now - cached_time < CACHE_TTL:
-            return cached_feed
+        t, feed = CACHE[url]
+        if now - t < CACHE_TTL:
+            return feed
 
-    feed = feedparser.parse(url)
+    try:
+        feed = feedparser.parse(url)
+    except Exception:
+        return None
 
     CACHE[url] = (now, feed)
     return feed
 
 
 # =====================================================
-# SIGNAL CHECK
+# SIGNAL CHECK (FIXED BALANCE)
 # =====================================================
 def is_signal(title: str, content: str) -> bool:
     text = f"{title} {content}".lower()
 
-    # keyword match
-    if any(k in text for k in KEYWORDS):
-        return True
+    keyword_hit = any(k in text for k in KEYWORDS)
 
-    # fallback (important: prevents empty pipeline)
-    if len(text) > 120:
-        return True
+    # IMPORTANT FIX:
+    # fallback too aggressive before → now limited
+    fallback = len(text) > 180
 
-    return False
+    return keyword_hit or fallback
 
 
 # =====================================================
@@ -113,20 +114,20 @@ def is_signal(title: str, content: str) -> bool:
 def calculate_score(title: str, content: str) -> float:
     text = f"{title} {content}".lower()
 
-    score = 0.5
+    score = 0.4  # slightly lower baseline
 
     high = ["war", "conflict", "crisis", "attack", "collapse"]
     medium = ["ai", "market", "economy", "energy", "security"]
 
     for w in high:
         if w in text:
-            score += 1.0
+            score += 0.9
 
     for w in medium:
         if w in text:
-            score += 0.4
+            score += 0.35
 
-    return round(min(score, 2.5), 2)
+    return round(min(score, 2.2), 2)
 
 
 # =====================================================
@@ -138,63 +139,57 @@ def crawl():
 
     for url in RSS_SOURCES:
 
-        try:
-            feed = get_feed(url)
+        feed = get_feed(url)
 
-            if not feed.entries:
+        if not feed or not hasattr(feed, "entries"):
+            continue
+
+        entries = feed.entries[:12]  # safer cap
+
+        for entry in entries:
+
+            title = (entry.get("title") or "").strip()
+            content = (
+                entry.get("summary")
+                or entry.get("description")
+                or ""
+            ).strip()
+
+            if not title:
                 continue
 
-            for entry in feed.entries[:15]:
+            full_text = f"{title} {content}"
 
-                title = (entry.get("title") or "").strip()
-                content = (
-                    entry.get("summary")
-                    or entry.get("description")
-                    or ""
-                ).strip()
+            if is_duplicate(full_text):
+                continue
 
-                if not title:
-                    continue
+            if not is_signal(title, content):
+                continue
 
-                full_text = f"{title} {content}"
+            score = calculate_score(title, content)
 
-                # duplicate filter
-                if is_duplicate(full_text):
-                    continue
+            item = {
+                "title": title,
+                "topic": title,
+                "text": content or title,
+                "score": score,
+                "sources": [url],
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
 
-                # signal filter
-                if not is_signal(title, content):
-                    continue
-
-                score = calculate_score(title, content)
-
-                item = {
+            try:
+                save_signal({
                     "title": title,
                     "topic": title,
-                    "text": content or title,
-                    "score": score,
-                    "sources": [url],
-                    "timestamp": datetime.utcnow().isoformat() + "Z"
-                }
+                    "content": item["text"],
+                    "priority": score,
+                    "published": 1,
+                    "timestamp": int(time.time())
+                })
+            except Exception:
+                pass
 
-                # DB SAVE (NON-BLOCKING SAFE)
-                try:
-                    save_signal({
-                        "title": item["title"],
-                        "topic": item["topic"],
-                        "content": item["text"],
-                        "priority": item["score"],
-                        "published": 1,
-                        "timestamp": int(time.time())
-                    })
-                except Exception as e:
-                    print("[DB ERROR]", e)
-
-                results.append(item)
-
-        except Exception as e:
-            print("[RSS ERROR]", url, e)
+            results.append(item)
 
     print("[CRAWLER DONE]", len(results))
-
     return results
