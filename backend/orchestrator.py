@@ -1,6 +1,7 @@
 import time
 import traceback
 import hashlib
+import threading
 
 from backend.logger import logger
 from backend.storage import save_signal
@@ -16,29 +17,51 @@ from ai_engine.decision_engine import DecisionEngine
 from ai_engine.global_crisis_radar import detect_crisis_signals
 
 
+# =====================================================
+# GLOBAL STATE
+# =====================================================
+
 LAST_DATA = []
 duplicate_cache = {}
 
+LOCK = threading.Lock()
+
+
+# =====================================================
+# DUPLICATE CHECK (SAFE + TTL CLEANUP)
+# =====================================================
 
 def is_duplicate(topic: str) -> bool:
     try:
         bucket = int(time.time() / 300)
-        key = hashlib.md5((str(topic).lower() + str(bucket)).encode()).hexdigest()
+        key = hashlib.md5(
+            (str(topic).lower() + str(bucket)).encode()
+        ).hexdigest()
     except Exception:
         return False
 
     now = time.time()
 
-    if key in duplicate_cache and now - duplicate_cache[key] < 300:
-        return True
+    with LOCK:
+        # TTL cleanup (safe instead of hard reset)
+        expired = [
+            k for k, t in duplicate_cache.items()
+            if now - t > 300
+        ]
+        for k in expired:
+            duplicate_cache.pop(k, None)
 
-    duplicate_cache[key] = now
+        if key in duplicate_cache:
+            return True
 
-    if len(duplicate_cache) > 10000:
-        duplicate_cache.clear()
+        duplicate_cache[key] = now
 
     return False
 
+
+# =====================================================
+# ORCHESTRATOR
+# =====================================================
 
 class Orchestrator:
 
@@ -65,16 +88,27 @@ class Orchestrator:
             if not raw:
                 return []
 
-            LAST_DATA.clear()
-            LAST_DATA.extend(raw[:100])
+            # =================================================
+            # THREAD SAFE CACHE UPDATE
+            # =================================================
+            with LOCK:
+                LAST_DATA.clear()
+                LAST_DATA.extend(raw[:100])
 
+            # =================================================
+            # CRISIS DETECTION
+            # =================================================
             crisis_signals = detect_crisis_signals(raw)
 
-            crisis_map = {
-                str(c.get("title", "")).lower(): c
-                for c in crisis_signals
-            }
+            crisis_map = {}
+            for c in crisis_signals:
+                title = str(c.get("title", "")).lower().strip()
+                if title:
+                    crisis_map[title] = c
 
+            # =================================================
+            # SIGNAL DETECTION
+            # =================================================
             signals = detect_signals(raw)
 
             if not signals:
@@ -89,18 +123,29 @@ class Orchestrator:
             if not signals:
                 return []
 
+            # =================================================
+            # CRISIS BOOST (SAFE MATCH)
+            # =================================================
             for s in signals:
                 topic = str(s.get("topic", "")).lower()
 
-                if topic in crisis_map:
-                    s["urgency"] = crisis_map[topic].get("urgency", "high")
-                    s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
+                for k, v in crisis_map.items():
+                    if k and k in topic:  # fuzzy match FIX
+                        s["urgency"] = v.get("urgency", "high")
+                        s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
+                        break
 
+            # =================================================
+            # DECISION ENGINE
+            # =================================================
             decisions = self.decision.evaluate(signals)
 
             if not decisions:
                 return []
 
+            # =================================================
+            # INTELLIGENCE ENGINE
+            # =================================================
             intel = self.intelligence.run(decisions)
 
             if not intel:
@@ -110,6 +155,9 @@ class Orchestrator:
                 if i < len(decisions):
                     item["decision"] = decisions[i]
 
+            # =================================================
+            # OUTPUT
+            # =================================================
             output = []
 
             for item in intel:
@@ -137,7 +185,11 @@ class Orchestrator:
                     "timestamp": int(time.time())
                 }
 
-                save_signal(payload)
+                try:
+                    save_signal(payload)
+                except Exception as e:
+                    logger.error(f"[DB ERROR] {e}")
+
                 output.append(payload)
 
                 logger.info(f"[GENERATED] {topic}")
@@ -150,4 +202,6 @@ class Orchestrator:
             return []
 
         finally:
-            logger.info(f"[ORCHESTRATOR] Cycle finished in {round(time.time() - start, 2)}s")
+            logger.info(
+                f"[ORCHESTRATOR] Cycle finished in {round(time.time() - start, 2)}s"
+            )
