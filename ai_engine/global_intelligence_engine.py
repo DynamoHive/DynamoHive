@@ -24,58 +24,63 @@ class GlobalIntelligenceEngine:
 
             try:
                 # =================================================
-                # 1. TOPIC SAFE EXTRACTION
+                # 1. TOPIC EXTRACTION (SAFE + BETTER FALLBACK)
                 # =================================================
                 topic = str(
                     signal.get("topic")
                     or signal.get("title")
                     or signal.get("text")
-                    or ""
+                    or "unknown signal"
                 ).strip()
 
-                if not topic:
-                    continue
-
                 # =================================================
-                # 2. MEMORY LAYER (SAFE)
+                # 2. MEMORY
                 # =================================================
-                mem = {}
                 try:
                     mem = self.memory.load(signal) or {}
                 except:
                     mem = {}
 
                 # =================================================
-                # 3. CONTEXT LAYER (SAFE)
+                # 3. CONTEXT
                 # =================================================
-                ctx = {}
                 try:
                     ctx = self.context.build(signal, mem) or {}
                 except:
                     ctx = {}
 
                 # =================================================
-                # 4. REASONING LAYER
+                # 4. REASONING (ENHANCED SAFETY)
                 # =================================================
-                reasoning = {}
                 try:
                     reasoning = self.reasoning.analyze(signal, ctx) or {}
                 except:
                     reasoning = {}
 
-                ctx["insight"] = reasoning.get("insight", "")
+                insight = reasoning.get("insight") or ""
+                ctx["insight"] = insight
 
                 # =================================================
-                # 5. PREDICTION LAYER
+                # 5. PREDICTION
                 # =================================================
-                prediction = {}
                 try:
                     prediction = self.prediction.forecast(signal, ctx) or {}
                 except:
                     prediction = {}
 
+                urgency = prediction.get("urgency", "low")
+                if urgency not in ["low", "medium", "high"]:
+                    urgency = "low"
+
                 # =================================================
-                # 6. INTEL OBJECT
+                # 6. SIGNAL ENRICHMENT (CRITICAL FIX)
+                # =================================================
+                signal_strength = float(signal.get("score", 0.5))
+                if "crisis" in insight.lower():
+                    signal_strength = min(signal_strength + 0.2, 1.0)
+
+                # =================================================
+                # 7. INTEL OBJECT (MORE STABLE SEMANTICS)
                 # =================================================
                 intel = {
                     "topic": topic,
@@ -83,16 +88,16 @@ class GlobalIntelligenceEngine:
                     "context": ctx,
                     "reasoning": reasoning,
                     "prediction": prediction,
-                    "insight": reasoning.get("insight", ""),
-                    "actors": ctx.get("actors", []),
-                    "region": ctx.get("region", "global"),
-                    "urgency": prediction.get("urgency", "low"),
+                    "insight": insight,
+                    "actors": ctx.get("actors") or [],
+                    "region": ctx.get("region") or "global",
+                    "urgency": urgency,
+                    "strength": signal_strength
                 }
 
                 # =================================================
-                # 7. NARRATIVE (CRITICAL FIX)
+                # 8. NARRATIVE (ROBUST FALLBACK)
                 # =================================================
-                narrative = None
                 try:
                     narrative = generate_narrative(intel)
                 except:
@@ -101,9 +106,15 @@ class GlobalIntelligenceEngine:
                 if not narrative:
                     narrative = {
                         "title": topic[:80],
-                        "content": topic,
+                        "content": (
+                            f"{topic}\n\n"
+                            f"Insight: {insight or 'No deep analysis available'}\n\n"
+                            f"Region: {intel['region']}\n"
+                            f"Urgency: {urgency}"
+                        ),
                         "meta": {
-                            "fallback": True
+                            "fallback": True,
+                            "strength": signal_strength
                         }
                     }
 
@@ -112,7 +123,6 @@ class GlobalIntelligenceEngine:
                 results.append(intel)
 
             except Exception:
-                # NEVER BREAK PIPELINE
                 continue
 
         return results
