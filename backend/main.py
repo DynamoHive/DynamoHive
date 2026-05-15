@@ -1,46 +1,71 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.services.scheduler import Scheduler
+from backend.logger import logger
+from backend.storage import init_db
 
-app = FastAPI(title="DynamoHive", version="1.0.0")
+from services.scheduler import scheduler
 
-scheduler = Scheduler(interval=20)
+
+# =====================================================
+# FASTAPI
+# =====================================================
+
+app = FastAPI(
+    title="DynamoHive",
+    version="1.0.0"
+)
+
 
 # =====================================================
 # CORS
 # =====================================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 # =====================================================
 # STARTUP
 # =====================================================
+
 @app.on_event("startup")
-def startup():
+def startup_event():
+
+    logger.info("[MAIN] startup event")
+
+    # DB bootstrap
+    init_db()
+
+    # scheduler start
     scheduler.start()
+
+    logger.info("[MAIN] system initialized")
+
 
 # =====================================================
 # ROOT
 # =====================================================
+
 @app.get("/")
 def root():
-    return {"status": "running"}
+    return {
+        "status": "running",
+        "service": "DynamoHive"
+    }
 
-# =====================================================
-# INTEL ENDPOINT
-# =====================================================
-@app.get("/intel")
-def intel():
-    return {"data": scheduler.orchestrator.run_cycle()}
 
 # =====================================================
 # HEALTH
 # =====================================================
+
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok"
+    }
