@@ -1,11 +1,15 @@
 import feedparser
 import hashlib
 import time
+
 from datetime import datetime
 
 from ai_engine.signal_radar import radar
 
 
+# -------------------------
+# FEED SOURCES
+# -------------------------
 SOURCES = [
     "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
     "https://feeds.bbci.co.uk/news/technology/rss.xml",
@@ -13,6 +17,9 @@ SOURCES = [
 ]
 
 
+# -------------------------
+# SIGNAL KEYWORDS
+# -------------------------
 KEYWORDS = [
     "ai",
     "technology",
@@ -21,10 +28,17 @@ KEYWORDS = [
     "supply chain",
     "energy",
     "war",
-    "conflict"
+    "conflict",
+    "cyber",
+    "security",
+    "crisis",
+    "market"
 ]
 
 
+# -------------------------
+# CACHE + DEDUP
+# -------------------------
 SEEN_HASHES = set()
 
 CACHE = {}
@@ -32,10 +46,19 @@ CACHE = {}
 CACHE_TTL = 300
 
 
+# -------------------------
+# HASHING
+# -------------------------
 def make_hash(text):
-    return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+    return hashlib.md5(
+        text.encode("utf-8")
+    ).hexdigest()
 
 
+# -------------------------
+# FEED CACHE
+# -------------------------
 def get_feed(url):
 
     now = time.time()
@@ -47,24 +70,68 @@ def get_feed(url):
         if now - cached_time < CACHE_TTL:
             return cached_feed
 
-    feed = feedparser.parse(url)
+    parsed_feed = feedparser.parse(url)
 
-    CACHE[url] = (now, feed)
+    CACHE[url] = (
+        now,
+        parsed_feed
+    )
 
-    return feed
+    return parsed_feed
 
 
+# -------------------------
+# SIGNAL DETECTION
+# -------------------------
 def is_signal(title, summary):
 
-    text = (title + " " + summary).lower()
+    text = f"{title} {summary}".lower()
 
-    for keyword in KEYWORDS:
-        if keyword in text:
-            return True
+    return any(
+        keyword in text
+        for keyword in KEYWORDS
+    )
 
-    return False
+
+# -------------------------
+# SCORE ENGINE
+# -------------------------
+def calculate_score(title, summary):
+
+    text = f"{title} {summary}".lower()
+
+    score = 0.5
+
+    high_impact = [
+        "war",
+        "crisis",
+        "conflict",
+        "collapse",
+        "cyberattack"
+    ]
+
+    medium_impact = [
+        "ai",
+        "market",
+        "energy",
+        "security",
+        "chip"
+    ]
+
+    for word in high_impact:
+        if word in text:
+            score += 1.0
+
+    for word in medium_impact:
+        if word in text:
+            score += 0.4
+
+    return round(score, 2)
 
 
+# -------------------------
+# MAIN CRAWLER
+# -------------------------
 def crawl():
 
     results = []
@@ -75,12 +142,14 @@ def crawl():
 
             feed = get_feed(url)
 
-            for entry in feed.entries[:5]:
+            for entry in feed.entries[:10]:
 
                 title = entry.get("title", "")
                 summary = entry.get("summary", "")
 
-                fingerprint = make_hash(title + summary)
+                fingerprint = make_hash(
+                    title + summary
+                )
 
                 if fingerprint in SEEN_HASHES:
                     continue
@@ -90,12 +159,21 @@ def crawl():
                 if not is_signal(title, summary):
                     continue
 
+                score = calculate_score(
+                    title,
+                    summary
+                )
+
                 signal = {
-                    "title": title,
-                    "score": 60,
+                    "topic": title,
+                    "text": summary,
+                    "score": score,
+                    "sources": [url],
                     "lat": 0,
                     "lon": 0,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": (
+                        datetime.utcnow().isoformat() + "Z"
+                    )
                 }
 
                 radar.push(signal)
@@ -109,5 +187,4 @@ def crawl():
     print("crawler collected:", len(results))
 
     return results
-
 
