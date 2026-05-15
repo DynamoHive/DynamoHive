@@ -20,16 +20,15 @@ from ai_engine.global_crisis_radar import detect_crisis_signals
 # MEMORY
 # =====================================================
 
-LAST_DATA = {}
+LAST_DATA = []
 duplicate_cache = {}
-
-DEBUG = True
 
 
 def is_duplicate(topic: str) -> bool:
     try:
+        time_bucket = int(time.time() / 300)
         key = hashlib.md5(
-            (topic.lower()).encode()
+            (str(topic).lower() + str(time_bucket)).encode()
         ).hexdigest()
     except Exception:
         return False
@@ -38,13 +37,12 @@ def is_duplicate(topic: str) -> bool:
 
     if key in duplicate_cache:
         if now - duplicate_cache[key] < 300:
-            if DEBUG:
-                logger.info(f"[DUPLICATE] {topic}")
             return True
 
     duplicate_cache[key] = now
 
-    if len(duplicate_cache) > 5000:
+    # memory safety
+    if len(duplicate_cache) > 10000:
         duplicate_cache.clear()
 
     return False
@@ -66,72 +64,55 @@ class Orchestrator:
         start = time.time()
         self.cycle += 1
 
-        logger.info(f"\n[ORCHESTRATOR] CYCLE {self.cycle} START")
+        logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
 
         try:
 
-            # =================================================
             # 1. CRAWL
-            # =================================================
-            raw = crawl() or []
-
-            logger.info(f"[DEBUG] crawl: {len(raw)}")
+            raw = crawl()
 
             if not raw:
-                raw = [{
+                raw = LAST_DATA or [{
                     "title": "fallback signal",
-                    "content": "system fallback"
+                    "content": "fallback"
                 }]
 
-            # =================================================
-            # 2. PROCESS (SAFE)
-            # =================================================
-            processed = process_data(raw) or raw
+            # 2. PROCESS
+            raw = process_data(raw)
 
-            logger.info(f"[DEBUG] processed: {len(processed)}")
+            if not raw:
+                return []
 
-            LAST_DATA["raw"] = processed[:100]
+            LAST_DATA.clear()
+            LAST_DATA.extend(raw[:100])
 
-            # =================================================
             # 3. CRISIS DETECTION
-            # =================================================
-            crisis = detect_crisis_signals(processed) or []
+            crisis_signals = detect_crisis_signals(raw)
+
             crisis_map = {
                 str(c.get("title", "")).lower(): c
-                for c in crisis
+                for c in crisis_signals
             }
 
-            logger.info(f"[DEBUG] crisis: {len(crisis)}")
+            # 4. SIGNAL DETECTION
+            signals = detect_signals(raw)
 
-            # =================================================
-            # 4. SIGNAL DETECTION (SAFE)
-            # =================================================
-            signals = detect_signals(processed) or []
-
-            logger.info(f"[DEBUG] signals: {len(signals)}")
-
-            # 🔥 HARD FALLBACK (CRITICAL FIX)
             if not signals:
-                signals = [
-                    {
-                        "topic": x.get("title", "unknown"),
-                        "score": 0.3
-                    }
-                    for x in processed[:20]
-                ]
+                signals = [{
+                    "topic": x.get("title", "fallback"),
+                    "score": 0.5
+                } for x in raw[:10]]
 
-            # =================================================
-            # 5. RANK + CLUSTER (SAFE)
-            # =================================================
-            signals = merge_ranked_signals(signals) or signals
-            signals = cluster_signals(signals) or signals
+            # 5. RANK + CLUSTER
+            signals = merge_ranked_signals(signals or [])
+            signals = cluster_signals(signals or [])
 
-            logger.info(f"[DEBUG] clustered: {len(signals)}")
+            if not signals:
+                return []
 
-            # =================================================
             # 6. CRISIS BOOST
-            # =================================================
             for s in signals:
+
                 topic = str(s.get("topic", "")).lower()
 
                 if topic in crisis_map:
@@ -139,61 +120,52 @@ class Orchestrator:
                     s["urgency"] = c.get("urgency", "high")
                     s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
 
-            # =================================================
-            # 7. DECISION ENGINE (SAFE)
-            # =================================================
-            decisions = self.decision.evaluate(signals) or []
+            # 7. DECISION ENGINE
+            decisions = self.decision.evaluate(signals)
 
             if not decisions:
-                decisions = [{
-                    "publish": True,
-                    "priority": 0.3
-                }]
+                return []
 
-            logger.info(f"[DEBUG] decisions: {len(decisions)}")
-
-            # =================================================
-            # 8. INTELLIGENCE (SAFE)
-            # =================================================
-            intel = self.intelligence.run(decisions) or []
+            # 8. INTELLIGENCE LAYER
+            intel = self.intelligence.run(decisions)
 
             if not intel:
-                intel = [{
-                    "topic": "system_active",
-                    "narrative": {
-                        "title": "System Running",
-                        "content": "No strong signals detected"
-                    }
-                }]
+                return []
 
-            logger.info(f"[DEBUG] intelligence: {len(intel)}")
+            # merge decisions into intel
+            for i, item in enumerate(intel):
+                if i < len(decisions):
+                    item["decision"] = decisions[i]
 
-            # =================================================
-            # 9. GENERATION
-            # =================================================
+            # 9. GENERATION + PERSISTENCE
             output = []
 
-            for i, item in enumerate(intel):
+            for item in intel:
 
                 topic = str(item.get("topic", "")).strip()
                 if not topic:
                     continue
 
-                decision = decisions[i] if i < len(decisions) else {}
+                decision = item.get("decision", {})
 
+                # publish filter
                 if not decision.get("publish", True):
                     continue
 
+                # dedup
                 if is_duplicate(topic):
                     continue
 
                 narrative = item.get("narrative") or {}
 
+                title = narrative.get("title") or topic[:80]
+                content = narrative.get("content") or topic
+
                 payload = {
-                    "title": narrative.get("title", topic[:80]),
+                    "title": title,
                     "topic": topic,
-                    "content": narrative.get("content", topic),
-                    "priority": decision.get("priority", 0.5),
+                    "content": content,
+                    "priority": float(decision.get("priority", 0.5)),
                     "published": True,
                     "timestamp": int(time.time())
                 }
@@ -203,10 +175,10 @@ class Orchestrator:
 
                 logger.info(f"[GENERATED] {topic}")
 
-            # =================================================
-            # FINAL OUTPUT GUARANTEE
-            # =================================================
-            logger.info(f"[DEBUG] output: {len(output)}")
+            # =====================================================
+            # FINAL FIXED CONTRACT (IMPORTANT)
+            # ALWAYS RETURN LIST (API SAFE)
+            # =====================================================
 
             return output
 
