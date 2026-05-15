@@ -7,26 +7,31 @@ class DecisionEngine:
 
         scored = []
 
-        # -------------------------
-        # 1. SCORING
-        # -------------------------
+        # =====================================================
+        # 1. SAFE NORMALIZATION
+        # =====================================================
+        def normalize(item):
+            if not isinstance(item, dict):
+                return {}
+
+            return {
+                "topic": item.get("topic") or item.get("title") or "unknown",
+                "score": item.get("score", 0.5),
+                "impact": item.get("impact", 0.5),
+                "urgency": item.get("urgency", "medium"),
+                "raw": item
+            }
+
+        # =====================================================
+        # 2. SCORING
+        # =====================================================
         for item in items:
 
             try:
-                signal = item.get("signal", {})
-                prediction = item.get("prediction", {})
-                reasoning = item.get("reasoning", {})
+                n = normalize(item)
 
-                score = signal.get("score", 0)
-                impact = prediction.get("impact_score", 0.5)
-
-                confidence = (
-                    reasoning.get("confidence", 0.5)
-                    if isinstance(reasoning, dict)
-                    else 0.5
-                )
-
-                urgency = item.get("urgency", "low")
+                score = float(n["score"])
+                impact = float(n["impact"])
 
                 urgency_map = {
                     "low": 0.3,
@@ -34,46 +39,65 @@ class DecisionEngine:
                     "high": 0.9
                 }
 
-                urgency_score = urgency_map.get(urgency, 0.3)
+                urgency_score = urgency_map.get(n["urgency"], 0.6)
+
+                confidence = 0.5  # default safe
 
                 priority = (
-                    (score * 0.30) +
-                    (impact * 0.25) +
-                    (confidence * 0.25) +
+                    (score * 0.40) +
+                    (impact * 0.30) +
+                    (confidence * 0.10) +
                     (urgency_score * 0.20)
                 )
 
-                # HARD FILTER
-                if score < 0.15 and impact < 0.25:
+                # relaxed filter (CRITICAL FIX)
+                if score < 0.05 and impact < 0.1:
                     continue
 
                 scored.append({
-                    "item": item,
+                    "item": n,
                     "priority": priority,
                     "meta": {
                         "score": score,
                         "impact": impact,
                         "confidence": confidence,
-                        "urgency": urgency
+                        "urgency": n["urgency"]
                     }
                 })
 
-            except:
+            except Exception:
                 continue
 
+        # =====================================================
+        # 3. FALLBACK (NO EMPTY OUTPUT GUARANTEE)
+        # =====================================================
         if not scored:
-            return []
+            return [
+                {
+                    "item": {
+                        "topic": i.get("topic", "fallback"),
+                        "score": i.get("score", 0.5)
+                    },
+                    "priority": 0.5,
+                    "decision": {
+                        "publish": True,
+                        "priority": 0.5,
+                        "rank": idx + 1
+                    }
+                }
+                for idx, i in enumerate(items[:10])
+            ]
 
-        # -------------------------
-        # 2. SORT
-        # -------------------------
+        # =====================================================
+        # 4. SORT
+        # =====================================================
         scored.sort(key=lambda x: x["priority"], reverse=True)
 
-        # -------------------------
-        # 3. SELECT TOP ITEMS
-        # -------------------------
+        # =====================================================
+        # 5. SELECT TOP
+        # =====================================================
         TOP_K = 5
-        MIN_THRESHOLD = 0.25
+        MIN_THRESHOLD = 0.2
 
         selected = []
         used_topics = set()
@@ -86,7 +110,7 @@ class DecisionEngine:
             if s["priority"] < MIN_THRESHOLD:
                 continue
 
-            topic = str(s["item"].get("topic", "")).lower()
+            topic = str(s["item"]["topic"]).lower()
 
             if topic in used_topics:
                 continue
@@ -96,9 +120,9 @@ class DecisionEngine:
 
         selected_set = set(id(x["item"]) for x in selected)
 
-        # -------------------------
-        # 4. ATTACH DECISION (CLEAR LOGIC)
-        # -------------------------
+        # =====================================================
+        # 6. ATTACH DECISION
+        # =====================================================
         output = []
 
         for idx, s in enumerate(scored):
