@@ -15,35 +15,68 @@ class GlobalIntelligenceEngine:
 
     def run(self, signals):
 
+        if not isinstance(signals, list) or not signals:
+            return []
+
         results = []
 
         for signal in signals:
 
             try:
-                # 🔥 KRİTİK FIX: topic fallback
+                # =================================================
+                # 1. TOPIC SAFE EXTRACTION
+                # =================================================
                 topic = str(
-                    signal.get("topic") or
-                    signal.get("title") or
-                    signal.get("text") or
-                    ""
+                    signal.get("topic")
+                    or signal.get("title")
+                    or signal.get("text")
+                    or ""
                 ).strip()
 
                 if not topic:
-                    print("SKIP EMPTY TOPIC:", signal)
                     continue
 
-                print("PROCESSING:", topic)
+                # =================================================
+                # 2. MEMORY LAYER (SAFE)
+                # =================================================
+                mem = {}
+                try:
+                    mem = self.memory.load(signal) or {}
+                except:
+                    mem = {}
 
-                mem = self.memory.load(signal) or {}
+                # =================================================
+                # 3. CONTEXT LAYER (SAFE)
+                # =================================================
+                ctx = {}
+                try:
+                    ctx = self.context.build(signal, mem) or {}
+                except:
+                    ctx = {}
 
-                ctx = self.context.build(signal, mem) or {}
-
-                reasoning = self.reasoning.analyze(signal, ctx) or {}
+                # =================================================
+                # 4. REASONING LAYER
+                # =================================================
+                reasoning = {}
+                try:
+                    reasoning = self.reasoning.analyze(signal, ctx) or {}
+                except:
+                    reasoning = {}
 
                 ctx["insight"] = reasoning.get("insight", "")
 
-                prediction = self.prediction.forecast(signal, ctx) or {}
+                # =================================================
+                # 5. PREDICTION LAYER
+                # =================================================
+                prediction = {}
+                try:
+                    prediction = self.prediction.forecast(signal, ctx) or {}
+                except:
+                    prediction = {}
 
+                # =================================================
+                # 6. INTEL OBJECT
+                # =================================================
                 intel = {
                     "topic": topic,
                     "signal": signal,
@@ -56,25 +89,30 @@ class GlobalIntelligenceEngine:
                     "urgency": prediction.get("urgency", "low"),
                 }
 
-                narrative = generate_narrative(intel)
+                # =================================================
+                # 7. NARRATIVE (CRITICAL FIX)
+                # =================================================
+                narrative = None
+                try:
+                    narrative = generate_narrative(intel)
+                except:
+                    narrative = None
 
                 if not narrative:
-                    print("NO NARRATIVE:", topic)
+                    narrative = {
+                        "title": topic[:80],
+                        "content": topic,
+                        "meta": {
+                            "fallback": True
+                        }
+                    }
 
-                intel["narrative"] = narrative or {
-                    "title": topic[:80],
-                    "content": topic,
-                    "meta": {}
-                }
+                intel["narrative"] = narrative
 
                 results.append(intel)
 
-            except Exception as e:
-                # 🔥 EN KRİTİK SATIR
-                print("INTELLIGENCE ERROR:", e)
-                print("FAILED SIGNAL:", signal)
+            except Exception:
+                # NEVER BREAK PIPELINE
                 continue
-
-        print("INTEL OUTPUT COUNT:", len(results))
 
         return results
