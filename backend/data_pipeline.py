@@ -1,87 +1,39 @@
-import threading
-import queue
-import traceback
-
-from backend.logger import logger
-from backend.trust_engine import update_trust
+import re
 
 
-# =====================================================
-# GLOBAL EVENT QUEUE
-# =====================================================
-event_queue = queue.Queue()
+def clean_text(text):
 
-_worker_started = False
-_lock = threading.Lock()
+    if not text:
+        return ""
 
+    text = re.sub(r"<.*?>", "", text)
+    text = text.replace("\n", " ")
+    text = re.sub(r"\s+", " ", text)
 
-# =====================================================
-# ADD EVENT
-# =====================================================
-def add_event(event):
-
-    try:
-        event_queue.put(event)
-
-    except Exception:
-        logger.error("[EVENT PIPELINE] add_event failed")
-        logger.error(traceback.format_exc())
+    return text.strip()
 
 
-# =====================================================
-# PROCESS EVENTS
-# =====================================================
-def process_events():
+def process_data(raw_data):
 
-    logger.info("[EVENT PIPELINE] worker started")
+    processed = []
 
-    while True:
+    for item in raw_data:
 
-        try:
+        title = clean_text(item.get("title", ""))
+        content = clean_text(item.get("content", ""))
 
-            event = event_queue.get(timeout=5)
-
-        except queue.Empty:
+        if not title or not content:
             continue
 
-        try:
+        processed.append({
 
-            update_trust(event)
+            "title": title,
+            "content": content,
+            "text": f"{title} {content}",
+            "source": item.get("source", "unknown")
 
-            logger.info(
-                f"[EVENT PIPELINE] processed: "
-                f"{event.get('title', 'unknown')}"
-            )
+        })
 
-        except Exception:
+    print("pipeline processed:", len(processed))
 
-            logger.error("[EVENT PIPELINE ERROR]")
-            logger.error(traceback.format_exc())
-
-        finally:
-
-            event_queue.task_done()
-
-
-# =====================================================
-# START PIPELINE
-# =====================================================
-def start_pipeline():
-
-    global _worker_started
-
-    with _lock:
-
-        if _worker_started:
-            return
-
-        worker = threading.Thread(
-            target=process_events,
-            daemon=True
-        )
-
-        worker.start()
-
-        _worker_started = True
-
-        logger.info("[EVENT PIPELINE] started")
+    return processed
