@@ -20,6 +20,24 @@ LOCK = threading.Lock()
 
 
 # =====================================================
+# NORMALIZER (CRITICAL FIX)
+# =====================================================
+def normalize_result(result):
+    """
+    run_signal_engine bazen dict bazen list döndürüyor.
+    bunu tek formata sokuyoruz.
+    """
+
+    if isinstance(result, dict):
+        return result.get("signals", [])
+
+    if isinstance(result, list):
+        return result
+
+    return []
+
+
+# =====================================================
 # REFRESH CACHE (SAFE)
 # =====================================================
 def refresh_cache():
@@ -34,7 +52,9 @@ def refresh_cache():
         try:
             result = run_signal_engine()
 
-            CACHE["signals"] = result.get("signals", [])
+            signals = normalize_result(result)
+
+            CACHE["signals"] = signals
             CACHE["last_update"] = int(time.time())
 
         except Exception as e:
