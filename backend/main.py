@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.logger import logger
 from backend.storage import init_db
 from backend.services.scheduler import scheduler
+from backend.event_pipeline import start_pipeline
 
 
 # =====================================================
@@ -41,6 +42,11 @@ def startup_event():
     # initialize sqlite
     init_db()
 
+    logger.info("[DB] initialized")
+
+    # start event pipeline
+    start_pipeline()
+
     # start scheduler
     scheduler.start()
 
@@ -53,9 +59,11 @@ def startup_event():
 
 @app.get("/")
 def root():
+
     return {
         "status": "running",
-        "service": "DynamoHive"
+        "service": "DynamoHive",
+        "version": "1.0.0"
     }
 
 
@@ -65,6 +73,7 @@ def root():
 
 @app.get("/health")
 def health():
+
     return {
         "status": "ok"
     }
