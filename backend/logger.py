@@ -9,7 +9,7 @@ LOGGER_NAME = "dynamohive"
 
 
 # =====================================================
-# FORMATTER
+# FORMAT
 # =====================================================
 formatter = logging.Formatter(
     fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -18,7 +18,7 @@ formatter = logging.Formatter(
 
 
 # =====================================================
-# LOGGER SETUP
+# LOGGER INSTANCE
 # =====================================================
 logger = logging.getLogger(LOGGER_NAME)
 logger.setLevel(logging.INFO)
@@ -26,7 +26,7 @@ logger.propagate = False
 
 
 # =====================================================
-# CONSOLE HANDLER (STDOUT)
+# CONSOLE HANDLER
 # =====================================================
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)
@@ -34,14 +34,14 @@ console_handler.setFormatter(formatter)
 
 
 # =====================================================
-# AVOID DUPLICATE HANDLERS
+# AVOID DUPLICATES
 # =====================================================
 if not logger.handlers:
     logger.addHandler(console_handler)
 
 
 # =====================================================
-# OPTIONAL HELPERS (CLEAN API)
+# OPTIONAL HELPERS
 # =====================================================
 def info(msg: str):
     logger.info(msg)
