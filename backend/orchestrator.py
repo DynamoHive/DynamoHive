@@ -2,8 +2,8 @@ import time
 import traceback
 
 from backend.logger import logger
+from backend.cache import get_last_data, set_last_data, is_duplicate
 from backend.storage import save_signal
-from backend.cache import set_last_data, get_last_data, is_duplicate
 
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
@@ -11,17 +11,17 @@ from ai_engine.signal_detector import detect_signals
 from ai_engine.signal_ranking_engine import merge_ranked_signals
 from ai_engine.signal_cluster import cluster_signals
 
-from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
-from ai_engine.decision_engine import DecisionEngine
 from ai_engine.global_crisis_radar import detect_crisis_signals
+from ai_engine.decision_engine import DecisionEngine
+from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
 
 
 class Orchestrator:
 
     def __init__(self):
         self.cycle = 0
-        self.intelligence = GlobalIntelligenceEngine()
         self.decision = DecisionEngine()
+        self.intelligence = GlobalIntelligenceEngine()
 
     # =====================================================
     # MAIN PIPELINE
@@ -31,7 +31,7 @@ class Orchestrator:
         start = time.time()
         self.cycle += 1
 
-        logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
+        logger.info(f"[ORCHESTRATOR] cycle {self.cycle} start")
 
         try:
             # -----------------------------
@@ -55,11 +55,11 @@ class Orchestrator:
             # -----------------------------
             # 3. CRISIS DETECTION
             # -----------------------------
-            crisis_signals = detect_crisis_signals(raw)
+            crisis = detect_crisis_signals(raw)
 
             crisis_map = {
-                str(c.get("title", "")).lower().strip(): c
-                for c in crisis_signals
+                str(c.get("title", "")).lower(): c
+                for c in crisis
                 if c.get("title")
             }
 
@@ -88,8 +88,8 @@ class Orchestrator:
 
                 for k, v in crisis_map.items():
                     if k and k in topic:
-                        s["urgency"] = v.get("urgency", "high")
                         s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
+                        s["urgency"] = v.get("urgency", "high")
                         break
 
             # -----------------------------
@@ -113,7 +113,7 @@ class Orchestrator:
                     item["decision"] = decisions[i]
 
             # -----------------------------
-            # 8. OUTPUT GENERATION
+            # 8. OUTPUT
             # -----------------------------
             output = []
 
@@ -128,7 +128,7 @@ class Orchestrator:
                 if not decision.get("publish", True):
                     continue
 
-                # duplicate protection (NOW EXTERNAL CACHE)
+                # duplicate protection
                 if is_duplicate(topic):
                     continue
 
@@ -143,11 +143,7 @@ class Orchestrator:
                     "timestamp": int(time.time())
                 }
 
-                try:
-                    save_signal(payload)
-                except Exception as e:
-                    logger.error(f"[DB ERROR] {e}")
-
+                save_signal(payload)
                 output.append(payload)
 
                 logger.info(f"[GENERATED] {topic}")
@@ -155,11 +151,11 @@ class Orchestrator:
             return output
 
         except Exception as e:
-            traceback.print_exc()
-            logger.error(f"[ORCHESTRATOR ERROR] {str(e)}")
+            logger.error("[ORCHESTRATOR ERROR]")
+            logger.error(traceback.format_exc())
             return []
 
         finally:
             logger.info(
-                f"[ORCHESTRATOR] Cycle finished in {round(time.time() - start, 2)}s"
+                f"[ORCHESTRATOR] cycle done in {round(time.time() - start, 2)}s"
             )
