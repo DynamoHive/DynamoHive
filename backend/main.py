@@ -3,8 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.logger import logger
 from backend.storage import init_db
-
-from services.scheduler import scheduler
+from backend.services.scheduler import scheduler
 
 
 # =====================================================
@@ -39,10 +38,10 @@ def startup_event():
 
     logger.info("[MAIN] startup event")
 
-    # DB bootstrap
+    # initialize sqlite
     init_db()
 
-    # scheduler start
+    # start scheduler
     scheduler.start()
 
     logger.info("[MAIN] system initialized")
