@@ -2,27 +2,25 @@ from backend.logger import logger
 from backend.storage import get_last_signals
 from ai_engine.multi_crawler import crawl
 
+
 class BackfillEngine:
 
     def __init__(self):
-        self.last_backfill_time = 0
-        self.backfill_interval = 300  # 5 min
-
-    def should_backfill(self, data):
-        return not data
+        self.fallback_limit = 20
 
     def run(self):
         logger.info("[BACKFILL] triggered")
 
+        # 1. retry live crawl first
         fresh = crawl()
 
         if fresh:
-            logger.info("[BACKFILL] fresh data recovered")
+            logger.info("[BACKFILL] recovered from live crawl")
             return fresh
 
-        # fallback to memory layer (NOT cache spam)
-        old = get_last_signals(limit=20)
+        # 2. fallback memory layer (controlled)
+        historical = get_last_signals(limit=self.fallback_limit)
 
-        logger.warning("[BACKFILL] using historical intelligence layer")
+        logger.warning("[BACKFILL] using historical fallback layer")
 
-        return old or []
+        return historical or []
