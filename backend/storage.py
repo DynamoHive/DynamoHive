@@ -6,15 +6,14 @@ from backend.logger import logger
 
 DB_PATH = "dynamo.db"
 
-LOCK = threading.Lock()
+_lock = threading.Lock()
 
 
 # =====================================================
-# DB CONNECTION (REUSABLE PATTERN)
+# CONNECTION
 # =====================================================
 def get_connection():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
     return conn
 
 
@@ -23,11 +22,11 @@ def get_connection():
 # =====================================================
 def init_db():
     try:
-        with LOCK:
+        with _lock:
             conn = get_connection()
-            c = conn.cursor()
+            cursor = conn.cursor()
 
-            c.execute("""
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS signals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT,
@@ -54,11 +53,11 @@ def init_db():
 def save_signal(item: dict):
 
     try:
-        with LOCK:
+        with _lock:
             conn = get_connection()
-            c = conn.cursor()
+            cursor = conn.cursor()
 
-            c.execute("""
+            cursor.execute("""
                 INSERT INTO signals
                 (title, topic, content, priority, published, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -84,21 +83,31 @@ def save_signal(item: dict):
 def get_signals(limit: int = 50):
 
     try:
-        with LOCK:
+        with _lock:
             conn = get_connection()
-            c = conn.cursor()
+            cursor = conn.cursor()
 
-            c.execute("""
+            cursor.execute("""
                 SELECT title, topic, content, priority, published, timestamp
                 FROM signals
                 ORDER BY timestamp DESC
                 LIMIT ?
             """, (limit,))
 
-            rows = c.fetchall()
+            rows = cursor.fetchall()
             conn.close()
 
-        return [dict(r) for r in rows]
+        return [
+            {
+                "title": r[0],
+                "topic": r[1],
+                "content": r[2],
+                "priority": r[3],
+                "published": r[4],
+                "timestamp": r[5]
+            }
+            for r in rows
+        ]
 
     except Exception as e:
         logger.error(f"[DB GET ERROR] {e}")
@@ -113,11 +122,11 @@ def cleanup(max_age_seconds: int = 86400):
     try:
         cutoff = int(time.time()) - max_age_seconds
 
-        with LOCK:
+        with _lock:
             conn = get_connection()
-            c = conn.cursor()
+            cursor = conn.cursor()
 
-            c.execute("""
+            cursor.execute("""
                 DELETE FROM signals
                 WHERE timestamp < ?
             """, (cutoff,))
@@ -125,7 +134,7 @@ def cleanup(max_age_seconds: int = 86400):
             conn.commit()
             conn.close()
 
-        logger.info("[DB] cleanup completed")
+        logger.info("[DB] cleanup done")
 
     except Exception as e:
         logger.error(f"[DB CLEANUP ERROR] {e}")
@@ -137,12 +146,12 @@ def cleanup(max_age_seconds: int = 86400):
 def count_signals():
 
     try:
-        with LOCK:
+        with _lock:
             conn = get_connection()
-            c = conn.cursor()
+            cursor = conn.cursor()
 
-            c.execute("SELECT COUNT(*) FROM signals")
-            count = c.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM signals")
+            count = cursor.fetchone()[0]
 
             conn.close()
 
