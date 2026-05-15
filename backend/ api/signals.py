@@ -1,23 +1,56 @@
 from fastapi import APIRouter, Query
-
-from ai_engine.signal_engine import (
-    run_signal_engine
-)
+from ai_engine.signal_engine import run_signal_engine
+import time
 
 router = APIRouter()
 
+# =====================================================
+# SIMPLE THREAD-SAFE CACHE
+# =====================================================
 
-# -------------------------
+CACHE = {
+    "signals": [],
+    "last_update": 0
+}
+
+CACHE_TTL = 30  # seconds
+
+
+def refresh_cache():
+    """
+    Engine'i kontrollü şekilde çalıştırır
+    """
+    global CACHE
+
+    result = run_signal_engine()
+
+    CACHE["signals"] = result.get("signals", [])
+    CACHE["last_update"] = int(time.time())
+
+
+def ensure_cache_fresh():
+    """
+    TTL bazlı cache kontrolü
+    """
+    if time.time() - CACHE["last_update"] > CACHE_TTL:
+        refresh_cache()
+
+
+def get_cached_signals():
+    ensure_cache_fresh()
+    return CACHE["signals"]
+
+
+# =====================================================
 # LIVE SIGNALS
-# -------------------------
+# =====================================================
+
 @router.get("/live")
 def get_live_signals(
     limit: int = Query(10, ge=1, le=50)
 ):
 
-    result = run_signal_engine()
-
-    signals = result.get("signals", [])[:limit]
+    signals = get_cached_signals()[:limit]
 
     return {
         "status": "ok",
@@ -27,17 +60,14 @@ def get_live_signals(
     }
 
 
-# -------------------------
+# =====================================================
 # FILTERED SIGNALS
-# -------------------------
+# =====================================================
+
 @router.get("/filter")
-def filter_signals(
-    severity: str = None
-):
+def filter_signals(severity: str = None):
 
-    result = run_signal_engine()
-
-    signals = result.get("signals", [])
+    signals = get_cached_signals()
 
     if severity:
         signals = [
@@ -52,16 +82,16 @@ def filter_signals(
     }
 
 
-# -------------------------
-# HISTORY PLACEHOLDER
-# -------------------------
+# =====================================================
+# HISTORY (SNAPSHOT)
+# =====================================================
+
 @router.get("/history")
 def get_history():
 
-    result = run_signal_engine()
-
     return {
         "status": "ok",
-        "mode": "historical_placeholder",
-        "signals": result.get("signals", [])
+        "mode": "cached_snapshot",
+        "last_update": CACHE["last_update"],
+        "signals": CACHE["signals"]
     }
