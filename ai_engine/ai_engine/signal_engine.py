@@ -1,14 +1,13 @@
 from datetime import datetime
-import random
+import hashlib
 
-from ai_engine.signal_ranking_engine import (
-    merge_ranked_signals
-)
+from ai_engine.signal_ranking_engine import merge_ranked_signals
 
 
-# -------------------------
-# MOCK FEED INPUTS
-# -------------------------
+# =====================================================
+# RAW SIGNAL SOURCE (MOCK / TEMP)
+# =====================================================
+
 def fetch_raw_signals():
 
     return [
@@ -18,21 +17,18 @@ def fetch_raw_signals():
             "score": 0.9,
             "sources": ["news_feed"]
         },
-
         {
             "topic": "Major protests spreading in cities",
             "text": "Social instability signals rising",
             "score": 1.4,
             "sources": ["social_feed"]
         },
-
         {
             "topic": "AI regulation discussions intensify",
             "text": "Governments preparing AI restrictions",
             "score": 0.8,
             "sources": ["policy_feed"]
         },
-
         {
             "topic": "Major protests spreading in cities",
             "text": "Urban unrest discussions increasing",
@@ -42,38 +38,44 @@ def fetch_raw_signals():
     ]
 
 
-# -------------------------
-# SIGNAL ENRICHMENT
-# -------------------------
+# =====================================================
+# DETERMINISTIC SIGNAL ENRICHMENT
+# =====================================================
+
 def enrich_signal(signal):
 
-    signal["signal_id"] = (
-        f"dh_{random.randint(100000,999999)}"
-    )
+    topic = signal.get("topic", "")
 
-    signal["timestamp"] = (
-        datetime.utcnow().isoformat() + "Z"
-    )
+    # stable ID (NO RANDOM)
+    signal_id = hashlib.md5(topic.encode()).hexdigest()
 
-    signal["confidence"] = round(
-        min(signal.get("score", 0) / 3, 0.99),
-        2
-    )
+    signal["signal_id"] = f"dh_{signal_id[:10]}"
+
+    signal["timestamp"] = datetime.utcnow().isoformat() + "Z"
+
+    score = float(signal.get("score", 0))
+
+    # normalized confidence
+    signal["confidence"] = round(min(score / 3.0, 0.99), 2)
 
     return signal
 
 
-# -------------------------
+# =====================================================
 # MAIN ENGINE
-# -------------------------
+# =====================================================
+
 def run_signal_engine():
 
     raw_signals = fetch_raw_signals()
 
-    ranked_signals = merge_ranked_signals(
-        raw_signals
-    )
+    if not raw_signals:
+        return {"status": "ok", "engine": "DynamoHive", "signals": []}
 
+    # ranking layer
+    ranked_signals = merge_ranked_signals(raw_signals or [])
+
+    # enrichment layer
     enriched_signals = [
         enrich_signal(signal)
         for signal in ranked_signals
@@ -83,5 +85,6 @@ def run_signal_engine():
         "status": "ok",
         "engine": "DynamoHive",
         "count": len(enriched_signals),
-        "signals": enriched_signals
+        "signals": enriched_signals,
+        "timestamp": datetime.utcnow().isoformat() + "Z"
     }
