@@ -1,5 +1,7 @@
 import time
 import traceback
+import hashlib
+import threading
 
 from backend.logger import logger
 from backend.cache import get_last_data, set_last_data, is_duplicate
@@ -15,9 +17,26 @@ from ai_engine.global_crisis_radar import detect_crisis_signals
 from ai_engine.decision_engine import DecisionEngine
 from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
 
-# NEW IMPORTS
-from backend.services.cycle_guard import CycleGuard
-from backend.services.backfill_engine import BackfillEngine
+
+# =====================================================
+# BACKFILL ENGINE (lightweight)
+# =====================================================
+class BackfillEngine:
+
+    def __init__(self):
+        self.last_hash = None
+        self.backfill_used = False
+
+    def hash_data(self, data):
+        raw = str([d.get("title", "") for d in data]).encode("utf-8")
+        return hashlib.md5(raw).hexdigest()
+
+    def should_process(self, data):
+        h = self.hash_data(data)
+        if h == self.last_hash:
+            return False
+        self.last_hash = h
+        return True
 
 
 class Orchestrator:
@@ -27,11 +46,20 @@ class Orchestrator:
         self.decision = DecisionEngine()
         self.intelligence = GlobalIntelligenceEngine()
 
-        # NEW LAYERS
-        self.guard = CycleGuard()
         self.backfill = BackfillEngine()
+        self._lock = threading.Lock()
+        self._running = False
 
+    # =====================================================
+    # SINGLE CYCLE PROTECTION
+    # =====================================================
     def run_cycle(self):
+
+        with self._lock:
+            if self._running:
+                logger.warning("[ORCHESTRATOR] cycle skipped (already running)")
+                return []
+            self._running = True
 
         start = time.time()
         self.cycle += 1
@@ -39,28 +67,30 @@ class Orchestrator:
         logger.info(f"[ORCHESTRATOR] cycle {self.cycle} start")
 
         try:
-
             # =================================================
-            # 1. CRAWL (FIXED ZERO-CYCLE PROTECTION)
+            # 1. CRAWL
             # =================================================
             raw = crawl()
 
-            # block runaway empty cycles
-            if self.guard.should_block(raw):
-                logger.warning("[ORCHESTRATOR] cycle blocked by guard")
-                return []
-
-            # controlled backfill (ONLY if needed)
+            # =================================================
+            # 2. AUTO BACKFILL (ONLY IF EMPTY)
+            # =================================================
             if not raw:
-                raw = self.backfill.run()
+                raw = get_last_data() or []
 
-            # fallback hard stop safety
-            if not raw:
-                logger.warning("[ORCHESTRATOR] no data after backfill")
+                if not raw:
+                    logger.warning("[ORCHESTRATOR] no data (skip cycle)")
+                    return []
+
+            # =================================================
+            # 3. DUPLICATE CYCLE PROTECTION
+            # =================================================
+            if not self.backfill.should_process(raw):
+                logger.info("[ORCHESTRATOR] duplicate dataset skipped")
                 return []
 
             # =================================================
-            # 2. PROCESS
+            # 4. PROCESS
             # =================================================
             raw = process_data(raw)
 
@@ -70,18 +100,17 @@ class Orchestrator:
             set_last_data(raw[:100])
 
             # =================================================
-            # 3. CRISIS DETECTION
+            # 5. CRISIS DETECTION
             # =================================================
             crisis_list = detect_crisis_signals(raw)
 
-            crisis_map = {}
-            for c in crisis_list:
-                title = c.get("title")
-                if title:
-                    crisis_map[title.lower()] = c
+            crisis_map = {
+                c.get("title", "").lower(): c
+                for c in crisis_list if c.get("title")
+            }
 
             # =================================================
-            # 4. SIGNAL DETECTION
+            # 6. SIGNAL DETECTION
             # =================================================
             signals = detect_signals(raw)
 
@@ -91,36 +120,31 @@ class Orchestrator:
                     for x in raw[:10]
                 ]
 
-            signals = merge_ranked_signals(signals)
-            signals = cluster_signals(signals)
+            signals = cluster_signals(merge_ranked_signals(signals))
 
             if not signals:
                 return []
 
             # =================================================
-            # 5. CRISIS BOOST
+            # 7. CRISIS BOOST
             # =================================================
             for s in signals:
                 topic = str(s.get("topic", "")).lower()
-
-                matched = crisis_map.get(topic)
-                if matched:
+                if topic in crisis_map:
                     s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
-                    s["urgency"] = matched.get("urgency", "high")
+                    s["urgency"] = crisis_map[topic].get("urgency", "high")
 
             # =================================================
-            # 6. DECISION ENGINE
+            # 8. DECISION ENGINE
             # =================================================
             decisions = self.decision.evaluate(signals)
-
             if not decisions:
                 return []
 
             # =================================================
-            # 7. INTELLIGENCE ENGINE
+            # 9. INTELLIGENCE ENGINE
             # =================================================
             intel = self.intelligence.run(decisions)
-
             if not intel:
                 return []
 
@@ -128,7 +152,7 @@ class Orchestrator:
                 intel[i]["decision"] = decisions[i]
 
             # =================================================
-            # 8. OUTPUT
+            # 10. OUTPUT
             # =================================================
             output = []
 
@@ -170,6 +194,7 @@ class Orchestrator:
             return []
 
         finally:
+            self._running = False
             logger.info(
                 f"[ORCHESTRATOR] cycle done in {round(time.time() - start, 2)}s"
             )
