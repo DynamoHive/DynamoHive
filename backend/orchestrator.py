@@ -26,9 +26,9 @@ duplicate_cache = {}
 
 def is_duplicate(topic: str) -> bool:
     try:
-        time_bucket = int(time.time() / 300)
+        bucket = int(time.time() / 300)
         key = hashlib.md5(
-            (str(topic).lower() + str(time_bucket)).encode()
+            (str(topic).lower() + str(bucket)).encode()
         ).hexdigest()
     except Exception:
         return False
@@ -41,7 +41,6 @@ def is_duplicate(topic: str) -> bool:
 
     duplicate_cache[key] = now
 
-    # memory safety
     if len(duplicate_cache) > 10000:
         duplicate_cache.clear()
 
@@ -72,10 +71,7 @@ class Orchestrator:
             raw = crawl()
 
             if not raw:
-                raw = LAST_DATA or [{
-                    "title": "fallback signal",
-                    "content": "fallback"
-                }]
+                raw = LAST_DATA or []
 
             # 2. PROCESS
             raw = process_data(raw)
@@ -98,10 +94,13 @@ class Orchestrator:
             signals = detect_signals(raw)
 
             if not signals:
-                signals = [{
-                    "topic": x.get("title", "fallback"),
-                    "score": 0.5
-                } for x in raw[:10]]
+                signals = [
+                    {
+                        "topic": x.get("title", "fallback"),
+                        "score": 0.5
+                    }
+                    for x in raw[:10]
+                ]
 
             # 5. RANK + CLUSTER
             signals = merge_ranked_signals(signals or [])
@@ -132,12 +131,11 @@ class Orchestrator:
             if not intel:
                 return []
 
-            # merge decisions into intel
             for i, item in enumerate(intel):
                 if i < len(decisions):
                     item["decision"] = decisions[i]
 
-            # 9. GENERATION + PERSISTENCE
+            # 9. OUTPUT
             output = []
 
             for item in intel:
@@ -148,11 +146,9 @@ class Orchestrator:
 
                 decision = item.get("decision", {})
 
-                # publish filter
                 if not decision.get("publish", True):
                     continue
 
-                # dedup
                 if is_duplicate(topic):
                     continue
 
@@ -176,8 +172,7 @@ class Orchestrator:
                 logger.info(f"[GENERATED] {topic}")
 
             # =====================================================
-            # FINAL FIXED CONTRACT (IMPORTANT)
-            # ALWAYS RETURN LIST (API SAFE)
+            # SAFE RETURN CONTRACT
             # =====================================================
 
             return output
