@@ -6,12 +6,13 @@ def clean_text(text):
     if not text:
         return ""
 
+    text = str(text)
+
     text = re.sub(r"<.*?>", "", text)
     text = text.replace("\n", " ")
     text = re.sub(r"\s+", " ", text)
 
     return text.strip()
-
 
 
 def process_data(raw_data):
@@ -23,7 +24,11 @@ def process_data(raw_data):
         title = clean_text(item.get("title", ""))
         content = clean_text(item.get("content", ""))
 
-        if not title or not content:
+        # fallback
+        if not content:
+            content = title
+
+        if not title:
             continue
 
         processed.append({
