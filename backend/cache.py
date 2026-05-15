@@ -9,7 +9,6 @@ _duplicate_cache = {}
 
 _lock = threading.Lock()
 
-# 5 dakika TTL
 DUPLICATE_TTL = 300
 
 
@@ -18,7 +17,6 @@ DUPLICATE_TTL = 300
 # =====================================================
 def set_last_data(data):
     global _last_data
-
     with _lock:
         _last_data = data
 
@@ -29,26 +27,30 @@ def get_last_data():
 
 
 # =====================================================
+# INTERNAL CLEANUP (OPTIMIZED)
+# =====================================================
+def _cleanup_expired(now: float):
+    """
+    Internal TTL cleanup (O(n), but isolated)
+    """
+    expired_keys = [
+        k for k, t in _duplicate_cache.items()
+        if now - t > DUPLICATE_TTL
+    ]
+
+    for k in expired_keys:
+        _duplicate_cache.pop(k, None)
+
+
+# =====================================================
 # DUPLICATE CONTROL
 # =====================================================
 def is_duplicate(key: str) -> bool:
-    """
-    Returns True if key was already processed recently
-    """
-
     now = time.time()
 
     with _lock:
-        # TTL cleanup
-        expired = [
-            k for k, t in _duplicate_cache.items()
-            if now - t > DUPLICATE_TTL
-        ]
+        _cleanup_expired(now)
 
-        for k in expired:
-            del _duplicate_cache[k]
-
-        # check duplicate
         if key in _duplicate_cache:
             return True
 
@@ -60,8 +62,5 @@ def is_duplicate(key: str) -> bool:
 # CLEANUP
 # =====================================================
 def cleanup_cache():
-    """
-    Hard cleanup (manual or scheduler call)
-    """
     with _lock:
         _duplicate_cache.clear()
