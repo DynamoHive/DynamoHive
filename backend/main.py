@@ -18,7 +18,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
 # =====================================================
 # CORS
 # =====================================================
@@ -30,7 +29,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # =====================================================
 # GLOBALS
@@ -52,64 +50,32 @@ LOCK = threading.Lock()
 
 def run_loop():
 
-    global LATEST_DATA
-    global LAST_UPDATE
-    global CYCLE_COUNT
-    global SYSTEM_STATUS
+    global LATEST_DATA, LAST_UPDATE, CYCLE_COUNT, SYSTEM_STATUS
 
     print("🚀 DYNAMOHIVE STARTED")
-    print("🔥 ORCHESTRATOR READY")
-
     SYSTEM_STATUS = "running"
 
     while True:
-
         try:
-
             CYCLE_COUNT += 1
-
-            print(f"\n🔁 LOOP TICK #{CYCLE_COUNT}")
+            print(f"🔁 LOOP TICK #{CYCLE_COUNT}")
 
             started = time.time()
-
             data = orchestrator.run_cycle()
-
             duration = round(time.time() - started, 2)
 
-            # -------------------------------------------------
-            # CACHE UPDATE
-            # -------------------------------------------------
+            if isinstance(data, list) and len(data) > 0:
+                with LOCK:
+                    LATEST_DATA = data
+                    LAST_UPDATE = int(time.time())
 
-            if isinstance(data, list):
-
-                if len(data) > 0:
-
-                    with LOCK:
-
-                        LATEST_DATA = data
-                        LAST_UPDATE = int(time.time())
-
-                    print(
-                        f"✅ CACHE UPDATED: "
-                        f"{len(data)} items | "
-                        f"{duration}s"
-                    )
-
-                else:
-
-                    print("⚠️ EMPTY LIST RETURNED")
-
+                print(f"✅ CACHE UPDATED | {len(data)} items | {duration}s")
             else:
-
-                print("⚠️ INVALID DATA FORMAT")
+                print("⚠️ EMPTY OR INVALID DATA")
 
         except Exception as e:
-
             SYSTEM_STATUS = "error"
-
-            print("\n❌ LOOP ERROR")
-            print(str(e))
-
+            print("❌ LOOP ERROR:", str(e))
             traceback.print_exc()
 
         time.sleep(20)
@@ -121,14 +87,12 @@ def run_loop():
 
 @app.on_event("startup")
 def startup_event():
-
     print("🔥 STARTUP EVENT")
 
     thread = threading.Thread(
         target=run_loop,
         daemon=True
     )
-
     thread.start()
 
     print("✅ BACKGROUND THREAD STARTED")
@@ -140,9 +104,7 @@ def startup_event():
 
 @app.get("/")
 def root():
-
     with LOCK:
-
         return {
             "status": SYSTEM_STATUS,
             "engine": "DynamoHive",
@@ -153,14 +115,12 @@ def root():
 
 
 # =====================================================
-# INTEL FEED
+# INTEL
 # =====================================================
 
 @app.get("/intel")
 def get_intel():
-
     with LOCK:
-
         return JSONResponse({
             "status": SYSTEM_STATUS,
             "items": len(LATEST_DATA),
@@ -176,9 +136,7 @@ def get_intel():
 
 @app.get("/stats")
 def stats():
-
     with LOCK:
-
         return {
             "status": SYSTEM_STATUS,
             "cycles": CYCLE_COUNT,
@@ -188,21 +146,18 @@ def stats():
 
 
 # =====================================================
-# EVENT ENDPOINT
+# EVENT (FIXED)
 # =====================================================
 
 @app.get("/event")
-def event(
+def handle_event(
     user_id: str = "",
     type: str = "",
     topic: str = ""
 ):
 
     print(
-        f"📡 EVENT | "
-        f"user={user_id} | "
-        f"type={type} | "
-        f"topic={topic}"
+        f"📡 EVENT | user={user_id} | type={type} | topic={topic}"
     )
 
     return {
@@ -220,7 +175,6 @@ def event(
 
 @app.get("/health")
 def health():
-
     return {
         "status": "ok",
         "system": SYSTEM_STATUS,
@@ -236,15 +190,11 @@ def health():
 
 @app.get("/debug")
 def debug():
-
     with LOCK:
-
         preview = []
 
         for item in LATEST_DATA[:5]:
-
             if isinstance(item, dict):
-
                 preview.append({
                     "title": item.get("title", ""),
                     "score": item.get("priority", 0),
