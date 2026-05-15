@@ -35,7 +35,7 @@ DUP_TTL = 1800
 
 
 # =====================================================
-# SIGNAL KEYWORDS (RELAXED)
+# SIGNAL KEYWORDS
 # =====================================================
 KEYWORDS = [
     "ai", "technology", "tech",
@@ -55,7 +55,7 @@ def make_hash(text: str) -> str:
 
 
 # =====================================================
-# DUPLICATE CHECK (SAFE)
+# DUPLICATE CHECK
 # =====================================================
 def is_duplicate(text: str) -> bool:
     h = make_hash(text)
@@ -66,7 +66,7 @@ def is_duplicate(text: str) -> bool:
 
     SEEN[h] = now
 
-    # memory cleanup
+    # memory safety
     if len(SEEN) > 5000:
         SEEN.clear()
 
@@ -91,17 +91,20 @@ def get_feed(url: str):
 
 
 # =====================================================
-# SIGNAL CHECK (RELAXED + SAFE FALLBACK)
+# SIGNAL CHECK
 # =====================================================
 def is_signal(title: str, content: str) -> bool:
     text = f"{title} {content}".lower()
 
-    keyword_hit = any(k in text for k in KEYWORDS)
+    # keyword match
+    if any(k in text for k in KEYWORDS):
+        return True
 
-    # fallback: long meaningful content still counts
-    fallback = len(text) > 120
+    # fallback (important: prevents empty pipeline)
+    if len(text) > 120:
+        return True
 
-    return keyword_hit or fallback
+    return False
 
 
 # =====================================================
@@ -130,6 +133,7 @@ def calculate_score(title: str, content: str) -> float:
 # MAIN CRAWLER
 # =====================================================
 def crawl():
+
     results = []
 
     for url in RSS_SOURCES:
@@ -158,7 +162,7 @@ def crawl():
                 if is_duplicate(full_text):
                     continue
 
-                # signal filter (RELAXED)
+                # signal filter
                 if not is_signal(title, content):
                     continue
 
@@ -173,7 +177,7 @@ def crawl():
                     "timestamp": datetime.utcnow().isoformat() + "Z"
                 }
 
-                # DB SAVE (SAFE STRUCTURE)
+                # DB SAVE (NON-BLOCKING SAFE)
                 try:
                     save_signal({
                         "title": item["title"],
