@@ -18,11 +18,17 @@ class Scheduler:
     # START
     # =====================================================
     def start(self):
+
         if self.running:
             return
 
         self.running = True
-        self.thread = threading.Thread(target=self._loop, daemon=True)
+
+        self.thread = threading.Thread(
+            target=self._loop,
+            daemon=True
+        )
+
         self.thread.start()
 
         logger.info("[SCHEDULER] started")
@@ -31,13 +37,37 @@ class Scheduler:
     # STOP
     # =====================================================
     def stop(self):
+
         self.running = False
+
         logger.info("[SCHEDULER] stopped")
 
     # =====================================================
-    # MAIN LOOP
+    # LOOP
     # =====================================================
     def _loop(self):
+
         while self.running:
+
             try:
-               
+
+                logger.info("[SCHEDULER] cycle start")
+
+                result = self.orchestrator.run_cycle()
+
+                logger.info(
+                    f"[SCHEDULER] cycle done | items: {len(result)}"
+                )
+
+            except Exception:
+
+                logger.error("[SCHEDULER ERROR]")
+                logger.error(traceback.format_exc())
+
+            time.sleep(self.interval)
+
+
+# =====================================================
+# GLOBAL INSTANCE
+# =====================================================
+scheduler = Scheduler()
