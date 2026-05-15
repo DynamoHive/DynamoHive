@@ -2,15 +2,19 @@ import time
 import threading
 import traceback
 
-from backend.orchestrator import run_pipeline
+from backend.orchestrator import Orchestrator
 from backend.logger import logger
 
 
 class Scheduler:
+
     def __init__(self, interval: int = 30):
         self.interval = interval
         self.running = False
         self.thread = None
+
+        # Orchestrator instance (FIX)
+        self.orchestrator = Orchestrator()
 
     # -----------------------------
     # START
@@ -36,16 +40,23 @@ class Scheduler:
     # MAIN LOOP
     # -----------------------------
     def _loop(self):
+
+        logger.info("[SCHEDULER] loop active")
+
         while self.running:
+
+            start = time.time()
+
             try:
                 logger.info("[SCHEDULER] cycle start")
 
-                result = run_pipeline()
+                # FIX: correct orchestrator usage
+                result = self.orchestrator.run_cycle()
 
-                logger.info(f"[SCHEDULER] cycle done: {result}")
-
-            except Exception as e:
-                logger.error("[SCHEDULER] error occurred")
-                logger.error(traceback.format_exc())
-
-            time.sleep(self.interval)
+                if result:
+                    logger.info(
+                        f"[SCHEDULER] cycle done | items={len(result)} | "
+                        f"time={round(time.time() - start, 2)}s"
+                    )
+                else:
+                    logger.info("[SCHEDULER] cycle done | no output")
