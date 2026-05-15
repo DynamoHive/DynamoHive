@@ -2,7 +2,7 @@ import time
 import traceback
 
 from backend.logger import logger
-from backend.cache import is_duplicate
+from backend.cache import get_last_data, set_last_data, is_duplicate
 from backend.storage import save_signal
 
 from ai_engine.multi_crawler import crawl
@@ -15,6 +15,10 @@ from ai_engine.global_crisis_radar import detect_crisis_signals
 from ai_engine.decision_engine import DecisionEngine
 from ai_engine.global_intelligence_engine import GlobalIntelligenceEngine
 
+# NEW IMPORTS
+from backend.services.cycle_guard import CycleGuard
+from backend.services.backfill_engine import BackfillEngine
+
 
 class Orchestrator:
 
@@ -22,6 +26,10 @@ class Orchestrator:
         self.cycle = 0
         self.decision = DecisionEngine()
         self.intelligence = GlobalIntelligenceEngine()
+
+        # NEW LAYERS
+        self.guard = CycleGuard()
+        self.backfill = BackfillEngine()
 
     def run_cycle(self):
 
@@ -31,13 +39,24 @@ class Orchestrator:
         logger.info(f"[ORCHESTRATOR] cycle {self.cycle} start")
 
         try:
+
             # =================================================
-            # 1. CRAWL (NO FALLBACK = IMPORTANT FIX)
+            # 1. CRAWL (FIXED ZERO-CYCLE PROTECTION)
             # =================================================
             raw = crawl()
 
+            # block runaway empty cycles
+            if self.guard.should_block(raw):
+                logger.warning("[ORCHESTRATOR] cycle blocked by guard")
+                return []
+
+            # controlled backfill (ONLY if needed)
             if not raw:
-                logger.warning("[ORCHESTRATOR] crawler empty - skipping cycle")
+                raw = self.backfill.run()
+
+            # fallback hard stop safety
+            if not raw:
+                logger.warning("[ORCHESTRATOR] no data after backfill")
                 return []
 
             # =================================================
@@ -46,8 +65,9 @@ class Orchestrator:
             raw = process_data(raw)
 
             if not raw:
-                logger.warning("[ORCHESTRATOR] processed data empty")
                 return []
+
+            set_last_data(raw[:100])
 
             # =================================================
             # 3. CRISIS DETECTION
@@ -75,7 +95,6 @@ class Orchestrator:
             signals = cluster_signals(signals)
 
             if not signals:
-                logger.warning("[ORCHESTRATOR] no signals generated")
                 return []
 
             # =================================================
@@ -95,7 +114,6 @@ class Orchestrator:
             decisions = self.decision.evaluate(signals)
 
             if not decisions:
-                logger.warning("[ORCHESTRATOR] no decisions")
                 return []
 
             # =================================================
@@ -104,7 +122,6 @@ class Orchestrator:
             intel = self.intelligence.run(decisions)
 
             if not intel:
-                logger.warning("[ORCHESTRATOR] no intelligence output")
                 return []
 
             for i in range(min(len(intel), len(decisions))):
