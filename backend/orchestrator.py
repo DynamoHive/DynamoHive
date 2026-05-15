@@ -1,10 +1,9 @@
 import time
 import traceback
-import hashlib
-import threading
 
 from backend.logger import logger
 from backend.storage import save_signal
+from backend.cache import set_last_data, get_last_data, is_duplicate
 
 from ai_engine.multi_crawler import crawl
 from ai_engine.data_pipeline import process_data
@@ -17,52 +16,6 @@ from ai_engine.decision_engine import DecisionEngine
 from ai_engine.global_crisis_radar import detect_crisis_signals
 
 
-# =====================================================
-# GLOBAL STATE
-# =====================================================
-
-LAST_DATA = []
-duplicate_cache = {}
-
-LOCK = threading.Lock()
-
-
-# =====================================================
-# DUPLICATE CHECK (SAFE + TTL CLEANUP)
-# =====================================================
-
-def is_duplicate(topic: str) -> bool:
-    try:
-        bucket = int(time.time() / 300)
-        key = hashlib.md5(
-            (str(topic).lower() + str(bucket)).encode()
-        ).hexdigest()
-    except Exception:
-        return False
-
-    now = time.time()
-
-    with LOCK:
-        # TTL cleanup (safe instead of hard reset)
-        expired = [
-            k for k, t in duplicate_cache.items()
-            if now - t > 300
-        ]
-        for k in expired:
-            duplicate_cache.pop(k, None)
-
-        if key in duplicate_cache:
-            return True
-
-        duplicate_cache[key] = now
-
-    return False
-
-
-# =====================================================
-# ORCHESTRATOR
-# =====================================================
-
 class Orchestrator:
 
     def __init__(self):
@@ -70,6 +23,9 @@ class Orchestrator:
         self.intelligence = GlobalIntelligenceEngine()
         self.decision = DecisionEngine()
 
+    # =====================================================
+    # MAIN PIPELINE
+    # =====================================================
     def run_cycle(self):
 
         start = time.time()
@@ -78,37 +34,38 @@ class Orchestrator:
         logger.info(f"[ORCHESTRATOR] Cycle {self.cycle} started")
 
         try:
+            # -----------------------------
+            # 1. CRAWL
+            # -----------------------------
             raw = crawl()
 
             if not raw:
-                raw = LAST_DATA or []
+                raw = get_last_data() or []
 
+            # -----------------------------
+            # 2. PROCESS
+            # -----------------------------
             raw = process_data(raw)
 
             if not raw:
                 return []
 
-            # =================================================
-            # THREAD SAFE CACHE UPDATE
-            # =================================================
-            with LOCK:
-                LAST_DATA.clear()
-                LAST_DATA.extend(raw[:100])
+            set_last_data(raw[:100])
 
-            # =================================================
-            # CRISIS DETECTION
-            # =================================================
+            # -----------------------------
+            # 3. CRISIS DETECTION
+            # -----------------------------
             crisis_signals = detect_crisis_signals(raw)
 
-            crisis_map = {}
-            for c in crisis_signals:
-                title = str(c.get("title", "")).lower().strip()
-                if title:
-                    crisis_map[title] = c
+            crisis_map = {
+                str(c.get("title", "")).lower().strip(): c
+                for c in crisis_signals
+                if c.get("title")
+            }
 
-            # =================================================
-            # SIGNAL DETECTION
-            # =================================================
+            # -----------------------------
+            # 4. SIGNAL DETECTION
+            # -----------------------------
             signals = detect_signals(raw)
 
             if not signals:
@@ -117,35 +74,35 @@ class Orchestrator:
                     for x in raw[:10]
                 ]
 
-            signals = merge_ranked_signals(signals or [])
-            signals = cluster_signals(signals or [])
+            signals = merge_ranked_signals(signals)
+            signals = cluster_signals(signals)
 
             if not signals:
                 return []
 
-            # =================================================
-            # CRISIS BOOST (SAFE MATCH)
-            # =================================================
+            # -----------------------------
+            # 5. CRISIS BOOST
+            # -----------------------------
             for s in signals:
                 topic = str(s.get("topic", "")).lower()
 
                 for k, v in crisis_map.items():
-                    if k and k in topic:  # fuzzy match FIX
+                    if k and k in topic:
                         s["urgency"] = v.get("urgency", "high")
                         s["score"] = min(float(s.get("score", 0.5)) + 0.3, 1.0)
                         break
 
-            # =================================================
-            # DECISION ENGINE
-            # =================================================
+            # -----------------------------
+            # 6. DECISION ENGINE
+            # -----------------------------
             decisions = self.decision.evaluate(signals)
 
             if not decisions:
                 return []
 
-            # =================================================
-            # INTELLIGENCE ENGINE
-            # =================================================
+            # -----------------------------
+            # 7. INTELLIGENCE ENGINE
+            # -----------------------------
             intel = self.intelligence.run(decisions)
 
             if not intel:
@@ -155,9 +112,9 @@ class Orchestrator:
                 if i < len(decisions):
                     item["decision"] = decisions[i]
 
-            # =================================================
-            # OUTPUT
-            # =================================================
+            # -----------------------------
+            # 8. OUTPUT GENERATION
+            # -----------------------------
             output = []
 
             for item in intel:
@@ -171,6 +128,7 @@ class Orchestrator:
                 if not decision.get("publish", True):
                     continue
 
+                # duplicate protection (NOW EXTERNAL CACHE)
                 if is_duplicate(topic):
                     continue
 
