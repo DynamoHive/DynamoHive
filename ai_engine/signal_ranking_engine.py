@@ -25,7 +25,6 @@ def normalize(text):
 def similar(a, b, threshold=0.75):
     try:
         return SequenceMatcher(None, a, b).ratio() >= threshold
-
     except Exception:
         return False
 
@@ -34,13 +33,10 @@ def similar(a, b, threshold=0.75):
 # SEVERITY CALCULATION
 # -------------------------
 def calculate_severity(score):
-
     if score >= 2.5:
         return "high"
-
     elif score >= 1.2:
         return "medium"
-
     return "low"
 
 
@@ -48,9 +44,7 @@ def calculate_severity(score):
 # SIGNAL MERGE ENGINE
 # -------------------------
 def merge_ranked_signals(signals):
-
     try:
-
         if not isinstance(signals, list):
             return []
 
@@ -84,10 +78,7 @@ def merge_ranked_signals(signals):
                 if similar(topic, existing_topic):
 
                     existing["score"] += signal.get("score", 0)
-
-                    existing["count"] = (
-                        existing.get("count", 1) + 1
-                    )
+                    existing["count"] = existing.get("count", 1) + 1
 
                     existing["sources"] = list(set(
                         existing.get("sources", []) +
@@ -98,17 +89,13 @@ def merge_ranked_signals(signals):
                         existing["score"]
                     )
 
-                    # Longer topic wins
-                    if len(str(topic_raw)) > len(
-                        str(existing.get("topic", ""))
-                    ):
+                    if len(str(topic_raw)) > len(str(existing.get("topic", ""))):
                         existing["topic"] = topic_raw
 
                     found = True
                     break
 
             if not found:
-
                 score = signal.get("score", 0)
 
                 merged.append({
@@ -119,17 +106,19 @@ def merge_ranked_signals(signals):
                 })
 
         merged.sort(
-            key=lambda x: (
-                x.get("score", 0),
-                x.get("count", 0)
-            ),
+            key=lambda x: (x.get("score", 0), x.get("count", 0)),
             reverse=True
         )
 
         return merged
 
     except Exception as e:
-
         print("signal_ranking_engine error:", e)
-
         return signals if isinstance(signals, list) else []
+
+
+# -------------------------
+# FIX: API COMPATIBILITY LAYER
+# -------------------------
+def rank_signals(signals):
+    return merge_ranked_signals(signals)
