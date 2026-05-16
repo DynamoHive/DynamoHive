@@ -6,11 +6,14 @@ from backend.storage import init_db
 from backend.services.scheduler import scheduler
 from backend.event_pipeline import start_pipeline
 
-from backend.api import router as intel_router  # ✅ FIXED
+from backend.api.intel import router as intel_router
+from backend.api.signals import router as signals_router
+from backend.api.analytics import router as analytics_router
+from backend.api.decision import router as decision_router
 
 app = FastAPI(
     title="DynamoHive",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 # -------------------------
@@ -25,24 +28,28 @@ app.add_middleware(
 )
 
 # -------------------------
-# ROUTES
+# ROUTERS
 # -------------------------
 app.include_router(intel_router)
+app.include_router(signals_router)
+app.include_router(analytics_router)
+app.include_router(decision_router)
 
 # -------------------------
 # STARTUP
 # -------------------------
 @app.on_event("startup")
 def startup_event():
-    logger.info("[MAIN] startup event")
+
+    logger.info("[MAIN] startup")
 
     init_db()
-    logger.info("[DB] initialized")
 
     start_pipeline()
+
     scheduler.start()
 
-    logger.info("[MAIN] system initialized")
+    logger.info("[MAIN] initialized")
 
 
 # -------------------------
@@ -51,9 +58,9 @@ def startup_event():
 @app.get("/")
 def root():
     return {
-        "status": "running",
         "service": "DynamoHive",
-        "version": "1.0.0"
+        "status": "running",
+        "version": "2.0.0"
     }
 
 
