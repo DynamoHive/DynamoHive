@@ -1,63 +1,69 @@
 from fastapi import APIRouter, HTTPException
-from backend.storage import get_posts
+
+from backend.storage import get_signals
 from ai_engine.signal_ranking_engine import rank_signals
 
 router = APIRouter()
 
 
+# =====================================================
+# SIGNALS LIST (formerly posts)
+# =====================================================
 @router.get("/posts")
 def get_posts_api():
 
-    posts = get_posts() or []
+    signals = get_signals() or []
 
-    signals = []
+    prepared = []
 
-    for p in posts:
+    for s in signals:
 
-        if not isinstance(p, dict):
+        if not isinstance(s, dict):
             continue
 
-        title = p.get("title", "")
-        content = p.get("content", "")
+        title = s.get("title", "")
+        content = s.get("content", "")
 
-        signals.append({
-            "post_id": p.get("id"),
-            "content": p,
+        prepared.append({
+            "signal_id": s.get("id"),
+            "title": title,
+            "content": content,
             "text": f"{title} {content}",
-            "source": p.get("source", "internal"),
-            "timestamp": p.get("timestamp", 0),
-            "boost": 0
+            "source": "internal",
+            "timestamp": s.get("timestamp", 0),
+            "priority": s.get("priority", 0.5)
         })
 
-    ranked = rank_signals(signals) or []
+    ranked = rank_signals(prepared) or []
 
-    # güvenli extraction
-    ranked_posts = [
-        s.get("content", {})
-        for s in ranked
+    ranked_signals = [
+        s for s in ranked
         if isinstance(s, dict)
     ]
 
     return {
-        "count": len(ranked_posts),
-        "posts": ranked_posts
+        "count": len(ranked_signals),
+        "data": ranked_signals
     }
 
 
-@router.get("/posts/{post_id}")
-def get_post(post_id: int):
+# =====================================================
+# SINGLE SIGNAL
+# =====================================================
+@router.get("/posts/{signal_id}")
+def get_post(signal_id: int):
 
-    posts = get_posts() or []
+    signals = get_signals() or []
 
-    for p in posts:
+    for s in signals:
 
-        if not isinstance(p, dict):
+        if not isinstance(s, dict):
             continue
 
-        if p.get("id") == post_id:
-            return p
+        if s.get("id") == signal_id:
+            return s
 
     raise HTTPException(
         status_code=404,
-        detail="post not found"
+        detail="signal not found"
     )
