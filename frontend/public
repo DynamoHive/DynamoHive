@@ -1,12 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+
+  <meta charset="utf-8" />
+
+  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="theme-color" content="#0B0B0F" />
+
+  <meta name="description" content="DynamoHive - Autonomous intelligence signal platform" />
+
   <title>DynamoHive</title>
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="DynamoHive" />
+  <meta property="og:description" content="Autonomous intelligence signal platform" />
+  <meta property="og:type" content="website" />
+
+  <!-- Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      background: #0B0B0F;
+      color: white;
+      font-family: Inter, sans-serif;
+    }
+  </style>
+
 </head>
 
 <body>
 
-<div id="root"></div>
+  <noscript>You need JavaScript enabled to run DynamoHive.</noscript>
+
+  <div id="root"></div>
 
 </body>
+
 </html>
