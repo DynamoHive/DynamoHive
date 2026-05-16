@@ -6,15 +6,16 @@ from backend.storage import init_db
 from backend.services.scheduler import scheduler
 from backend.event_pipeline import start_pipeline
 
-from backend.api.intel import router as intel_router
-
+from backend.api import router as intel_router  # ✅ FIXED
 
 app = FastAPI(
     title="DynamoHive",
     version="1.0.0"
 )
 
+# -------------------------
 # CORS
+# -------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,13 +24,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# -------------------------
 # ROUTES
+# -------------------------
 app.include_router(intel_router)
 
-
+# -------------------------
+# STARTUP
+# -------------------------
 @app.on_event("startup")
 def startup_event():
-
     logger.info("[MAIN] startup event")
 
     init_db()
@@ -41,6 +45,9 @@ def startup_event():
     logger.info("[MAIN] system initialized")
 
 
+# -------------------------
+# ROOT
+# -------------------------
 @app.get("/")
 def root():
     return {
@@ -50,6 +57,9 @@ def root():
     }
 
 
+# -------------------------
+# HEALTH
+# -------------------------
 @app.get("/health")
 def health():
     return {"status": "ok"}
