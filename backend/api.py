@@ -1,69 +1,58 @@
 from fastapi import APIRouter, HTTPException
 
-from backend.storage import get_signals
+from backend.storage import get_signals  # ❗ get_posts YOK
 from ai_engine.signal_ranking_engine import rank_signals
 
 router = APIRouter()
 
 
-# =====================================================
-# SIGNALS LIST (formerly posts)
-# =====================================================
-@router.get("/posts")
-def get_posts_api():
+# -------------------------
+# INTEL FEED
+# -------------------------
+@router.get("/intel")
+def get_intel():
 
-    signals = get_signals() or []
+    posts = get_signals(limit=100) or []
 
-    prepared = []
+    signals = []
 
-    for s in signals:
+    for p in posts:
 
-        if not isinstance(s, dict):
+        if not isinstance(p, dict):
             continue
 
-        title = s.get("title", "")
-        content = s.get("content", "")
+        title = p.get("title", "")
+        content = p.get("content", "")
 
-        prepared.append({
-            "signal_id": s.get("id"),
-            "title": title,
-            "content": content,
+        signals.append({
+            "post_id": p.get("id"),
+            "topic": p.get("topic", title),
             "text": f"{title} {content}",
-            "source": "internal",
-            "timestamp": s.get("timestamp", 0),
-            "priority": s.get("priority", 0.5)
+            "content": content,
+            "score": float(p.get("priority", 0.5)),
+            "sources": [],
+            "timestamp": p.get("timestamp", 0),
         })
 
-    ranked = rank_signals(prepared) or []
-
-    ranked_signals = [
-        s for s in ranked
-        if isinstance(s, dict)
-    ]
+    ranked = rank_signals(signals) or []
 
     return {
-        "count": len(ranked_signals),
-        "data": ranked_signals
+        "cycle": len(ranked),
+        "data": ranked,
+        "last_update": int(__import__("time").time())
     }
 
 
-# =====================================================
-# SINGLE SIGNAL
-# =====================================================
-@router.get("/posts/{signal_id}")
-def get_post(signal_id: int):
+# -------------------------
+# SINGLE POST
+# -------------------------
+@router.get("/intel/{post_id}")
+def get_intel_item(post_id: int):
 
-    signals = get_signals() or []
+    posts = get_signals(limit=200) or []
 
-    for s in signals:
+    for p in posts:
+        if p.get("id") == post_id:
+            return p
 
-        if not isinstance(s, dict):
-            continue
-
-        if s.get("id") == signal_id:
-            return s
-
-    raise HTTPException(
-        status_code=404,
-        detail="signal not found"
-    )
+    raise HTTPException(status_code=404, detail="not found")
