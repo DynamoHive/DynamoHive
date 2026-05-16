@@ -6,19 +6,15 @@ from backend.storage import init_db
 from backend.services.scheduler import scheduler
 from backend.event_pipeline import start_pipeline
 
+from backend.api.intel import router as intel_router
 
-# =====================================================
-# FASTAPI APP
-# =====================================================
+
 app = FastAPI(
     title="DynamoHive",
     version="1.0.0"
 )
 
-
-# =====================================================
 # CORS
-# =====================================================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,41 +23,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ROUTES
+app.include_router(intel_router)
 
-# =====================================================
-# STARTUP
-# =====================================================
+
 @app.on_event("startup")
 def startup_event():
 
     logger.info("[MAIN] startup event")
 
-    # DB INIT
     init_db()
     logger.info("[DB] initialized")
 
-    # EVENT PIPELINE (IMPORTANT: background thread)
-    try:
-        start_pipeline()
-        logger.info("[EVENT PIPELINE] started")
-    except Exception as e:
-        logger.error("[EVENT PIPELINE ERROR STARTING]")
-        logger.error(str(e))
-
-    # SCHEDULER
-    try:
-        scheduler.start()
-        logger.info("[SCHEDULER] started")
-    except Exception as e:
-        logger.error("[SCHEDULER ERROR STARTING]")
-        logger.error(str(e))
+    start_pipeline()
+    scheduler.start()
 
     logger.info("[MAIN] system initialized")
 
 
-# =====================================================
-# ROOT
-# =====================================================
 @app.get("/")
 def root():
     return {
@@ -71,11 +50,6 @@ def root():
     }
 
 
-# =====================================================
-# HEALTH
-# =====================================================
 @app.get("/health")
 def health():
-    return {
-        "status": "ok"
-    }
+    return {"status": "ok"}
